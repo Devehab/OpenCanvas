@@ -1,12 +1,14 @@
 /**
  * Autosave: local change → immediate (debounced) IndexedDB write, never
  * during a drag, flushed when the tab is hidden. Saves use optimistic
- * concurrency, so a second tab can never silently overwrite newer work.
+ * concurrency, so a second tab can never silently overwrite newer work:
+ * a tab without local edits follows the other tab's saves in place, and a
+ * tab with local edits reports a conflict instead of saving.
  */
-import { serializeDocument } from '@opencanvas/core';
+import { parseDocument, serializeDocument } from '@opencanvas/core';
 import type { Editor } from '@opencanvas/editor';
 import { broadcast, onChannelMessage, TAB_ID } from './channel';
-import { saveDesign } from './storage/designs';
+import { getDesign, saveDesign } from './storage/designs';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error' | 'conflict';
 
@@ -19,6 +21,9 @@ export class Autosave {
   private readonly listeners = new Set<() => void>();
   private readonly cleanup: (() => void)[] = [];
   private retryDelay = 1000;
+  /** Newest revision another tab announced for this design. */
+  private remoteRevision = 0;
+  private following = false;
 
   constructor(
     private readonly editor: Editor,
@@ -29,14 +34,16 @@ export class Autosave {
     this.revision = revision;
     this.cleanup.push(
       editor.store.listen((change) => {
-        if (change.source === 'load') return;
+        // Loading and following another tab's save are not local edits.
+        if (change.source === 'load' || change.source === 'remote') return;
         this.markDirty();
       }),
     );
     this.cleanup.push(
       onChannelMessage((m) => {
-        if (m.type === 'design-saved' && m.designId === designId && m.revision > this.revision)
-          this.setStatus('conflict');
+        if (m.type !== 'design-saved' || m.designId !== designId) return;
+        this.remoteRevision = Math.max(this.remoteRevision, m.revision);
+        if (m.revision > this.revision) void this.followRemote();
       }),
     );
     const onHide = () => {
@@ -71,9 +78,60 @@ export class Autosave {
     for (const l of [...this.listeners]) l();
   }
 
+  /** Revision of the last version this tab wrote or loaded. */
+  get savedRevision(): number {
+    return this.revision;
+  }
+
+  /** Whether local edits are waiting to be written (they are kept during a conflict). */
+  get hasUnsavedChanges(): boolean {
+    return this.dirty || this.saving !== null;
+  }
+
+  private canFollowRemote(): boolean {
+    return (
+      !this.dirty &&
+      !this.saving &&
+      this.status !== 'conflict' &&
+      !this.editor.isGesturing &&
+      !this.editor.editingTextId
+    );
+  }
+
+  /** Loads newer revisions saved by another tab, or reports a conflict. */
+  private async followRemote(): Promise<void> {
+    if (this.following) return;
+    this.following = true;
+    try {
+      while (this.remoteRevision > this.revision) {
+        if (!this.canFollowRemote()) {
+          this.setStatus('conflict');
+          return;
+        }
+        const record = await getDesign(this.designId);
+        if (!record || record.revision <= this.revision) return;
+        // Local edits may have happened while reading.
+        if (!this.canFollowRemote()) {
+          this.setStatus('conflict');
+          return;
+        }
+        const { snapshot } = parseDocument(record.snapshot);
+        this.editor.store.replaceAll(snapshot.records, 'remote');
+        // Undo steps refer to the replaced state.
+        this.editor.history.clear();
+        this.revision = record.revision;
+      }
+    } catch {
+      this.setStatus('conflict');
+    } finally {
+      this.following = false;
+    }
+  }
+
   private markDirty(): void {
-    if (this.status === 'conflict') return;
     this.dirty = true;
+    // During a conflict edits are tracked (to keep them as a copy) but never written.
+    if (this.status === 'conflict') return;
     this.setStatus('unsaved');
     this.schedule(this.options.delay ?? 400);
   }
@@ -108,6 +166,8 @@ export class Autosave {
           this.setStatus(this.dirty ? 'unsaved' : 'saved');
           this.options.onSaved?.();
         } else if (result.reason === 'conflict') {
+          // The edits were not written; keep them so they can be saved as a copy.
+          this.dirty = true;
           this.setStatus('conflict');
         } else {
           this.setStatus('error');

@@ -5,6 +5,7 @@ import { Pipette } from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { useEffect, useState } from 'react';
 import { HexAlphaColorPicker } from 'react-colorful';
+import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 
 export const DEFAULT_SWATCHES = [
@@ -62,6 +63,7 @@ export function ColorField({
   swatches?: readonly string[];
   testId?: string;
 }) {
+  const { t } = useI18n();
   const [hex, setHex] = useState(value);
   useEffect(() => setHex(value), [value]);
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
@@ -108,7 +110,8 @@ export function ColorField({
             {hasEyeDropper ? (
               <button
                 type="button"
-                aria-label="Pick a color from the screen"
+                aria-label={t('common.pickColor')}
+                title={t('common.pickColor')}
                 className="flex size-8 shrink-0 items-center justify-center rounded-md border border-slate-200 hover:bg-slate-50"
                 onClick={async () => {
                   try {

@@ -163,9 +163,13 @@ export function CanvasArea() {
         </div>
       ) : null}
       <DropdownMenu.Root open={menu !== null} onOpenChange={(open) => !open && setMenu(null)}>
+        {/* Invisible anchor at the pointer; the menu opens from the canvas, not from this button. */}
         <DropdownMenu.Trigger asChild>
-          <span
-            className="pointer-events-none absolute size-0"
+          <button
+            type="button"
+            tabIndex={-1}
+            aria-hidden
+            className="pointer-events-none absolute size-0 opacity-0"
             style={{ left: menu?.x ?? 0, top: menu?.y ?? 0 }}
           />
         </DropdownMenu.Trigger>
@@ -174,6 +178,11 @@ export function CanvasArea() {
             align="start"
             className="z-50 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-sm text-slate-800 shadow-xl"
             data-testid="context-menu"
+            onCloseAutoFocus={(e) => {
+              // Keep keyboard focus on the canvas rather than the hidden anchor.
+              e.preventDefault();
+              container.current?.focus({ preventScroll: true });
+            }}
           >
             <MenuItem
               icon={<Copy className="size-4" />}

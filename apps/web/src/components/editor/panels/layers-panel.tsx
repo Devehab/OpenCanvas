@@ -178,7 +178,7 @@ export function LayersPanel() {
               className={cn(
                 'group relative flex h-9 cursor-default items-center gap-1.5 rounded-md pe-1 text-sm text-slate-700 outline-none hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-brand-400',
                 isSelected && 'bg-brand-50 text-brand-800 hover:bg-brand-100',
-                !node.visible && 'text-slate-400',
+                !node.visible && 'text-slate-500 italic',
                 drop === 'inside' && 'ring-2 ring-brand-400',
               )}
               style={{ paddingInlineStart: 8 + row.depth * 16 }}
@@ -203,7 +203,7 @@ export function LayersPanel() {
                       return n;
                     });
                   }}
-                  className="rounded p-0.5 text-slate-400 hover:text-slate-700"
+                  className="rounded p-0.5 text-slate-500 hover:text-slate-700"
                 >
                   <ChevronRight
                     className={cn(
@@ -256,7 +256,7 @@ export function LayersPanel() {
                   );
                 }}
                 className={cn(
-                  'rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700',
+                  'rounded p-1 text-slate-500 hover:bg-white hover:text-slate-800',
                   !node.locked && 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
                 )}
               >
@@ -276,7 +276,7 @@ export function LayersPanel() {
                   );
                 }}
                 className={cn(
-                  'rounded p-1 text-slate-400 hover:bg-white hover:text-slate-700',
+                  'rounded p-1 text-slate-500 hover:bg-white hover:text-slate-800',
                   node.visible && 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100',
                 )}
               >

@@ -18,6 +18,7 @@ export const ar: Dictionary = {
     loading: 'جارٍ التحميل…',
     reset: 'إعادة الضبط',
     none: 'بلا',
+    pickColor: 'التقاط لون من الشاشة',
     on: 'تشغيل',
     off: 'إيقاف',
     more: 'المزيد',
@@ -431,6 +432,7 @@ export const ar: Dictionary = {
       customRange: 'نطاق صفحات',
       rangeHint: 'مثال: 1-3، 5',
       size: 'الحجم',
+      dpi: 'الدقة (نقطة لكل بوصة)',
       transparent: 'خلفية شفافة',
       quality: 'الجودة',
       resolution: 'الدقة',
@@ -475,8 +477,9 @@ export const ar: Dictionary = {
       exportFailed: 'فشل التنزيل.',
     },
     conflict: {
-      message: 'تغيّر هذا التصميم في علامة تبويب أخرى.',
+      message: 'تغيّر هذا التصميم في علامة تبويب أخرى، لذا لم تُحفَظ آخر تعديلاتك هنا.',
       reload: 'تحميل أحدث نسخة',
+      keepCopy: 'الاحتفاظ بتعديلاتي في نسخة',
     },
     a11y: {
       canvas: 'لوحة التصميم',

@@ -23,18 +23,3 @@ export function SearchBox({ value, onChange }: { value: string; onChange: (v: st
     </label>
   );
 }
-
-/** Case- and diacritic-insensitive match (works for Arabic and Latin titles). */
-export function matchesQuery(title: string, query: string): boolean {
-  // NFKD splits accented letters and hamza/madda carriers (أ → ا + ٔ), so
-  // dropping combining marks folds Latin accents, harakat and alef variants.
-  const fold = (s: string) =>
-    s
-      .normalize('NFKD')
-      .replace(/\p{M}|\u0640/gu, '') // combining marks and tatweel
-      .replace(/\u0671/g, '\u0627') // ٱ → ا
-      .replace(/\u0649/g, '\u064A') // ى → ي
-      .replace(/\u0629/g, '\u0647') // ة → ه
-      .toLowerCase();
-  return fold(title).includes(fold(query.trim()));
-}

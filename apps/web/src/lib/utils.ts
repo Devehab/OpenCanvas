@@ -37,3 +37,18 @@ export function shortcut(keys: string): string {
     .replace(/Alt/g, isMac() ? '⌥' : 'Alt')
     .replace(/Shift/g, isMac() ? '⇧' : 'Shift');
 }
+
+/**
+ * Parses a number typed by the user: accepts Arabic-Indic and Persian digits,
+ * the Arabic decimal separator (٫) and a comma as decimal separator; ignores
+ * spaces and Arabic thousands separators (٬). Returns NaN when invalid.
+ */
+export function parseUserNumber(raw: string): number {
+  const ascii = raw
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/[\s\u066C]/g, '')
+    .replace(/[\u066B,]/g, '.')
+    .replace(/\u2212/g, '-');
+  return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(ascii) ? Number(ascii) : Number.NaN;
+}

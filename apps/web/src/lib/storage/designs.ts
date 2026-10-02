@@ -149,11 +149,17 @@ export async function deleteDesignForever(id: string): Promise<void> {
 export async function duplicateDesign(id: string, title: string): Promise<DesignRecord | null> {
   const source = await getDesign(id);
   if (!source) return null;
+  return createDesignCopy(source.snapshot, title);
+}
+
+/** Stores a snapshot as a new design with the given title. */
+export async function createDesignCopy(source: DocumentSnapshot, title: string): Promise<DesignRecord> {
   // Re-parse so the copy is validated like any import.
-  const { snapshot } = parseDocument(source.snapshot);
+  const { snapshot } = parseDocument(source);
   const renamed: DocumentSnapshot = {
     ...snapshot,
     records: snapshot.records.map((r) => (r.typeName === 'document' ? { ...r, title } : r)),
   };
-  return createDesign({ title, width: source.width, height: source.height, snapshot: renamed });
+  const meta = metaFromSnapshot(renamed);
+  return createDesign({ title, width: meta.width, height: meta.height, snapshot: renamed });
 }

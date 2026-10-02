@@ -16,7 +16,11 @@ export type PreparedImage =
   | { ok: true; asset: AssetRecord; image: DrawableImage }
   | { ok: false; reason: UploadError; name: string };
 
-/** Removes scripts, event handlers, foreignObject and external references from SVG. */
+/**
+ * Removes scripts, event handlers, foreignObject and external references from
+ * SVG. Inline styles stay (many editors export them): uploads are only ever
+ * drawn as images, where CSS cannot run code or fetch anything.
+ */
 export function sanitizeSvg(svg: string): string | null {
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     for (const attr of ['href', 'xlink:href']) {
@@ -28,7 +32,6 @@ export function sanitizeSvg(svg: string): string | null {
     const clean = DOMPurify.sanitize(svg, {
       USE_PROFILES: { svg: true, svgFilters: true },
       FORBID_TAGS: ['foreignObject', 'script', 'iframe', 'object', 'embed'],
-      FORBID_ATTR: ['style'],
     });
     return /<svg[\s>]/i.test(clean) ? clean : null;
   } finally {

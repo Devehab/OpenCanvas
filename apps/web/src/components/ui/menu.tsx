@@ -59,7 +59,7 @@ export function MenuItem({
       <span className="flex size-4 items-center justify-center text-slate-500">{icon}</span>
       <span className="flex-1">{children}</span>
       {shortcut ? (
-        <span className="text-xs text-slate-400" dir="ltr">
+        <span className="text-xs text-slate-500" dir="ltr">
           {formatShortcut(shortcut)}
         </span>
       ) : null}

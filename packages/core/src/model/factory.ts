@@ -21,8 +21,17 @@ export type NodeInit<T extends NodeType = NodeType> = Partial<Omit<NodeOfType<T>
   index: string;
 };
 
-/** A node description without identity/placement — what templates, clipboard and AI produce. */
-export type NodeProps<T extends NodeType = NodeType> = Partial<
+/** Nested objects whose missing fields the schema fills with defaults. */
+type PartialNested<N> = {
+  [K in keyof N]?: K extends 'style' | 'adjustments' ? Partial<N[K]> : N[K];
+};
+
+/**
+ * A node description without identity/placement — what templates, clipboard
+ * and AI produce. Omitted fields (including fields of `style` and
+ * `adjustments`) get their defaults when the node is created.
+ */
+export type NodeProps<T extends NodeType = NodeType> = PartialNested<
   Omit<NodeOfType<T>, 'typeName' | 'id' | 'parentId' | 'index'>
 > & { type: T };
 

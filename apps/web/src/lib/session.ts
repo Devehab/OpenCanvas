@@ -9,7 +9,6 @@ import {
   createBrowserPlatform,
   createCanvasMeasurer,
   type RenderPlatform,
-  rasterizePage,
   SceneRenderer,
 } from '@opencanvas/renderer';
 import { Autosave } from './autosave';
@@ -18,6 +17,7 @@ import { getAssetBlob } from './storage/assets';
 import type { DesignRecord } from './storage/designs';
 import { getDesign } from './storage/designs';
 import { putThumbnail } from './storage/thumbnails';
+import { renderThumbnail } from './thumbnail-render';
 
 export interface EditorSession {
   design: DesignRecord;
@@ -54,29 +54,27 @@ export async function openSession(designId: string): Promise<EditorSession | nul
   );
   const renderer = new SceneRenderer(platform, images, measurer);
 
+  // Previews are written shortly after saves (and right away when leaving the editor).
   let thumbTimer: ReturnType<typeof setTimeout> | undefined;
+  let thumbPending = false;
   const writeThumbnail = async () => {
-    const pageId = store.getPageIds()[0];
-    const page = pageId ? store.getPage(pageId) : undefined;
-    if (!page || !pageId) return;
+    clearTimeout(thumbTimer);
+    thumbPending = false;
+    const revision = autosave.savedRevision;
     await images.loadAll(store.getAssets());
-    const scale = Math.min(1, 480 / Math.max(page.width, page.height));
-    const { canvas } = rasterizePage(renderer, platform, store, pageId, { scale, placeholders: false });
-    const c = canvas as unknown as OffscreenCanvas | HTMLCanvasElement;
-    const blob =
-      'convertToBlob' in c
-        ? await c.convertToBlob({ type: 'image/png' })
-        : await new Promise<Blob | null>((resolve) => (c as HTMLCanvasElement).toBlob(resolve, 'image/png'));
-    if (blob) await putThumbnail(design.id, blob);
+    const blob = await renderThumbnail(store, renderer, platform);
+    if (blob) await putThumbnail(design.id, blob, revision);
+  };
+  const scheduleThumbnail = (delay: number) => {
+    clearTimeout(thumbTimer);
+    thumbPending = true;
+    thumbTimer = setTimeout(() => void writeThumbnail().catch(() => {}), delay);
   };
   const autosave = new Autosave(editor, design.id, design.revision, {
-    onSaved: () => {
-      clearTimeout(thumbTimer);
-      thumbTimer = setTimeout(() => void writeThumbnail().catch(() => {}), 1500);
-    },
+    onSaved: () => scheduleThumbnail(1500),
   });
   // Ensure every design has a thumbnail.
-  thumbTimer = setTimeout(() => void writeThumbnail().catch(() => {}), 2500);
+  scheduleThumbnail(2500);
 
   return {
     design,
@@ -92,7 +90,10 @@ export async function openSession(designId: string): Promise<EditorSession | nul
     },
     dispose() {
       clearTimeout(thumbTimer);
-      void autosave.flush();
+      void autosave
+        .flush()
+        .then(() => (thumbPending ? writeThumbnail() : undefined))
+        .catch(() => {});
       autosave.dispose();
       editor.dispose();
       invalidateListeners.clear();

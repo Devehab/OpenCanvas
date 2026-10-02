@@ -44,6 +44,11 @@ export class BrowserImageResolver implements ImageResolver {
     private readonly onChange: () => void,
   ) {}
 
+  /** Number of images currently loading. */
+  get pending(): number {
+    return this.waiters.size;
+  }
+
   get(asset: AssetRecord): DrawableImage | null {
     const entry = this.cache.get(asset.hash);
     if (entry?.status === 'ready') return entry.image;

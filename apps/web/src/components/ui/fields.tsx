@@ -2,7 +2,7 @@
 
 import { Slider as S } from 'radix-ui';
 import { type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from 'react';
-import { clamp, cn, round } from '@/lib/utils';
+import { clamp, cn, parseUserNumber, round } from '@/lib/utils';
 
 /**
  * Numeric input that commits on Enter/blur, supports arrow keys (Shift ×10)
@@ -42,7 +42,7 @@ export function NumberField({
     if (!focused) setDraft(display);
   }, [display, focused]);
   const commit = (raw: string) => {
-    const parsed = Number.parseFloat(raw.replace(',', '.'));
+    const parsed = parseUserNumber(raw);
     if (Number.isFinite(parsed)) onChange(clamp(parsed, min, max));
     else setDraft(display);
   };
@@ -54,7 +54,7 @@ export function NumberField({
         className,
       )}
     >
-      {prefix ? <span className="shrink-0 text-xs font-medium text-slate-400">{prefix}</span> : null}
+      {prefix ? <span className="shrink-0 text-xs font-medium text-slate-500">{prefix}</span> : null}
       <input
         aria-label={label}
         data-testid={testId}
@@ -87,7 +87,7 @@ export function NumberField({
           }
         }}
       />
-      {suffix ? <span className="shrink-0 text-xs text-slate-400">{suffix}</span> : null}
+      {suffix ? <span className="shrink-0 text-xs text-slate-500">{suffix}</span> : null}
     </label>
   );
 }

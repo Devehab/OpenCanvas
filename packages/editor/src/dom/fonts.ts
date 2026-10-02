@@ -62,26 +62,42 @@ export async function loadFonts(requests: readonly FontRequest[], timeoutMs = 80
  */
 export class FontWatcher {
   private readonly loaded = new Set<string>();
-  private running = false;
+  private running: Promise<void> | null = null;
+  private rerun = false;
 
   constructor(
     private readonly store: DocumentStore,
     private readonly onLoaded: () => void,
   ) {}
 
-  async check(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    try {
-      const missing = collectFontRequests(this.store).filter(
-        (r) => !this.loaded.has(`${r.family}|${r.weight}|${r.style}`),
-      );
-      if (missing.length === 0) return;
-      await loadFonts(missing);
-      for (const r of missing) this.loaded.add(`${r.family}|${r.weight}|${r.style}`);
-      this.onLoaded();
-    } finally {
-      this.running = false;
+  /**
+   * Loads fonts the document uses that are not loaded yet. A check requested
+   * while one is running runs again afterwards, so fonts added in the
+   * meantime are never missed. Resolves when all requested checks finished.
+   */
+  check(): Promise<void> {
+    if (this.running) {
+      this.rerun = true;
+      return this.running;
     }
+    const run = async () => {
+      do {
+        this.rerun = false;
+        const missing = collectFontRequests(this.store).filter(
+          (r) => !this.loaded.has(`${r.family}|${r.weight}|${r.style}`),
+        );
+        if (missing.length === 0) continue;
+        await loadFonts(missing);
+        for (const r of missing) this.loaded.add(`${r.family}|${r.weight}|${r.style}`);
+        this.onLoaded();
+      } while (this.rerun);
+    };
+    // `finally` always runs asynchronously, after `running` is assigned below
+    // (a run with nothing to load completes synchronously).
+    const promise = run().finally(() => {
+      if (this.running === promise) this.running = null;
+    });
+    this.running = promise;
+    return promise;
   }
 }

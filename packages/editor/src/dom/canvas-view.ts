@@ -49,6 +49,9 @@ export class CanvasView {
   private lastStoreVersion = -1;
   /** Milliseconds spent in the last scene render (for diagnostics and perf tests). */
   lastRenderMs = 0;
+  /** Number of scene redraws so far (diagnostics, tests and benchmarks). */
+  sceneRenders = 0;
+  private fontCheckPending = false;
 
   constructor(private readonly options: CanvasViewOptions) {
     this.editor = options.editor;
@@ -145,7 +148,17 @@ export class CanvasView {
 
   private scheduleFontCheck(delay: number): void {
     clearTimeout(this.fontCheckTimer);
-    this.fontCheckTimer = setTimeout(() => void this.fontWatcher.check(), delay);
+    this.fontCheckPending = true;
+    this.fontCheckTimer = setTimeout(() => {
+      void this.fontWatcher.check().finally(() => {
+        this.fontCheckPending = false;
+      });
+    }, delay);
+  }
+
+  /** True when no redraw, frame or font check is pending. */
+  get idle(): boolean {
+    return this.raf === 0 && !this.sceneDirty && !this.overlayDirty && !this.fontCheckPending;
   }
 
   private schedule(): void {
@@ -181,6 +194,7 @@ export class CanvasView {
       const start = performance.now();
       this.renderScene();
       this.lastRenderMs = performance.now() - start;
+      this.sceneRenders++;
     }
     if (this.overlayDirty) {
       this.overlayDirty = false;

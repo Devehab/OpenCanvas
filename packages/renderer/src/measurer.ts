@@ -16,7 +16,7 @@ import { type Context2D, context2d, type RenderPlatform } from './platform';
 export const DEFAULT_FONT_FALLBACKS = ['Noto Sans Arabic', 'Noto Sans', 'sans-serif'];
 
 export class CanvasTextMeasurer implements TextMeasurer {
-  private readonly ctx: Context2D & { letterSpacing?: string };
+  private ctx: Context2D & { letterSpacing?: string };
   private readonly metricsCache = new Map<string, FontMetrics>();
 
   constructor(
@@ -64,9 +64,15 @@ export class CanvasTextMeasurer implements TextMeasurer {
     return m;
   }
 
-  /** Clears cached metrics, e.g. after a web font finished loading. */
+  /**
+   * Forgets everything resolved so far, e.g. after a web font finished
+   * loading. The context is replaced too: browsers keep the face a context
+   * resolved for a font string (the fallback, before the web font arrived)
+   * and re-assigning the same `ctx.font` does not resolve it again.
+   */
   invalidate(): void {
     this.metricsCache.clear();
+    this.ctx = context2d(this.platform.createCanvas(8, 8));
   }
 }
 

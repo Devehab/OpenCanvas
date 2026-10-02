@@ -5,14 +5,19 @@ import { Loader2 } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
-import { SliderField, Toggle } from '@/components/ui/fields';
+import { NumberField, SliderField, Toggle } from '@/components/ui/fields';
 import { useToast } from '@/components/ui/toast';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { type ExportType, runExport } from '@/lib/export-runner';
-import { cn, downloadBytes } from '@/lib/utils';
+import { cn, downloadBytes, round } from '@/lib/utils';
 
 const TYPES: ExportType[] = ['png', 'jpeg', 'webp', 'svg', 'pdf', 'pdfPrint', 'opencanvas'];
+/** Design units are CSS pixels: 96 per inch. */
+const DESIGN_DPI = 96;
+const MIN_DPI = 24;
+const MAX_DPI = 600;
+const MAX_SLIDER_SCALE = 4;
 
 export function ExportDialog({
   open,
@@ -121,7 +126,7 @@ export function ExportDialog({
                   <span className="block text-sm font-medium text-slate-900">
                     {t(`editor.exportDialog.types.${ty}`)}
                   </span>
-                  <span className="block text-xs text-slate-500">{t(`editor.exportDialog.hints.${ty}`)}</span>
+                  <span className="block text-xs text-slate-600">{t(`editor.exportDialog.hints.${ty}`)}</span>
                 </span>
               </label>
             ))}
@@ -162,18 +167,32 @@ export function ExportDialog({
           </fieldset>
         )}
         {raster && page ? (
-          <SliderField
-            label={t('editor.exportDialog.size')}
-            value={scale}
-            min={0.25}
-            max={4}
-            step={0.25}
-            testId="export-scale"
-            format={(v) =>
-              `${v}× · ${formatNumber(Math.round(page.width * v))} × ${formatNumber(Math.round(page.height * v))} px`
-            }
-            onChange={setScale}
-          />
+          <>
+            <SliderField
+              label={t('editor.exportDialog.size')}
+              value={Math.min(scale, MAX_SLIDER_SCALE)}
+              min={0.25}
+              max={MAX_SLIDER_SCALE}
+              step={0.25}
+              testId="export-scale"
+              format={() =>
+                `${formatNumber(round(scale, 3))}× · ${formatNumber(Math.round(page.width * scale))} × ${formatNumber(Math.round(page.height * scale))} px`
+              }
+              onChange={setScale}
+            />
+            {type !== 'webp' ? (
+              <NumberField
+                label={t('editor.exportDialog.dpi')}
+                prefix={t('editor.exportDialog.dpi')}
+                value={round(DESIGN_DPI * scale, 1)}
+                min={MIN_DPI}
+                max={MAX_DPI}
+                digits={1}
+                testId="export-dpi"
+                onChange={(dpi) => setScale(dpi / DESIGN_DPI)}
+              />
+            ) : null}
+          </>
         ) : null}
         {type === 'jpeg' || type === 'webp' ? (
           <SliderField

@@ -3,7 +3,7 @@
  *
  *   designs     { id, title, …, snapshot, revision }      design documents
  *   assets      { hash, blob, mimeType, width, height }   content-addressed images
- *   thumbnails  { designId, blob, updatedAt }             dashboard previews
+ *   thumbnails  { designId, blob, updatedAt, revision }   dashboard previews
  */
 import type { DocumentSnapshot } from '@opencanvas/core';
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
@@ -37,6 +37,8 @@ export interface ThumbnailRecord {
   designId: string;
   blob: Blob;
   updatedAt: number;
+  /** Design revision the preview shows (absent in older records = unknown). */
+  revision?: number;
 }
 
 interface OpenCanvasDB extends DBSchema {

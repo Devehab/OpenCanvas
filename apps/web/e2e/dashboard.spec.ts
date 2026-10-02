@@ -1,0 +1,129 @@
+import { expect, test } from '@playwright/test';
+import { createDesign, waitForSaved } from './support';
+
+test.describe('dashboard', () => {
+  test('creates a design from a format and lists it under recent designs @smoke', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    const id = await createDesign(page, 'instagram-post');
+    await expect(page.getByTestId('design-title-input')).toHaveValue('Instagram Post');
+    const size = await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      const p = editor.store.getPage(editor.pageId)!;
+      return [p.width, p.height];
+    });
+    expect(size).toEqual([1080, 1080]);
+    await waitForSaved(page);
+
+    await page.goto('/');
+    const card = page.getByTestId('design-card').filter({ hasText: 'Instagram Post' });
+    await expect(card).toHaveCount(1);
+    await card.getByRole('link').first().click();
+    await page.waitForURL(`**/design/${id}`);
+  });
+
+  test('creates a custom size in millimetres', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('format-custom').click();
+    await page.getByRole('dialog').getByRole('combobox', { name: 'Unit' }).selectOption('mm');
+    await page.getByTestId('custom-width').fill('210');
+    await page.getByTestId('custom-height').fill('297');
+    await page.getByTestId('custom-create').click();
+    await page.waitForURL(/\/design\//);
+    await page.waitForFunction(() => !!window.__opencanvas);
+    const size = await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      const p = editor.store.getPage(editor.pageId)!;
+      return [p.width, p.height];
+    });
+    // A4 at 96 DPI.
+    expect(size).toEqual([794, 1123]);
+  });
+
+  test('renames, duplicates, trashes, restores and deletes designs', async ({ page }) => {
+    await createDesign(page, 'presentation');
+    await waitForSaved(page);
+    await page.goto('/designs');
+    /** The card whose title is exactly `title`. */
+    const card = (title: string) =>
+      page
+        .getByTestId('design-card')
+        .filter({ has: page.getByTestId('design-title').getByText(title, { exact: true }) });
+    const openMenu = async (title: string) => {
+      await card(title).hover();
+      await card(title).getByTestId('design-menu').click();
+    };
+
+    await openMenu('Presentation (16:9)');
+    await page.getByRole('menuitem', { name: 'Rename' }).click();
+    await page.getByRole('dialog').getByRole('textbox').fill('Quarterly review');
+    await page.getByRole('dialog').getByRole('button', { name: 'Apply' }).click();
+    await expect(card('Quarterly review')).toHaveCount(1);
+
+    await openMenu('Quarterly review');
+    await page.getByRole('menuitem', { name: 'Duplicate' }).click();
+    await expect(card('Copy of Quarterly review')).toHaveCount(1);
+
+    await openMenu('Quarterly review');
+    await page.getByTestId('design-trash').click();
+    await expect(card('Quarterly review')).toHaveCount(0);
+
+    await page.goto('/trash');
+    await expect(card('Quarterly review')).toHaveCount(1);
+    await openMenu('Quarterly review');
+    await page.getByRole('menuitem', { name: 'Restore' }).click();
+    await expect(card('Quarterly review')).toHaveCount(0);
+
+    await page.goto('/designs');
+    await expect(card('Quarterly review')).toHaveCount(1);
+    await openMenu('Quarterly review');
+    await page.getByTestId('design-trash').click();
+    await page.goto('/trash');
+    await openMenu('Quarterly review');
+    await page.getByRole('menuitem', { name: 'Delete forever' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete' }).click();
+    await expect(card('Quarterly review')).toHaveCount(0);
+    await page.goto('/designs');
+    await expect(card('Quarterly review')).toHaveCount(0);
+    await expect(card('Copy of Quarterly review')).toHaveCount(1);
+  });
+
+  test('search ignores Arabic diacritics and letter variants', async ({ page }) => {
+    await createDesign(page, 'poster');
+    await page.getByTestId('design-title-input').fill('مُلصَق إعلانيّ ٢٠٢٦');
+    await page.getByTestId('design-title-input').press('Enter');
+    await waitForSaved(page);
+    await page.goto('/designs');
+    const search = page.getByTestId('search-designs');
+    await search.fill('ملصق اعلاني');
+    await expect(page.getByTestId('design-card')).toHaveCount(1);
+    await search.fill('2026');
+    await expect(page.getByTestId('design-card')).toHaveCount(1);
+    await search.fill('غير موجود');
+    await expect(page.getByTestId('design-card')).toHaveCount(0);
+  });
+
+  test('switches the interface to Arabic with a right-to-left layout @smoke', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'ltr');
+    await page.getByTestId('language-select').selectOption('ar');
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
+    await expect(page.getByTestId('create-design')).toContainText('إنشاء تصميم');
+    // The choice survives a reload.
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+  });
+
+  test('serves the health endpoint and security headers', async ({ request }) => {
+    const health = await request.get('/api/health');
+    expect(health.ok()).toBe(true);
+    expect(await health.json()).toMatchObject({ status: 'ok' });
+    const home = await request.get('/');
+    const headers = home.headers();
+    expect(headers['content-security-policy']).toContain("frame-ancestors 'none'");
+    expect(headers['content-security-policy']).toMatch(/script-src 'self' 'nonce-[^']+'/);
+    expect(headers['x-content-type-options']).toBe('nosniff');
+    expect(headers['x-powered-by']).toBeUndefined();
+  });
+});

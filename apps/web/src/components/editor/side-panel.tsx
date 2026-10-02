@@ -68,7 +68,7 @@ export function SidePanel() {
             type="button"
             onClick={() => setPanel(null)}
             aria-label={t('editor.panels.collapse')}
-            className="absolute end-2 top-2 z-10 rounded-md p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="absolute end-2 top-2 z-10 rounded-md p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-700"
           >
             <X className="size-4" />
           </button>

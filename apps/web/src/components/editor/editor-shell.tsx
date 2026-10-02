@@ -1,25 +1,28 @@
 'use client';
 
 import type { AnyNodeProps } from '@opencanvas/core';
-import { coverCrop, fitSize, getNodeAtPoint } from '@opencanvas/core';
+import { coverCrop, fitSize, getNodeAtPoint, serializeDocument } from '@opencanvas/core';
 import type { CanvasView } from '@opencanvas/editor/dom';
 import { isEditableTarget, toKeyInput } from '@opencanvas/editor/dom';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button } from '@/components/ui/button';
+import { Button, buttonClasses } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import {
   type DialogId,
   EditorContext,
   type EditorContextValue,
   type PanelId,
+  useEditorContext,
   useEditorValue,
   useSaveStatus,
 } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
+import { broadcast, TAB_ID } from '@/lib/channel';
 import { readClipboard, recallClipboard, writeClipboard } from '@/lib/clipboard';
 import { nodeLabel } from '@/lib/node-label';
 import { type EditorSession, openSession } from '@/lib/session';
+import { createDesignCopy } from '@/lib/storage/designs';
 import { prepareImage } from '@/lib/upload';
 import { CanvasArea } from './canvas-area';
 import { ExportDialog } from './dialogs/export-dialog';
@@ -62,8 +65,8 @@ export function EditorShell({ designId }: { designId: string }) {
     return (
       <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-workspace p-8 text-center">
         <p className="text-lg text-slate-700">{t('editor.notFound')}</p>
-        <Link href="/">
-          <Button variant="primary">{t('editor.backHome')}</Button>
+        <Link href="/" className={buttonClasses({ variant: 'primary' })}>
+          {t('editor.backHome')}
         </Link>
       </div>
     );
@@ -87,14 +90,16 @@ function EditorLayout({ session }: { session: EditorSession }) {
           toast(t(`editor.uploads.errors.${prepared.reason}`, { name: prepared.name }), 'error');
           continue;
         }
-        const { asset, image } = prepared;
-        session.images.put(asset.hash, image);
+        // Identical files share one asset record (assets are content-addressed).
+        const existing = editor.store.getAssets().find((a) => a.hash === prepared.asset.hash);
+        const asset = existing ?? prepared.asset;
+        session.images.put(asset.hash, prepared.image);
         const page = editor.store.getPage(editor.pageId)!;
         // Dropping onto an image replaces it; dropping onto a frame fills it.
         const target = at ? getNodeAtPoint(editor.store, editor.getScopeId(), at, { deep: false }) : null;
         editor.history.beginBatch('Add image');
         try {
-          editor.execute('asset.add', { asset });
+          if (!existing) editor.execute('asset.add', { asset });
           if (target?.type === 'image') {
             editor.execute('image.replace', { id: target.id, assetId: asset.id });
             editor.select([target.id]);
@@ -187,7 +192,7 @@ function EditorLayout({ session }: { session: EditorSession }) {
       const text = e.clipboardData?.getData('text/plain')?.trim();
       if (text) {
         e.preventDefault();
-        const rtl = /[֐-ࣿ]/.test(text);
+        const rtl = /[\u0590-\u08FF]/.test(text);
         editor.insertNodes([
           {
             type: 'text',
@@ -241,18 +246,45 @@ function EditorLayout({ session }: { session: EditorSession }) {
   );
 }
 
+/** Shown when another tab saved this design while this tab had unsaved edits. */
 function ConflictBanner() {
   const { t } = useI18n();
+  const toast = useToast();
+  const { editor } = useEditorContext();
   const status = useSaveStatus();
+  const [busy, setBusy] = useState(false);
   if (status !== 'conflict') return null;
+  const keepCopy = async () => {
+    setBusy(true);
+    try {
+      const title = t('design.copyOf', { title: editor.store.getDocument()?.title ?? t('design.untitled') });
+      const copy = await createDesignCopy(serializeDocument(editor.store), title);
+      broadcast({ type: 'designs-changed', tabId: TAB_ID });
+      // A full navigation disposes this session without saving over the newer version.
+      window.location.assign(`/design/${copy.id}`);
+    } catch {
+      toast(t('editor.toasts.saveFailed'), 'error');
+      setBusy(false);
+    }
+  };
   return (
     <div
       role="alert"
-      className="flex items-center justify-center gap-3 bg-amber-100 px-4 py-2 text-sm text-amber-900"
+      className="flex flex-wrap items-center justify-center gap-3 bg-amber-100 px-4 py-2 text-sm text-amber-900"
+      data-testid="conflict-banner"
     >
       {t('editor.conflict.message')}
-      <Button size="sm" onClick={() => window.location.reload()}>
+      <Button size="sm" onClick={() => window.location.reload()} disabled={busy}>
         {t('editor.conflict.reload')}
+      </Button>
+      <Button
+        size="sm"
+        variant="primary"
+        onClick={() => void keepCopy()}
+        disabled={busy}
+        data-testid="conflict-keep-copy"
+      >
+        {t('editor.conflict.keepCopy')}
       </Button>
     </div>
   );

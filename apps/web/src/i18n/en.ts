@@ -16,6 +16,7 @@ export const en = {
     loading: 'Loading…',
     reset: 'Reset',
     none: 'None',
+    pickColor: 'Pick a color from the screen',
     on: 'On',
     off: 'Off',
     more: 'More',
@@ -429,6 +430,7 @@ export const en = {
       customRange: 'Page range',
       rangeHint: 'e.g. 1-3, 5',
       size: 'Size',
+      dpi: 'Resolution (DPI)',
       transparent: 'Transparent background',
       quality: 'Quality',
       resolution: 'Resolution',
@@ -473,8 +475,9 @@ export const en = {
       exportFailed: 'Download failed.',
     },
     conflict: {
-      message: 'This design was changed in another tab.',
+      message: 'This design was changed in another tab, so your latest edits here were not saved.',
       reload: 'Load latest version',
+      keepCopy: 'Keep my edits as a copy',
     },
     a11y: {
       canvas: 'Design canvas',

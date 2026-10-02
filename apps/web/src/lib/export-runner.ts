@@ -15,6 +15,7 @@ import {
   safeFileName,
   zipFiles,
 } from '@opencanvas/export';
+import { collectFaceUsage, embeddedFontCss } from './font-embed';
 import { buildPackage } from './package-io';
 import type { EditorSession } from './session';
 
@@ -35,6 +36,9 @@ export interface ExportResult {
 }
 
 const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+/** Design units are CSS pixels: 96 per inch. */
+const DESIGN_DPI = 96;
 
 async function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -76,11 +80,14 @@ export async function runExport(
   }
 
   const files: { name: string; data: Uint8Array; mime: string }[] = [];
+  const fontCache = new Map<string, Promise<string | null>>();
   for (const [i, pageId] of request.pageIds.entries()) {
     if (request.type === 'svg') {
       const svg = await exportPageSvg(store, pageId, {
         measurer: renderer.getMeasurer(),
         background: !request.transparent,
+        // Self-contained: the fonts used on the page travel with the file.
+        css: await embeddedFontCss(collectFaceUsage(store, pageId), fontCache),
         resolveImage: async (node: ImageNode) => {
           const asset = store.getAsset(node.assetId);
           if (!asset) return null;
@@ -111,7 +118,8 @@ export async function runExport(
       const format = request.type as RasterFormat;
       const r = await exportPageRaster(ctx, pageId, {
         format,
-        scale: request.scale,
+        // DPI metadata keeps the printed size equal to the design size at any scale.
+        ...(format === 'webp' ? { scale: request.scale } : { dpi: DESIGN_DPI * request.scale }),
         transparent: request.transparent,
         quality: request.quality,
       });

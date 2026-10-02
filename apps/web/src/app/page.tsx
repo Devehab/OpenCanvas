@@ -4,10 +4,11 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { DesignGrid } from '@/components/dashboard/design-card';
 import { FEATURED_FORMATS, FormatGrid } from '@/components/dashboard/format-grid';
-import { matchesQuery, SearchBox } from '@/components/dashboard/search-box';
+import { SearchBox } from '@/components/dashboard/search-box';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { useDesigns } from '@/hooks/use-designs';
 import { useI18n } from '@/i18n';
+import { matchesQuery } from '@/lib/search';
 
 export default function HomePage() {
   const { t } = useI18n();

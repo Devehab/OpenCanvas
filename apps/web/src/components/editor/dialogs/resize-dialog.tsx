@@ -73,7 +73,7 @@ export function ResizeDialog({
             className={`rounded-lg border px-2.5 py-2 text-start text-sm ${f.width === width && f.height === height ? 'border-brand-400 bg-brand-50' : 'border-slate-200 hover:bg-slate-50'}`}
           >
             <span className="block font-medium text-slate-800">{t(`formats.${f.id}`)}</span>
-            <span className="block text-xs text-slate-500" dir="ltr">
+            <span className="block text-xs text-slate-600" dir="ltr">
               {f.width} × {f.height}
             </span>
           </button>

@@ -4,7 +4,8 @@
  */
 export type ChannelMessage =
   | { type: 'design-saved'; designId: string; revision: number; tabId: string }
-  | { type: 'designs-changed'; tabId: string };
+  | { type: 'designs-changed'; tabId: string }
+  | { type: 'thumbnail-updated'; designId: string; tabId: string };
 
 export const TAB_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
@@ -16,16 +17,23 @@ function getChannel(): BroadcastChannel | null {
   return channel;
 }
 
-export function broadcast(message: ChannelMessage): void {
+const localHandlers = new Set<(message: ChannelMessage) => void>();
+
+/** Sends a message to other tabs; with `self`, this tab's listeners receive it too. */
+export function broadcast(message: ChannelMessage, options: { self?: boolean } = {}): void {
   getChannel()?.postMessage(message);
+  if (options.self) for (const handler of [...localHandlers]) handler(message);
 }
 
 export function onChannelMessage(handler: (message: ChannelMessage) => void): () => void {
+  localHandlers.add(handler);
   const c = getChannel();
-  if (!c) return () => {};
   const listener = (e: MessageEvent<ChannelMessage>) => {
     if (e.data && e.data.tabId !== TAB_ID) handler(e.data);
   };
-  c.addEventListener('message', listener);
-  return () => c.removeEventListener('message', listener);
+  c?.addEventListener('message', listener);
+  return () => {
+    localHandlers.delete(handler);
+    c?.removeEventListener('message', listener);
+  };
 }
