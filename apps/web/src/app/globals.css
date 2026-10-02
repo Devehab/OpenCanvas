@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f3f1ff;
+  --color-brand-100: #e9e5ff;
+  --color-brand-200: #d4ccff;
+  --color-brand-300: #b4a6ff;
+  --color-brand-400: #8f7cff;
+  --color-brand-500: #6d5dfc;
+  --color-brand-600: #5a45f0;
+  --color-brand-700: #4b37d1;
+  --color-brand-800: #3e2fa9;
+  --color-brand-900: #352b85;
+  --color-workspace: #ebedf2;
+  --font-sans: "Inter", "IBM Plex Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-white text-slate-900 antialiased;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore lint/complexity/noImportantStyles: the reduced-motion override must win over component styles */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: the reduced-motion override must win over component styles */
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+/* In-place text editor (positioned by @opencanvas/editor). */
+.oc-text-editor {
+  counter-reset: oc-item;
+  -webkit-user-modify: read-write;
+}
+.oc-text-editor > div {
+  min-height: 1em;
+}
+.oc-text-editor > div:not([data-list]) {
+  counter-reset: oc-item;
+}
+.oc-text-editor > div[data-list] {
+  position: relative;
+  padding-inline-start: 1.5em;
+}
+.oc-text-editor > div[data-list][data-indent="1"] {
+  padding-inline-start: 3em;
+}
+.oc-text-editor > div[data-list][data-indent="2"] {
+  padding-inline-start: 4.5em;
+}
+.oc-text-editor > div[data-list="number"] {
+  counter-increment: oc-item;
+}
+.oc-text-editor > div[data-list]::before {
+  position: absolute;
+  inset-inline-end: calc(100% - 1.1em);
+}
+.oc-text-editor > div[data-list="bullet"]::before {
+  content: "•";
+}
+.oc-text-editor > div[data-list="number"]::before {
+  content: counter(oc-item) ".";
+}
+
+/* Checkerboard behind transparent previews. */
+.oc-checker {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(-45deg, #e5e7eb 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e5e7eb 75%),
+    linear-gradient(-45deg, transparent 75%, #e5e7eb 75%);
+  background-size: 12px 12px;
+  background-position:
+    0 0,
+    0 6px,
+    6px -6px,
+    -6px 0;
+}
