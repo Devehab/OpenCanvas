@@ -1,0 +1,32 @@
+/**
+ * Hard limits enforced when validating documents. They protect the editor,
+ * exporters and servers from malformed or malicious input (huge allocations,
+ * runaway nesting, pathological strings).
+ */
+export const LIMITS = {
+  maxCoordinate: 1_000_000,
+  maxNodeDimension: 1_000_000,
+  minPageDimension: 1,
+  maxPageDimension: 10_000,
+  maxPages: 500,
+  maxNodes: 50_000,
+  maxAssets: 5_000,
+  maxNestingDepth: 32,
+  maxNameLength: 256,
+  maxTitleLength: 256,
+  maxNotesLength: 20_000,
+  maxDescriptionLength: 2_000,
+  maxParagraphs: 5_000,
+  maxRunsPerParagraph: 2_000,
+  maxTextLength: 100_000,
+  maxFontFamilyLength: 128,
+  minFontSize: 1,
+  maxFontSize: 4_000,
+  maxStrokeWidth: 2_000,
+  maxBlur: 1_000,
+  maxCornerRadius: 1_000_000,
+  maxGradientStops: 32,
+  maxPathDataLength: 2_000_000,
+  maxMetaBytes: 64_000,
+  maxImagePixels: 100_000_000,
+} as const;

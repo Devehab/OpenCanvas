@@ -1,0 +1,35 @@
+{
+  "name": "opencanvas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenCanvas \u2014 an open-source visual creation platform built on a structured, editable design engine.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @opencanvas/web dev",
+    "build": "pnpm --filter @opencanvas/web build",
+    "start": "pnpm --filter @opencanvas/web start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:visual:update": "OPENCANVAS_UPDATE_GOLDENS=1 vitest run --project renderer --project export",
+    "test:e2e": "pnpm --filter @opencanvas/web test:e2e",
+    "bench": "vitest bench --run",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15",
+    "@types/node": "^22.18.0",
+    "@vitest/coverage-v8": "5.0.3",
+    "fast-check": "^4.3.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}
