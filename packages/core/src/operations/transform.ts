@@ -121,9 +121,7 @@ export function scaledProps(node: NodeRecord, s: number): NodePatch {
       patch.cornerRadius = node.cornerRadius * s;
       if (node.stroke) patch.stroke = { ...node.stroke, width: node.stroke.width * s };
       break;
-    case 'path':
-      if (node.stroke) patch.stroke = { ...node.stroke, width: node.stroke.width * s };
-      break;
+    // Path strokes are in viewBox units and scale with the box automatically.
     case 'line':
       patch.stroke = { ...node.stroke, width: node.stroke.width * s };
       break;

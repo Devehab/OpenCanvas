@@ -1,0 +1,35 @@
+{
+  "name": "@opencanvas/renderer",
+  "version": "0.1.0",
+  "description": "OpenCanvas Canvas2D renderer — draws the structured document model in browsers and Node.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./node": "./src/node.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@opencanvas/core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@napi-rs/canvas": ">=0.1.60"
+  },
+  "peerDependenciesMeta": {
+    "@napi-rs/canvas": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@fontsource/cairo": "^5.2.7",
+    "@fontsource/inter": "^5.2.8",
+    "@napi-rs/canvas": "^1.0.10",
+    "@types/node": "^22.18.0",
+    "pixelmatch": "^7.2.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}

@@ -1,3 +1,4 @@
+/// <reference path="./vendor.d.ts" />
 /**
  * Line break opportunities per the Unicode Line Breaking Algorithm (UAX #14).
  * Handles spaces, hyphens, CJK, Arabic punctuation, emoji and mandatory
