@@ -1,0 +1,31 @@
+{
+  "name": "@opencanvas/export",
+  "version": "0.1.0",
+  "description": "OpenCanvas export engine and file formats: PNG/JPEG/WebP, SVG, PDF, and the .opencanvas package.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@opencanvas/core": "workspace:*",
+    "@opencanvas/renderer": "workspace:*",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@fontsource/cairo": "^5.2.7",
+    "@fontsource/inter": "^5.2.8",
+    "@napi-rs/canvas": "^1.0.10",
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/node": "^22.18.0",
+    "@xmldom/xmldom": "^0.9.12",
+    "pdf-lib": "^1.17.1",
+    "pixelmatch": "^7.2.0",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}
