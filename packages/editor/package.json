@@ -1,0 +1,25 @@
+{
+  "name": "@opencanvas/editor",
+  "version": "0.1.0",
+  "description": "OpenCanvas editor controller: selection, tools, gestures, snapping, shortcuts and overlays. UI-framework agnostic.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./dom": "./src/dom/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@opencanvas/core": "workspace:*",
+    "@opencanvas/renderer": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.18.0",
+    "happy-dom": "^20.14.5",
+    "typescript": "5.9.3",
+    "vitest": "5.0.3"
+  }
+}
