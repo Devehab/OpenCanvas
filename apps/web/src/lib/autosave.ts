@@ -1,13 +1,17 @@
 /**
- * Autosave: local change → immediate (debounced) IndexedDB write, never
- * during a drag, flushed when the tab is hidden. Saves use optimistic
- * concurrency, so a second tab can never silently overwrite newer work:
- * a tab without local edits follows the other tab's saves in place, and a
- * tab with local edits reports a conflict instead of saving.
+ * Autosave: local change → debounced IndexedDB write, never during a drag,
+ * flushed when the tab is hidden. Because a tab can close before an
+ * asynchronous write finishes, unsaved edits are also journaled
+ * synchronously on hide/unload (see ./journal) and recovered on next open.
+ *
+ * Saves use optimistic concurrency, so a second tab can never silently
+ * overwrite newer work: a tab without local edits follows the other tab's
+ * saves in place, and a tab with local edits reports a conflict instead.
  */
 import { parseDocument, serializeDocument } from '@opencanvas/core';
 import type { Editor } from '@opencanvas/editor';
 import { broadcast, onChannelMessage, TAB_ID } from './channel';
+import { clearJournal, writeJournal } from './journal';
 import { getDesign, saveDesign } from './storage/designs';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error' | 'conflict';
@@ -24,6 +28,7 @@ export class Autosave {
   /** Newest revision another tab announced for this design. */
   private remoteRevision = 0;
   private following = false;
+  private discarded = false;
 
   constructor(
     private readonly editor: Editor,
@@ -46,21 +51,60 @@ export class Autosave {
         if (m.revision > this.revision) void this.followRemote();
       }),
     );
-    const onHide = () => {
-      if (document.visibilityState === 'hidden') void this.flush();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') this.persistNow();
     };
-    document.addEventListener('visibilitychange', onHide);
-    window.addEventListener('pagehide', onHide);
+    const onPageHide = () => this.persistNow();
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      // Last resort when the journal cannot be written (storage full or blocked).
+      if (this.hasUnsavedChanges && !this.journal()) e.preventDefault();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', onPageHide);
+    window.addEventListener('beforeunload', onBeforeUnload);
     this.cleanup.push(() => {
-      document.removeEventListener('visibilitychange', onHide);
-      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', onPageHide);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     });
   }
 
+  /** Stops saving. Unsaved edits are journaled first, then written if the page stays alive. */
   dispose(): void {
     clearTimeout(this.timer);
+    this.persistNow();
     for (const c of this.cleanup.splice(0)) c();
     this.listeners.clear();
+  }
+
+  /** Forgets local edits (the user chose the other tab's version). */
+  discardLocalChanges(): void {
+    clearTimeout(this.timer);
+    this.dirty = false;
+    this.discarded = true;
+    clearJournal(this.designId);
+  }
+
+  /** Marks the current state as unsaved, e.g. after recovering a journal. */
+  markRecovered(): void {
+    this.markDirty();
+  }
+
+  /** Journals unsaved edits synchronously, then starts the asynchronous write. */
+  private persistNow(): void {
+    if (this.discarded) return;
+    if (this.hasUnsavedChanges) this.journal();
+    void this.flush();
+  }
+
+  /** Synchronously records the current document for crash recovery. */
+  private journal(): boolean {
+    return writeJournal({
+      designId: this.designId,
+      baseRevision: this.revision,
+      writtenAt: Date.now(),
+      snapshot: serializeDocument(this.editor.store),
+    });
   }
 
   subscribe(listener: () => void): () => void {
@@ -129,6 +173,7 @@ export class Autosave {
   }
 
   private markDirty(): void {
+    if (this.discarded) return;
     this.dirty = true;
     // During a conflict edits are tracked (to keep them as a copy) but never written.
     if (this.status === 'conflict') return;
@@ -163,6 +208,8 @@ export class Autosave {
             revision: result.revision,
             tabId: TAB_ID,
           });
+          // Everything journaled is now stored (unless newer edits arrived meanwhile).
+          if (!this.dirty) clearJournal(this.designId);
           this.setStatus(this.dirty ? 'unsaved' : 'saved');
           this.options.onSaved?.();
         } else if (result.reason === 'conflict') {
@@ -170,6 +217,8 @@ export class Autosave {
           this.dirty = true;
           this.setStatus('conflict');
         } else {
+          // Not written (e.g. the design was deleted elsewhere): keep the edits journaled.
+          this.dirty = true;
           this.setStatus('error');
         }
       } catch {

@@ -173,6 +173,20 @@ export function inkRatio(png: PNG): number {
   return ink / (png.width * png.height);
 }
 
+/** A PNG of deterministic noise; noise does not compress, so bytes ≈ width × height × 3. */
+export function noisePng(width: number, height: number, seed = 1): Buffer {
+  const png = new PNG({ width, height });
+  let s = seed >>> 0;
+  for (let i = 0; i < png.data.length; i += 4) {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    png.data[i] = s & 255;
+    png.data[i + 1] = (s >>> 8) & 255;
+    png.data[i + 2] = (s >>> 16) & 255;
+    png.data[i + 3] = 255;
+  }
+  return PNG.sync.write(png);
+}
+
 /** A small, valid PNG (gradient) generated on the fly. */
 export function samplePng(width = 64, height = 48): Buffer {
   const png = new PNG({ width, height });

@@ -54,10 +54,13 @@ export function ColorField({
   value,
   onChange,
   swatches = [],
+  mixed = false,
   testId,
 }: {
   label: string;
   value: string;
+  /** The selection has several colors; `value` is the first one. */
+  mixed?: boolean;
   onChange: (color: string, final: boolean) => void;
   /** Colors already used in the document, shown first. */
   swatches?: readonly string[];
@@ -80,9 +83,13 @@ export function ColorField({
         data-testid={testId}
       >
         <ColorSwatch color={value} size="sm" />
-        <span className="tabular-nums uppercase" dir="ltr">
-          {value.slice(0, 7)}
-        </span>
+        {mixed ? (
+          <span>{t('common.mixed')}</span>
+        ) : (
+          <span className="tabular-nums uppercase" dir="ltr">
+            {value.slice(0, 7)}
+          </span>
+        )}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content

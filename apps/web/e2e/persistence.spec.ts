@@ -146,6 +146,73 @@ test.describe('persistence', () => {
     expect((await getNodes(page)).map((n) => (n.type === 'shape' ? n.shape : n.type))).toEqual(['rect']);
   });
 
+  test('edits made right before a reload are not lost', async ({ page }) => {
+    const id = await createDesign(page);
+    await page.evaluate(() => {
+      window.__opencanvas!.editor.insertNodes([
+        { type: 'shape', shape: 'heart', x: 0, y: 0, width: 300, height: 300 },
+      ]);
+    });
+    // No waiting for the debounced save: the tab reloads immediately.
+    await page.reload();
+    await waitForEditor(page);
+    expect((await getNodes(page)).map((n) => n.type)).toEqual(['shape']);
+    await waitForSaved(page);
+    expect(await page.evaluate((d) => localStorage.getItem(`opencanvas:journal:${d}`), id)).toBeNull();
+  });
+
+  test('edits made right before closing the tab are recovered', async ({ page, context }) => {
+    const id = await createDesign(page);
+    await page.evaluate(() => {
+      window.__opencanvas!.editor.insertNodes([
+        { type: 'shape', shape: 'star', x: 0, y: 0, width: 300, height: 300 },
+      ]);
+    });
+    await page.close({ runBeforeUnload: true });
+    const reopened = await context.newPage();
+    await reopened.goto(`/design/${id}`);
+    await waitForEditor(reopened);
+    expect((await getNodes(reopened)).map((n) => n.type)).toEqual(['shape']);
+  });
+
+  test('unsaved edits based on an older version are kept as a recovered copy', async ({ page }) => {
+    const id = await createDesign(page);
+    await insertNodes(page, [{ type: 'shape', shape: 'rect', x: 0, y: 0, width: 100, height: 100 }]);
+    await waitForSaved(page);
+    // A journal from a tab that closed before saving, while another tab saved newer work.
+    await page.evaluate((designId) => {
+      const { editor, session } = window.__opencanvas!;
+      const snapshot = {
+        format: 'opencanvas.document',
+        schemaVersion: 1,
+        records: [...editor.store.getRecords()],
+      };
+      const page0 = editor.pageId;
+      snapshot.records.push({
+        ...editor.store.getChildren(page0)[0]!,
+        id: 'node_journaled',
+        index: 'a5',
+        x: 500,
+      } as never);
+      const entry = {
+        designId,
+        baseRevision: session.autosave.savedRevision - 1,
+        writtenAt: Date.now(),
+        snapshot,
+      };
+      localStorage.setItem(`opencanvas:journal:${designId}`, JSON.stringify(entry));
+    }, id);
+    await page.reload();
+    await waitForEditor(page);
+    // The stored design is untouched…
+    expect(await getNodes(page)).toHaveLength(1);
+    // …and the journaled version became its own design.
+    await page.goto('/designs');
+    await expect(
+      page.getByTestId('design-title').getByText('Instagram Post (recovered)', { exact: true }),
+    ).toBeVisible();
+  });
+
   test('a design that does not exist shows a friendly message', async ({ page }) => {
     await page.goto('/design/design_doesnotexist');
     await expect(page.getByText('This design does not exist on this device.')).toBeVisible();

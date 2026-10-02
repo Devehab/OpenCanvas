@@ -1,0 +1,19 @@
+# Keep the build context small and free of local state.
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+**/blob-report
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+.git
+.github
+.vscode
+.idea
+docs
+**/*.log
+**/.DS_Store

@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      all-browsers:
+        description: Also run the end-to-end suite on Firefox, WebKit and mobile viewports
+        type: boolean
+        default: false
+  schedule:
+    # Weekly full browser matrix.
+    - cron: '23 3 * * 1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Lint, types, unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - name: Unit, property and golden-image tests
+        run: pnpm test
+      - name: Upload golden-image diffs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golden-diffs
+          path: |
+            packages/*/test/__goldens__/**/*.actual.png
+            packages/*/test/__goldens__/**/*.diff.png
+          if-no-files-found: ignore
+
+  e2e:
+    name: End-to-end (Chromium)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: checks
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Chromium
+        run: pnpm --filter @opencanvas/web exec playwright install --with-deps chromium
+      - name: Functional, accessibility, visual and performance tests
+        run: pnpm test:e2e
+        env:
+          CI: 'true'
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 14
+      - name: Upload performance metrics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance
+          path: apps/web/test-results/performance.json
+          if-no-files-found: ignore
+
+  browsers:
+    name: End-to-end (all browsers)
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.all-browsers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: checks
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install browsers
+        run: pnpm --filter @opencanvas/web exec playwright install --with-deps
+      - run: pnpm test:e2e
+        env:
+          CI: 'true'
+          E2E_BROWSERS: all
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-all-browsers
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          retention-days: 14
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: checks
+    steps:
+      - uses: actions/checkout@v5
+      - uses: docker/setup-buildx-action@v3
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          load: true
+          push: false
+          tags: opencanvas-web:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      - name: Smoke test (read-only, non-root)
+        run: |
+          docker run -d --name web -p 3000:3000 --read-only --tmpfs /tmp \
+            --tmpfs /app/apps/web/.next/cache --security-opt no-new-privileges:true opencanvas-web:ci
+          for i in $(seq 1 30); do
+            if curl -fsS http://localhost:3000/api/health; then
+              curl -fsS -o /dev/null http://localhost:3000/ && exit 0
+            fi
+            sleep 1
+          done
+          docker logs web
+          exit 1

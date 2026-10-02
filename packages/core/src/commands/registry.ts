@@ -6,11 +6,11 @@
  *
  * - the UI dispatches them,
  * - history labels come from them,
- * - their zod schemas can be exported as JSON Schema tool definitions for AI
- *   agents (`z.toJSONSchema(command.schema)`), so AI edits the structured design
- *   through exactly the same validated operations as a human.
+ * - their zod schemas are exported as JSON Schema tool definitions for AI
+ *   agents ({@link CommandRegistry.toolDefinitions}), so AI edits the
+ *   structured design through exactly the same validated operations as a human.
  */
-import type { z } from 'zod';
+import { z } from 'zod';
 import type { IdGenerator } from '../ids';
 import type { Id } from '../model/types';
 import type { Transaction } from '../store/store';
@@ -38,6 +38,17 @@ export interface CommandDefinition<P = unknown> {
   description?: string;
   schema: z.ZodType<P>;
   run(ctx: CommandContext, payload: P): CommandResult | undefined;
+}
+
+/** A command described for an AI agent's tool use. */
+export interface CommandToolDefinition {
+  /** Tool name (the command id with characters tool APIs reject replaced by `_`). */
+  name: string;
+  /** The command id to execute. */
+  command: string;
+  description: string;
+  /** JSON Schema of the payload. */
+  inputSchema: Record<string, unknown>;
 }
 
 export class CommandError extends Error {
@@ -83,6 +94,19 @@ export class CommandRegistry {
       throw new CommandError(`Invalid payload for ${id}: ${issues}`, id);
     }
     return result.data;
+  }
+
+  /** Every command as a tool definition with a JSON Schema for its payload. */
+  toolDefinitions(): CommandToolDefinition[] {
+    return this.list().map((command) => ({
+      name: command.id.replace(/[^a-zA-Z0-9_-]/g, '_'),
+      command: command.id,
+      description: command.description ?? (typeof command.label === 'string' ? command.label : command.id),
+      inputSchema: z.toJSONSchema(command.schema, { io: 'input', unrepresentable: 'any' }) as Record<
+        string,
+        unknown
+      >,
+    }));
   }
 
   label(id: string, payload: unknown): string {

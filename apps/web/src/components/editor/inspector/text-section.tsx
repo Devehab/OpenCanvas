@@ -23,17 +23,10 @@ import { FONT_CATALOG, nearestWeight } from '@/lib/fonts';
 import { cn } from '@/lib/utils';
 import { useDocumentColors } from './controls';
 
-const WEIGHT_NAMES: Record<number, string> = {
-  100: 'Thin',
-  200: 'ExtraLight',
-  300: 'Light',
-  400: 'Regular',
-  500: 'Medium',
-  600: 'SemiBold',
-  700: 'Bold',
-  800: 'ExtraBold',
-  900: 'Black',
-};
+/** Weights with a translated name (CSS weight keywords 100–900). */
+const NAMED_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
+type NamedWeight = (typeof NAMED_WEIGHTS)[number];
+const isNamedWeight = (w: number): w is NamedWeight => (NAMED_WEIGHTS as readonly number[]).includes(w);
 
 function FontPicker({ value, onChange }: { value: string | 'mixed'; onChange: (family: string) => void }) {
   const { t } = useI18n();
@@ -109,6 +102,7 @@ export function TextSection({ nodes }: { nodes: TextNode[] }) {
   const setProps = (patch: Partial<TextNode>, coalesce = false) =>
     editor.updateSelected(patch as Record<string, unknown>, { coalesce });
   const family = uniform('fontFamily');
+  const firstColor = node.content.paragraphs[0]?.runs[0]?.style.color ?? node.style.color;
   const weight = uniform('fontWeight');
   const info = FONT_CATALOG.find((f) => f.family === family);
   const weights = info?.weights ?? [400, 700];
@@ -190,7 +184,10 @@ export function TextSection({ nodes }: { nodes: TextNode[] }) {
           label={t('editor.inspector.fontWeight')}
           hideLabel
           value={weight === 'mixed' ? '' : String(weight)}
-          options={weights.map((w) => ({ value: String(w), label: `${WEIGHT_NAMES[w] ?? w}` }))}
+          options={weights.map((w) => ({
+            value: String(w),
+            label: isNamedWeight(w) ? t(`editor.inspector.weights.${w}`) : String(w),
+          }))}
           onChange={(w) => setStyle({ fontWeight: Number(w) })}
         />
       </div>
@@ -243,7 +240,8 @@ export function TextSection({ nodes }: { nodes: TextNode[] }) {
       </div>
       <ColorField
         label={t('editor.inspector.color')}
-        value={uniform('color') === 'mixed' ? '#000000' : (uniform('color') as string)}
+        value={uniform('color') === 'mixed' ? firstColor : (uniform('color') as string)}
+        mixed={uniform('color') === 'mixed'}
         swatches={swatches}
         onChange={(c, final) => setStyle({ color: c }, !final)}
         testId="text-color"

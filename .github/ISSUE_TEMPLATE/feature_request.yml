@@ -1,0 +1,28 @@
+name: Feature request
+description: Suggest an idea for OpenCanvas
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to do, and what makes it hard today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: phase
+    attributes:
+      label: Related roadmap phase
+      options:
+        - Phase 1 — Editor engine
+        - Phase 2 — Design platform
+        - Phase 3 — Video
+        - Phase 4 — Collaboration
+        - Phase 5 — AI
+        - Phase 6 — Visual suite
+        - Phase 7 — Ecosystem
+        - Not sure

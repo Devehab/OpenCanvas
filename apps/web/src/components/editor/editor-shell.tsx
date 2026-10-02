@@ -36,11 +36,14 @@ import { TopBar } from './top-bar';
 export function EditorShell({ designId }: { designId: string }) {
   const { t } = useI18n();
   const [session, setSession] = useState<EditorSession | null | 'missing'>(null);
+  // Read through a ref so a language change does not reopen the session.
+  const recoveredTitle = useRef((title: string) => t('design.recoveredCopy', { title }));
+  recoveredTitle.current = (title: string) => t('design.recoveredCopy', { title });
 
   useEffect(() => {
     let disposed = false;
     let opened: EditorSession | null = null;
-    void openSession(designId).then((s) => {
+    void openSession(designId, { recoveredTitle: (title) => recoveredTitle.current(title) }).then((s) => {
       if (disposed) {
         s?.dispose();
         return;
@@ -250,7 +253,7 @@ function EditorLayout({ session }: { session: EditorSession }) {
 function ConflictBanner() {
   const { t } = useI18n();
   const toast = useToast();
-  const { editor } = useEditorContext();
+  const { editor, session } = useEditorContext();
   const status = useSaveStatus();
   const [busy, setBusy] = useState(false);
   if (status !== 'conflict') return null;
@@ -259,6 +262,8 @@ function ConflictBanner() {
     try {
       const title = t('design.copyOf', { title: editor.store.getDocument()?.title ?? t('design.untitled') });
       const copy = await createDesignCopy(serializeDocument(editor.store), title);
+      // The edits now live in the copy; leaving must not recover them into this design.
+      session.autosave.discardLocalChanges();
       broadcast({ type: 'designs-changed', tabId: TAB_ID });
       // A full navigation disposes this session without saving over the newer version.
       window.location.assign(`/design/${copy.id}`);
@@ -274,7 +279,15 @@ function ConflictBanner() {
       data-testid="conflict-banner"
     >
       {t('editor.conflict.message')}
-      <Button size="sm" onClick={() => window.location.reload()} disabled={busy}>
+      <Button
+        size="sm"
+        onClick={() => {
+          // The user chose the other tab's version: don't journal or recover these edits.
+          session.autosave.discardLocalChanges();
+          window.location.reload();
+        }}
+        disabled={busy}
+      >
         {t('editor.conflict.reload')}
       </Button>
       <Button

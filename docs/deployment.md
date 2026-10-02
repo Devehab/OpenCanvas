@@ -1,0 +1,69 @@
+# Deployment
+
+OpenCanvas ships as a single, stateless web container. In Phase 1 designs live in each visitor's browser (IndexedDB), so the server keeps no data: there is nothing to back up and you can run as many replicas as you like.
+
+## Docker
+
+```bash
+docker build -t opencanvas .
+docker run -d --name opencanvas -p 3000:3000 \
+  --read-only --tmpfs /tmp --tmpfs /app/apps/web/.next/cache \
+  --security-opt no-new-privileges:true \
+  opencanvas
+```
+
+The image (about 115 MB compressed):
+
+- is built in three stages (dependencies → `next build` → runtime) on `node:22-bookworm-slim`;
+- runs the Next.js standalone server as the unprivileged `node` user;
+- works on a read-only root filesystem (only `/tmp` and the Next.js cache directory need to be writable);
+- declares a `HEALTHCHECK` against `GET /api/health`, which returns `{"status":"ok","service":"opencanvas-web","version":"…"}`.
+
+Build arguments and environment:
+
+| Name | Default | Purpose |
+| --- | --- | --- |
+| `NODE_IMAGE` (build arg) | `node:22-bookworm-slim` | Base image, e.g. a registry mirror such as `mirror.gcr.io/library/node:22-bookworm-slim` |
+| `PORT` | `3000` | Port the server listens on |
+| `HOSTNAME` | `0.0.0.0` | Interface to bind |
+
+## Docker Compose
+
+```bash
+docker compose up -d --build
+```
+
+`docker-compose.yml` builds the image and runs it with the same hardening (read-only filesystem, tmpfs mounts, `no-new-privileges`), a health check and `restart: unless-stopped`. Set `PORT` to publish on another host port.
+
+## Coolify on Hetzner
+
+1. Create a Hetzner Cloud server (2 vCPU / 4 GB is plenty for the web tier) and install Coolify on it.
+2. In Coolify, add a resource from your Git repository and choose one of:
+   - **Dockerfile** build pack — Coolify builds the root `Dockerfile`; set the exposed port to `3000`;
+   - **Docker Compose** — Coolify uses `docker-compose.yml` as is;
+   - **Docker image** — deploy `ghcr.io/<owner>/<repo>:<version>` published by the release workflow (push a `v*` tag).
+3. Set the health check path to `/api/health`.
+4. Attach your domain; Coolify's proxy issues TLS certificates.
+
+## Security notes
+
+- Every HTML response carries a Content Security Policy with a per-request nonce (`script-src 'self' 'nonce-…' 'strict-dynamic'`), `frame-ancestors 'none'`, plus `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and `Cross-Origin-Opener-Policy`. If you add analytics or other third-party scripts, extend the policy in `apps/web/src/proxy.ts` deliberately.
+- The app makes no third-party requests: fonts are self-hosted.
+- Terminate TLS at the proxy (Coolify/Traefik, Caddy or nginx) and forward `X-Forwarded-*` headers.
+
+## Later phases
+
+When accounts, server sync and workers arrive (see the [roadmap](roadmap.md)), the deployment grows into:
+
+```
+Web server ─┬─ API
+            ├─ PostgreSQL
+            ├─ Redis / Valkey
+            ├─ Object storage (S3-compatible) + CDN
+            └─ Queue ─┬─ Export worker
+                      ├─ Image worker
+                      ├─ Video worker
+                      └─ AI worker
+```
+
+The renderer and exporters already run in Node, so the export worker reuses them unchanged.

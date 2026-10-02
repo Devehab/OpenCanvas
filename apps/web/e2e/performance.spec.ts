@@ -2,19 +2,39 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnyNodeProps } from '@opencanvas/core';
 import { expect, type Page, test } from '@playwright/test';
-import { createDesign, insertNodes, waitForCanvasIdle, waitForEditor } from './support';
+import {
+  createDesign,
+  decodePng,
+  exportDesign,
+  insertNodes,
+  noisePng,
+  openPanel,
+  waitForCanvasIdle,
+  waitForEditor,
+} from './support';
 
 /**
  * Rendering and interaction budgets. Frame times are measured inside the page
  * (scene redraw + gesture update), so they reflect the engine, not test I/O.
  * Budgets are for headless Chromium on CI hardware; real GPUs are faster.
  */
+/**
+ * Targets from the product spec: 100 objects at 60 FPS, 300 smooth, 500+ usable.
+ * `PERF_BUDGET_SCALE` (e.g. 1.5) relaxes every budget on slower machines.
+ */
+const SCALE = Number(process.env.PERF_BUDGET_SCALE ?? 1) || 1;
 const BUDGETS = [
-  { count: 100, redrawMs: 16.7, dragFrameMs: 16.7 },
-  { count: 300, redrawMs: 25, dragFrameMs: 25 },
-  { count: 500, redrawMs: 33, dragFrameMs: 33 },
-  { count: 1000, redrawMs: 50, dragFrameMs: 50 },
-];
+  { count: 100, redrawMs: 16.7, dragFrameMs: 16.7, minFps: 50 },
+  { count: 300, redrawMs: 25, dragFrameMs: 25, minFps: 30 },
+  { count: 500, redrawMs: 33, dragFrameMs: 33, minFps: 24 },
+  { count: 1000, redrawMs: 50, dragFrameMs: 50, minFps: 15 },
+].map((b) => ({
+  ...b,
+  redrawMs: b.redrawMs * SCALE,
+  dragFrameMs: b.dragFrameMs * SCALE,
+  minFps: b.minFps / SCALE,
+}));
+const ms = (budget: number) => budget * SCALE;
 
 function scene(count: number): AnyNodeProps[] {
   const kinds = ['rect', 'ellipse', 'star', 'hexagon', 'heart'] as const;
@@ -62,18 +82,30 @@ function scene(count: number): AnyNodeProps[] {
   return nodes;
 }
 
+/**
+ * Frame costs measured inside the page. Canvas 2D records drawing commands and
+ * rasterizes them later, so every timed frame ends with a 1-pixel readback,
+ * which waits for the pixels: the numbers include rasterization.
+ */
 async function measure(page: Page) {
-  return page.evaluate(() => {
+  return page.evaluate(async () => {
     const { editor, view } = window.__opencanvas!;
+    const ctx = view.scene.getContext('2d')!;
+    const flush = () => ctx.getImageData(0, 0, 1, 1);
     const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
-    // Full scene redraws (e.g. zoom, page switch).
+    flush();
+
+    // Full scene redraws (zoom, page switch, image loaded).
     const redraws: number[] = [];
     for (let i = 0; i < 15; i++) {
+      const t0 = performance.now();
       view.invalidateScene();
       view.render();
-      redraws.push(view.lastRenderMs);
+      flush();
+      redraws.push(performance.now() - t0);
     }
-    // Dragging one element: gesture update + redraw per pointer move.
+
+    // Dragging one element: gesture update + redraw + raster per pointer move.
     const target = editor.store.getChildren(editor.pageId)[0]!;
     const b = editor.getSelectionBounds([target.id])!;
     const start = editor.pageToScreen({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
@@ -91,16 +123,40 @@ async function measure(page: Page) {
       const t0 = performance.now();
       editor.pointerMove(input(start.x + i * 3, start.y + i * 2));
       view.render();
+      flush();
       frames.push(performance.now() - t0);
     }
     editor.pointerUp(input(start.x + 90, start.y + 60));
-    // Undo of the drag is a single step.
     const t0 = performance.now();
     editor.undo();
     const undoMs = performance.now() - t0;
-    return { redrawMs: median(redraws), dragFrameMs: median(frames), undoMs };
+
+    // Real frame rate while dragging: one pointer move per animation frame,
+    // drawn by the view's own requestAnimationFrame loop.
+    const fps = await new Promise<number>((resolve) => {
+      const total = 60;
+      let frame = 0;
+      let first = 0;
+      editor.pointerDown(input(start.x, start.y));
+      const tick = (time: number) => {
+        if (frame === 0) first = time;
+        else editor.pointerMove(input(start.x + frame * 2, start.y + frame));
+        flush();
+        if (frame++ < total) requestAnimationFrame(tick);
+        else {
+          editor.pointerUp(input(start.x + total * 2, start.y + total));
+          resolve((total * 1000) / (time - first));
+        }
+      };
+      requestAnimationFrame(tick);
+    });
+    editor.undo();
+    return { redrawMs: median(redraws), dragFrameMs: median(frames), undoMs, fps };
   });
 }
+
+// Trace recording (screencast, snapshots) costs frames; measure the app, not the instrumentation.
+test.use({ trace: 'off', video: 'off' });
 
 test.describe('performance @perf', () => {
   test.describe.configure({ mode: 'serial' });
@@ -137,9 +193,102 @@ test.describe('performance @perf', () => {
       expect(metrics.redrawMs).toBeLessThan(budget.redrawMs);
       expect(metrics.dragFrameMs).toBeLessThan(budget.dragFrameMs);
       expect(metrics.undoMs).toBeLessThan(budget.dragFrameMs);
-      expect(openMs).toBeLessThan(10_000);
+      expect(metrics.fps).toBeGreaterThan(budget.minFps);
+      expect(openMs).toBeLessThan(ms(10_000));
     });
   }
+
+  test('exports a 4K PNG of a busy slide', async ({ page }) => {
+    test.setTimeout(120_000);
+    await createDesign(page, 'presentation');
+    await insertNodes(page, scene(300), { center: false });
+    const t0 = Date.now();
+    const { bytes } = await exportDesign(page, 'png', { scale: 2 });
+    const exportMs = Date.now() - t0;
+    const png = decodePng(bytes);
+    expect([png.width, png.height]).toEqual([3840, 2160]);
+    const result = { scenario: '4K PNG export, 300 elements', exportMs, bytes: bytes.length };
+    results.push(result);
+    test.info().annotations.push({ type: 'metrics', description: JSON.stringify(result) });
+    expect(exportMs).toBeLessThan(ms(15_000));
+  });
+
+  test('a 100-page document opens, switches pages and exports to PDF', async ({ page }) => {
+    test.setTimeout(300_000);
+    await createDesign(page);
+    await insertNodes(page, scene(20), { center: false });
+    await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      const first = editor.pageId;
+      for (let i = 0; i < 99; i++) editor.execute('page.duplicate', { id: first });
+    });
+    const pageCount = () => page.evaluate(() => window.__opencanvas!.editor.store.getPageIds().length);
+    expect(await pageCount()).toBe(100);
+    await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved', {
+      timeout: 60_000,
+    });
+
+    const t1 = Date.now();
+    await page.reload();
+    await waitForEditor(page);
+    const openMs = Date.now() - t1;
+    expect(await pageCount()).toBe(100);
+
+    // Switching pages: camera fit + full redraw of the new page.
+    const switchMs = await page.evaluate(() => {
+      const { editor, view } = window.__opencanvas!;
+      const ids = editor.store.getPageIds();
+      const times: number[] = [];
+      for (let i = 1; i <= 20; i++) {
+        const t = performance.now();
+        editor.setCurrentPage(ids[i * 4]!);
+        view.render();
+        times.push(performance.now() - t);
+      }
+      return times.sort((a, b) => a - b)[10]!;
+    });
+
+    const t2 = Date.now();
+    const { bytes } = await exportDesign(page, 'pdf');
+    const pdfMs = Date.now() - t2;
+    expect(bytes.toString('latin1').match(/\/Type\s*\/Page\b/g)).toHaveLength(100);
+
+    const result = { scenario: '100 pages × 20 elements', openMs, switchMs, pdfMs, pdfBytes: bytes.length };
+    results.push(result);
+    test.info().annotations.push({ type: 'metrics', description: JSON.stringify(result) });
+    expect(openMs).toBeLessThan(ms(10_000));
+    expect(switchMs).toBeLessThan(ms(50));
+    expect(pdfMs).toBeLessThan(ms(120_000));
+  });
+
+  test('a 10 MB photo uploads quickly and keeps editing fluid', async ({ page }) => {
+    test.setTimeout(120_000);
+    await createDesign(page);
+    const photo = noisePng(2000, 1600);
+    expect(photo.length).toBeGreaterThan(9_000_000);
+    await openPanel(page, 'uploads');
+    const t0 = Date.now();
+    await page
+      .getByTestId('upload-input')
+      .setInputFiles({ name: 'photo.png', mimeType: 'image/png', buffer: photo });
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => window.__opencanvas!.editor.store.getChildren(window.__opencanvas!.editor.pageId).length,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBe(1);
+    await waitForCanvasIdle(page);
+    const uploadMs = Date.now() - t0;
+    const metrics = await measure(page);
+    const result = { scenario: '10 MB image', uploadMs, bytes: photo.length, ...metrics };
+    results.push(result);
+    test.info().annotations.push({ type: 'metrics', description: JSON.stringify(result) });
+    expect(uploadMs).toBeLessThan(ms(15_000));
+    expect(metrics.dragFrameMs).toBeLessThan(ms(33));
+  });
 
   // biome-ignore lint/correctness/noEmptyPattern: Playwright requires a destructuring pattern for fixtures
   test.afterAll(({}, testInfo) => {

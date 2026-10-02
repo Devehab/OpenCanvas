@@ -62,3 +62,28 @@ describe('commands', () => {
     expect(pasted).toMatchObject({ parentId: t.pageId, x: 10 });
   });
 });
+
+describe('command tool definitions', () => {
+  it('describes every command with a JSON Schema payload for AI agents', () => {
+    const registry = createDefaultCommandRegistry();
+    const tools = registry.toolDefinitions();
+    expect(tools).toHaveLength(registry.list().length);
+    const names = new Set<string>();
+    for (const tool of tools) {
+      // Tool APIs typically accept ^[a-zA-Z0-9_-]{1,64}$.
+      expect(tool.name).toMatch(/^[a-zA-Z0-9_-]{1,64}$/);
+      expect(names.has(tool.name)).toBe(false);
+      names.add(tool.name);
+      expect(registry.has(tool.command)).toBe(true);
+      expect(tool.description.length).toBeGreaterThan(0);
+      expect(tool.inputSchema.type).toBe('object');
+      // Plain JSON (no functions, no cycles).
+      expect(JSON.parse(JSON.stringify(tool.inputSchema))).toEqual(tool.inputSchema);
+    }
+    const translate = tools.find((t) => t.command === 'node.translate')!;
+    expect(translate.name).toBe('node_translate');
+    expect(translate.inputSchema).toMatchObject({
+      properties: { ids: { type: 'array' }, dx: { type: 'number' }, dy: { type: 'number' } },
+    });
+  });
+});
