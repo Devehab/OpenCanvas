@@ -1,6 +1,7 @@
 'use client';
 
-import type { AnyNodeProps } from '@opencanvas/core';
+import { type AnyNodeProps, getFrameAtPoint } from '@opencanvas/core';
+import type { Editor } from '@opencanvas/editor';
 import { CanvasView } from '@opencanvas/editor/dom';
 import {
   BringToFront,
@@ -10,6 +11,7 @@ import {
   Frame,
   Group,
   Hand,
+  ImageOff,
   Lock,
   Minus,
   MousePointer2,
@@ -27,6 +29,7 @@ import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { FONT_FALLBACKS } from '@/lib/fonts';
+import { ASSET_DRAG_TYPE, parseAssetDrag, placeImage } from '@/lib/place-image';
 import { cn } from '@/lib/utils';
 import { ELEMENT_DRAG_TYPE } from './side-panel';
 
@@ -65,6 +68,17 @@ function ToolBar() {
   );
 }
 
+/** The frame whose photo "Detach image" would take out, given the selection. */
+function filledFrameOf(editor: Editor): string | null {
+  const nodes = editor.getSelectedNodes();
+  if (nodes.length !== 1) return null;
+  const node = nodes[0]!;
+  const frame =
+    node.type === 'frame' ? node : node.type === 'image' ? editor.store.getNode(node.parentId) : null;
+  if (frame?.type !== 'frame' || frame.locked) return null;
+  return editor.store.getChildren(frame.id).some((c) => c.type === 'image') ? frame.id : null;
+}
+
 export function CanvasArea() {
   const { t } = useI18n();
   const { editor, session, viewRef, uploadFiles } = useEditorContext();
@@ -77,6 +91,8 @@ export function CanvasArea() {
       count: nodes.length,
       group: nodes.some((n) => n.type === 'group'),
       locked: nodes.length > 0 && nodes.every((n) => n.locked),
+      // A selected photo frame (or the photo inside one) that can give its photo back.
+      filledFrame: filledFrameOf(e),
     };
   });
 
@@ -103,6 +119,11 @@ export function CanvasArea() {
     };
   }, [editor, session, viewRef]);
 
+  const endDrag = () => {
+    setDragging(false);
+    if (editor.state.get().dropTargetId) editor.state.set({ dropTargetId: null });
+  };
+
   const pagePoint = (clientX: number, clientY: number) => {
     const rect = container.current!.getBoundingClientRect();
     return editor.screenToPage({ x: clientX - rect.left, y: clientY - rect.top });
@@ -125,16 +146,26 @@ export function CanvasArea() {
         )}
         style={{ touchAction: 'none' }}
         onDragOver={(e) => {
-          if (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes(ELEMENT_DRAG_TYPE)) {
-            e.preventDefault();
-            e.dataTransfer.dropEffect = 'copy';
-            setDragging(true);
-          }
+          const types = e.dataTransfer.types;
+          const image = types.includes('Files') || types.includes(ASSET_DRAG_TYPE);
+          if (!image && !types.includes(ELEMENT_DRAG_TYPE)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setDragging(true);
+          // Photos dragged over a frame preview where they will land.
+          const frame = image
+            ? getFrameAtPoint(editor.store, editor.pageId, pagePoint(e.clientX, e.clientY))
+            : null;
+          const dropTargetId = frame?.id ?? null;
+          if (editor.state.get().dropTargetId !== dropTargetId) editor.state.set({ dropTargetId });
         }}
-        onDragLeave={() => setDragging(false)}
+        onDragLeave={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          endDrag();
+        }}
         onDrop={(e) => {
           e.preventDefault();
-          setDragging(false);
+          endDrag();
           const at = pagePoint(e.clientX, e.clientY);
           const element = e.dataTransfer.getData(ELEMENT_DRAG_TYPE);
           if (element) {
@@ -145,10 +176,16 @@ export function CanvasArea() {
             }
             return;
           }
+          const asset = parseAssetDrag(e.dataTransfer.getData(ASSET_DRAG_TYPE));
+          if (asset) {
+            placeImage(editor, asset, at);
+            container.current?.focus({ preventScroll: true });
+            return;
+          }
           const files = [...e.dataTransfer.files].filter(
             (f) => f.type.startsWith('image/') || /\.(svg|avif)$/i.test(f.name),
           );
-          if (files.length) void uploadFiles(files, at);
+          if (files.length) void uploadFiles(files, { at });
         }}
       />
       <p id="canvas-description" className="sr-only">
@@ -220,6 +257,14 @@ export function CanvasArea() {
             >
               {t('editor.menu.delete')}
             </MenuItem>
+            {selection.filledFrame ? (
+              <MenuItem
+                icon={<ImageOff className="size-4" />}
+                onSelect={() => editor.execute('frame.detach', { frameId: selection.filledFrame })}
+              >
+                {t('editor.menu.detachImage')}
+              </MenuItem>
+            ) : null}
             <MenuSeparator />
             <MenuItem
               icon={<Group className="size-4" />}

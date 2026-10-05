@@ -20,6 +20,7 @@ import type {
   TextContent,
   TextStyle,
 } from '../model/types';
+import { detachImageFromFrame, placeImageInFrame } from '../operations/frames';
 import { groupNodes, reparentNodes, ungroupNodes } from '../operations/group';
 import {
   createNodes,
@@ -49,9 +50,12 @@ const ids = z.array(IdSchema).min(1).max(10_000);
 const finite = z.number();
 
 /** Node props without identity; validated against the full node schema when created. */
-const NodePropsSchema = z
-  .looseObject({ type: z.enum(['shape', 'line', 'path', 'text', 'image', 'group', 'frame']) })
-  .superRefine((value, ctx) => {
+const NodePropsSchema: z.ZodType<unknown> = z
+  .looseObject({
+    type: z.enum(['shape', 'line', 'path', 'text', 'image', 'group', 'frame']),
+    children: z.lazy(() => z.array(NodePropsSchema).max(500)).optional(),
+  })
+  .superRefine(({ children: _children, ...value }, ctx) => {
     const result = NodeRecordSchema.safeParse({
       ...value,
       typeName: 'node',
@@ -307,6 +311,44 @@ export const imageReplace: CommandDefinition<{ id: string; assetId: string }> = 
   },
 };
 
+export const frameFill: CommandDefinition<{ frameId: string; assetId?: string; imageId?: string }> = {
+  id: 'frame.fill',
+  label: 'Place image in frame',
+  description:
+    'Fills a frame with an image (center-cropped to cover it), replacing the image already inside. ' +
+    'Pass `assetId` to place a new image, or `imageId` to move an existing image element into the frame.',
+  schema: z
+    .object({ frameId: IdSchema, assetId: IdSchema.optional(), imageId: IdSchema.optional() })
+    .refine((p) => (p.assetId === undefined) !== (p.imageId === undefined), {
+      message: 'Pass exactly one of assetId or imageId',
+    }),
+  run({ tx, createId }, p) {
+    try {
+      const id = placeImageInFrame(
+        tx,
+        p.frameId,
+        p.imageId ? { imageId: p.imageId } : { assetId: p.assetId! },
+        createId,
+      );
+      return { select: [id] };
+    } catch (error) {
+      throw new CommandError((error as Error).message, 'frame.fill');
+    }
+  },
+};
+
+export const frameDetach: CommandDefinition<{ frameId: string }> = {
+  id: 'frame.detach',
+  label: 'Detach image',
+  description: 'Takes the image out of a frame, keeping its position and size on the page.',
+  schema: z.object({ frameId: IdSchema }),
+  run({ tx }, p) {
+    const id = detachImageFromFrame(tx, p.frameId);
+    if (!id) throw new CommandError('The frame has no image', 'frame.detach');
+    return { select: [id] };
+  },
+};
+
 export const assetAdd: CommandDefinition<{ asset: AssetRecord }> = {
   id: 'asset.add',
   label: 'Add asset',
@@ -472,6 +514,8 @@ export const BUILTIN_COMMANDS = [
   textSetContent,
   textSetStyle,
   imageReplace,
+  frameFill,
+  frameDetach,
   assetAdd,
   pageCreate,
   pageDuplicate,

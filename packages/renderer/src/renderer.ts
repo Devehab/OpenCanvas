@@ -55,6 +55,8 @@ export interface RenderOptions {
   viewport?: Box | null;
   /** Draw placeholders for images that are not loaded yet. Default true. */
   placeholders?: boolean;
+  /** Show an illustration in empty photo frames (editor only; exports keep the frame fill). */
+  framePlaceholders?: boolean;
   /** `export` processes images at full resolution. Default `interactive`. */
   quality?: 'interactive' | 'export';
 }
@@ -341,6 +343,17 @@ export class SceneRenderer {
   private drawFrame(ctx: Context2D, node: FrameNode, state: FrameState): void {
     const path = getFrameClipPath(node);
     if (node.fill) this.fillPath(ctx, path, node.fill, node.width, node.height);
+    if (
+      state.options.framePlaceholders &&
+      !state.store.getChildren(node.id).some((c) => c.type === 'image' && c.visible)
+    ) {
+      ctx.save();
+      ctx.beginPath();
+      tracePath(ctx, path);
+      ctx.clip();
+      drawFramePlaceholder(ctx, node.width, node.height);
+      ctx.restore();
+    }
     if (node.clipContent) {
       ctx.save();
       ctx.beginPath();
@@ -493,4 +506,43 @@ export class SceneRenderer {
     }
     ctx.restore();
   }
+}
+
+/**
+ * The "drop a photo here" illustration of an empty frame: sky, a cloud and
+ * rolling hills, scaled to the frame box (local coordinates).
+ */
+export function drawFramePlaceholder(ctx: Context2D, w: number, h: number): void {
+  const sky = ctx.createLinearGradient(0, 0, 0, h);
+  sky.addColorStop(0, '#c9e6fb');
+  sky.addColorStop(1, '#eef8ff');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
+  // Cloud
+  const u = Math.min(w, h);
+  const cx = w * 0.5;
+  const cy = h * 0.3;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, u * 0.16, u * 0.07, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx - u * 0.09, cy - u * 0.02, u * 0.08, u * 0.06, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx + u * 0.04, cy - u * 0.06, u * 0.09, u * 0.08, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // Back hill (light) and front hill (dark)
+  ctx.fillStyle = '#cfdf8f';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.68);
+  ctx.bezierCurveTo(w * 0.3, h * 0.52, w * 0.55, h * 0.78, w, h * 0.6);
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = '#8fa33a';
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.8);
+  ctx.bezierCurveTo(w * 0.25, h * 0.66, w * 0.5, h * 0.92, w, h * 0.74);
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.closePath();
+  ctx.fill();
 }

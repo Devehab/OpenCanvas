@@ -1,7 +1,7 @@
 'use client';
 
 import type { AnyNodeProps } from '@opencanvas/core';
-import { coverCrop, fitSize, getNodeAtPoint, serializeDocument } from '@opencanvas/core';
+import { serializeDocument } from '@opencanvas/core';
 import type { CanvasView } from '@opencanvas/editor/dom';
 import { isEditableTarget, toKeyInput } from '@opencanvas/editor/dom';
 import Link from 'next/link';
@@ -13,6 +13,7 @@ import {
   EditorContext,
   type EditorContextValue,
   type PanelId,
+  type UploadOptions,
   useEditorContext,
   useEditorValue,
   useSaveStatus,
@@ -21,6 +22,7 @@ import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { readClipboard, recallClipboard, writeClipboard } from '@/lib/clipboard';
 import { nodeLabel } from '@/lib/node-label';
+import { type LibraryImage, placeImage } from '@/lib/place-image';
 import { type EditorSession, openSession } from '@/lib/session';
 import { createDesignCopy } from '@/lib/storage/designs';
 import { prepareImage } from '@/lib/upload';
@@ -86,54 +88,21 @@ function EditorLayout({ session }: { session: EditorSession }) {
   const [dialog, setDialog] = useState<DialogId>(null);
 
   const uploadFiles = useCallback(
-    async (files: File[], at?: { x: number; y: number }) => {
+    async (files: File[], options: UploadOptions = {}) => {
+      const placed: LibraryImage[] = [];
       for (const file of files) {
         const prepared = await prepareImage(file, file.name || 'image');
         if (!prepared.ok) {
           toast(t(`editor.uploads.errors.${prepared.reason}`, { name: prepared.name }), 'error');
           continue;
         }
-        // Identical files share one asset record (assets are content-addressed).
-        const existing = editor.store.getAssets().find((a) => a.hash === prepared.asset.hash);
-        const asset = existing ?? prepared.asset;
-        session.images.put(asset.hash, prepared.image);
-        const page = editor.store.getPage(editor.pageId)!;
-        // Dropping onto an image replaces it; dropping onto a frame fills it.
-        const target = at ? getNodeAtPoint(editor.store, editor.getScopeId(), at, { deep: false }) : null;
-        editor.history.beginBatch('Add image');
-        try {
-          if (!existing) editor.execute('asset.add', { asset });
-          if (target?.type === 'image') {
-            editor.execute('image.replace', { id: target.id, assetId: asset.id });
-            editor.select([target.id]);
-          } else if (target?.type === 'frame' && !target.locked) {
-            for (const child of editor.store.getChildren(target.id))
-              if (child.type === 'image') editor.execute('node.delete', { ids: [child.id] });
-            const crop = coverCrop(asset.width, asset.height, target.width, target.height);
-            editor.execute('node.create', {
-              parentId: target.id,
-              nodes: [
-                {
-                  type: 'image',
-                  assetId: asset.id,
-                  x: 0,
-                  y: 0,
-                  width: target.width,
-                  height: target.height,
-                  crop,
-                  name: asset.name,
-                },
-              ],
-            });
-          } else {
-            const size = fitSize(asset.width, asset.height, page.width * 0.6, page.height * 0.6);
-            const props = { type: 'image', assetId: asset.id, ...size, name: asset.name } as AnyNodeProps;
-            editor.insertNodes([props], at ? { at } : {});
-          }
-        } finally {
-          editor.history.endBatch();
-        }
+        const { asset, image } = prepared;
+        session.images.put(asset.hash, image);
+        placed.push(asset);
+        if (options.insert !== false) placeImage(editor, asset, options.at);
       }
+      if (placed.length) broadcast({ type: 'uploads-changed', tabId: TAB_ID }, { self: true });
+      return placed;
     },
     [editor, session.images, t, toast],
   );

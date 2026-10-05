@@ -22,6 +22,8 @@ export interface EditorUIState {
   pageId: Id;
   selectedIds: Id[];
   hoveredId: Id | null;
+  /** Frame that would receive the image being dragged (drawn highlighted). */
+  dropTargetId: Id | null;
   /** Group/frame the user has "entered" by double-clicking; clicks select its children. */
   focusedGroupId: Id | null;
   editingTextId: Id | null;

@@ -113,6 +113,7 @@ export class Editor {
       pageId,
       selectedIds: [],
       hoveredId: null,
+      dropTargetId: null,
       focusedGroupId: null,
       editingTextId: null,
       tool: 'select',
@@ -189,6 +190,7 @@ export class Editor {
     const kept = s.selectedIds.filter((id) => this.store.getNode(id));
     if (kept.length !== s.selectedIds.length) patch.selectedIds = kept;
     if (s.hoveredId && !this.store.getNode(s.hoveredId)) patch.hoveredId = null;
+    if (s.dropTargetId && !this.store.getNode(s.dropTargetId)) patch.dropTargetId = null;
     if (s.focusedGroupId && !this.store.getNode(s.focusedGroupId)) patch.focusedGroupId = null;
     if (s.editingTextId && !this.store.getNode(s.editingTextId) && source !== 'user') {
       // The edited text disappeared through undo/redo or a remote change.

@@ -40,14 +40,19 @@ export function createNodes(
   assertValidParent(tx.store, parentId);
   const keys = indicesAbove(tx.store, parentId, options.aboveId ?? null, props.length);
   return props.map((p, i) => {
-    const { type, ...rest } = p;
-    const node = createNodeRecord(type, {
-      ...(rest as object),
-      id: options.createId('node'),
-      parentId,
-      index: keys[i]!,
-    } as never);
-    return tx.put(node);
+    const { type, children, ...rest } = p;
+    if (children?.length && type !== 'group' && type !== 'frame')
+      throw new Error(`A ${type} cannot contain other elements`);
+    const node = tx.put(
+      createNodeRecord(type, {
+        ...(rest as object),
+        id: options.createId('node'),
+        parentId,
+        index: keys[i]!,
+      } as never),
+    );
+    if (children?.length) createNodes(tx, node.id, children, { createId: options.createId });
+    return node;
   });
 }
 

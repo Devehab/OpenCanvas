@@ -33,7 +33,11 @@ type PartialNested<N> = {
  */
 export type NodeProps<T extends NodeType = NodeType> = PartialNested<
   Omit<NodeOfType<T>, 'typeName' | 'id' | 'parentId' | 'index'>
-> & { type: T };
+> & {
+  type: T;
+  /** Groups and frames only: elements created inside, in the container's coordinates. */
+  children?: AnyNodeProps[];
+};
 
 export type AnyNodeProps = { [T in NodeType]: NodeProps<T> }[NodeType];
 

@@ -5,7 +5,7 @@
 import { type Box, boxContainsBox, boxIntersects } from '../math/box';
 import { applyToPoint, invert, type Mat, multiply } from '../math/matrix';
 import { distanceToSegment, type Vec } from '../math/vec';
-import { type Id, isContainer, type NodeRecord } from '../model/types';
+import { type FrameNode, type Id, isContainer, type NodeRecord } from '../model/types';
 import type { DocumentStore } from '../store/store';
 import { getFrameClipPath, getNodeOutline } from './outline';
 import { distanceToPath, pointInPath } from './path';
@@ -136,4 +136,54 @@ export function getNodesInBox(
     const bounds = getPageBounds(store, node);
     return mode === 'contain' ? boxContainsBox(box, bounds) : boxIntersects(box, bounds);
   });
+}
+
+function frameInSubtree(
+  store: DocumentStore,
+  node: NodeRecord,
+  parentToPageInverse: Mat,
+  pagePoint: Vec,
+  exclude: ReadonlySet<Id>,
+): FrameNode | null {
+  if (!node.visible || exclude.has(node.id)) return null;
+  if (node.type !== 'group' && node.type !== 'frame') return null;
+  const localInverse = multiply(invert(getLocalTransform(node)), parentToPageInverse);
+  const local = applyToPoint(localInverse, pagePoint);
+  if (node.type === 'frame' && !pointInPath(getFrameClipPath(node), local)) return null;
+  const children = store.getChildren(node.id);
+  for (let i = children.length - 1; i >= 0; i--) {
+    const nested = frameInSubtree(store, children[i]!, localInverse, pagePoint, exclude);
+    if (nested) return nested;
+  }
+  return node.type === 'frame' && !node.locked ? node : null;
+}
+
+/**
+ * The frame a dropped image would go into: the top-most, innermost unlocked
+ * frame whose shape contains the page point, looking through groups (so photo
+ * frames inside mockups and collages are found). Other elements covering the
+ * frame do not block it.
+ */
+export function getFrameAtPoint(
+  store: DocumentStore,
+  parentId: Id,
+  pagePoint: Vec,
+  options: { exclude?: ReadonlySet<Id> } = {},
+): FrameNode | null {
+  const exclude = options.exclude ?? new Set<Id>();
+  const parent = store.getNode(parentId);
+  let parentInverse: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+  if (parent) {
+    const chain = [...store.getAncestors(parent.id)].reverse();
+    let m: Mat = { a: 1, b: 0, c: 0, d: 1, e: 0, f: 0 };
+    for (const a of chain) m = multiply(m, getLocalTransform(a));
+    m = multiply(m, getLocalTransform(parent));
+    parentInverse = invert(m);
+  }
+  const children = store.getChildren(parentId);
+  for (let i = children.length - 1; i >= 0; i--) {
+    const frame = frameInSubtree(store, children[i]!, parentInverse, pagePoint, exclude);
+    if (frame) return frame;
+  }
+  return null;
 }

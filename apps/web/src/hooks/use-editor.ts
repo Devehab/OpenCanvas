@@ -1,9 +1,11 @@
 'use client';
 
+import type { Vec } from '@opencanvas/core';
 import type { Editor } from '@opencanvas/editor';
 import type { CanvasView } from '@opencanvas/editor/dom';
 import { createContext, type RefObject, useContext, useRef, useSyncExternalStore } from 'react';
 import type { SaveStatus } from '@/lib/autosave';
+import type { LibraryImage } from '@/lib/place-image';
 import type { EditorSession } from '@/lib/session';
 
 export type PanelId = 'elements' | 'text' | 'uploads' | 'layers';
@@ -17,7 +19,14 @@ export interface EditorContextValue {
   setPanel: (panel: PanelId | null) => void;
   dialog: DialogId;
   setDialog: (dialog: DialogId) => void;
-  uploadFiles: (files: File[], at?: { x: number; y: number }) => Promise<void>;
+  /** Uploads images to the library and (unless `insert: false`) places them in the design. */
+  uploadFiles: (files: File[], options?: UploadOptions) => Promise<LibraryImage[]>;
+}
+
+export interface UploadOptions {
+  /** Page point to drop at: onto a frame fills it, onto an image replaces it. */
+  at?: Vec;
+  insert?: boolean;
 }
 
 export const EditorContext = createContext<EditorContextValue | null>(null);

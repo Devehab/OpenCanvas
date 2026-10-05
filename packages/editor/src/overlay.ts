@@ -18,6 +18,8 @@ export const OVERLAY_COLORS = {
   badgeBg: '#1f2937',
   badgeText: '#ffffff',
   locked: '#9ca3af',
+  dropTarget: '#6d5dfc',
+  dropTargetHalo: '#ffffff',
 };
 
 function outlineNode(
@@ -61,6 +63,15 @@ export function drawOverlay(ctx: Context2D, editor: Editor, dpr: number): void {
   if (s.hoveredId && !s.interaction) {
     const node = editor.store.getNode(s.hoveredId);
     if (node) outlineNode(ctx, editor, node, dpr, OVERLAY_COLORS.hover, 1.5);
+  }
+
+  // Photo frame that will receive the dragged image.
+  if (s.dropTargetId) {
+    const node = editor.store.getNode(s.dropTargetId);
+    if (node) {
+      outlineNode(ctx, editor, node, dpr, OVERLAY_COLORS.dropTarget, 3);
+      outlineNode(ctx, editor, node, dpr, OVERLAY_COLORS.dropTargetHalo, 1);
+    }
   }
 
   // Text being edited: outline only (the DOM editor shows the caret).

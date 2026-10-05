@@ -11,6 +11,7 @@ import {
   boxNormalize,
   collectSnapTargets,
   duplicateNodes,
+  getFrameAtPoint,
   getNodeAtPoint,
   getNodesInBox,
   getPageCenter,
@@ -23,6 +24,7 @@ import {
   type Mat,
   type NodeRecord,
   normalizeDegrees,
+  placeImageInFrame,
   type ResizeHandle,
   radToDeg,
   resizeImageCrop,
@@ -199,7 +201,20 @@ export class SelectTool implements Tool {
         }
         break;
       }
-      case 'translating':
+      case 'translating': {
+        // An image dropped on a photo frame goes into the frame (same undo step as the move).
+        const frameId = editor.state.get().dropTargetId;
+        const image = s.initial.length === 1 && s.initial[0]!.type === 'image' ? s.initial[0]! : null;
+        if (frameId && image) {
+          editor.updateGesture((tx) => {
+            s.snapshot.restore(tx);
+            placeImageInFrame(tx, frameId, { imageId: image.id }, editor.createId);
+          });
+          editor.select([image.id]);
+        }
+        editor.endGesture();
+        break;
+      }
       case 'resizing':
       case 'rotating':
       case 'endpoint':
@@ -208,7 +223,7 @@ export class SelectTool implements Tool {
       case 'brushing':
         break;
     }
-    editor.state.set({ interaction: null, guides: [], marquee: null, feedback: null });
+    editor.state.set({ interaction: null, guides: [], marquee: null, feedback: null, dropTargetId: null });
     this.updateHover(p);
   }
 
@@ -237,7 +252,7 @@ export class SelectTool implements Tool {
     const editor = this.editor;
     if (s.kind === 'translating' || s.kind === 'resizing' || s.kind === 'rotating' || s.kind === 'endpoint') {
       editor.cancelGesture();
-      editor.state.set({ interaction: null, guides: [], feedback: null });
+      editor.state.set({ interaction: null, guides: [], feedback: null, dropTargetId: null });
       return true;
     }
     if (s.kind === 'brushing') {
@@ -356,7 +371,16 @@ export class SelectTool implements Tool {
       s.snapshot.restore(tx);
       translateFrom(tx, s.initial, dx, dy);
     });
-    editor.state.set({ guides });
+    editor.state.set({ guides, dropTargetId: this.frameUnder(p, s.initial) });
+  }
+
+  /** A photo frame under the pointer that a single dragged image would drop into. */
+  private frameUnder(p: ToolPointer, moving: readonly NodeRecord[]): Id | null {
+    if (moving.length !== 1 || moving[0]!.type !== 'image') return null;
+    const image = moving[0]!;
+    const editor = this.editor;
+    const frame = getFrameAtPoint(editor.store, editor.pageId, p.page, { exclude: new Set([image.id]) });
+    return frame && frame.id !== image.parentId ? frame.id : null;
   }
 
   // ---------------------------------------------------------------------------

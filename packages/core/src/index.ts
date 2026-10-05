@@ -24,6 +24,7 @@ export * from './model/limits';
 export * from './model/schema';
 export * from './model/text-content';
 export * from './model/types';
+export * from './operations/frames';
 export * from './operations/group';
 export * from './operations/nodes';
 export * from './operations/order';

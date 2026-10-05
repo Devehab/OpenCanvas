@@ -35,8 +35,10 @@ async function resolveLocale(): Promise<Locale> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await resolveLocale();
   return (
-    <html lang={locale} dir={directionOf(locale)}>
-      <body>
+    // Browser extensions (RTL helpers, password managers, Grammarly…) add attributes to
+    // <html>/<body> before React hydrates; ignore attribute mismatches on these two only.
+    <html lang={locale} dir={directionOf(locale)} suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <Providers locale={locale}>{children}</Providers>
       </body>
     </html>

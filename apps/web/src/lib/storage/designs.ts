@@ -32,11 +32,14 @@ function metaFromSnapshot(snapshot: DocumentSnapshot) {
   };
 }
 
-export async function listDesigns(options: { trashed?: boolean } = {}): Promise<DesignSummary[]> {
+export async function listDesigns(
+  options: { trashed?: boolean; folderId?: string | null } = {},
+): Promise<DesignSummary[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('designs', 'updatedAt');
   return all
     .filter((d) => (options.trashed ? d.deletedAt !== null : d.deletedAt === null))
+    .filter((d) => options.folderId === undefined || (d.folderId ?? null) === options.folderId)
     .sort((a, b) => b.updatedAt - a.updatedAt)
     .map(summarize);
 }
@@ -51,6 +54,7 @@ export async function createDesign(options: {
   height: number;
   format?: DesignFormat | null;
   snapshot?: DocumentSnapshot;
+  folderId?: string | null;
 }): Promise<DesignRecord> {
   const snapshot =
     options.snapshot ??
@@ -69,6 +73,8 @@ export async function createDesign(options: {
     deletedAt: null,
     revision: 1,
     snapshot,
+    folderId: options.folderId ?? null,
+    starred: false,
   };
   await (await getDB()).put('designs', record);
   return record;
@@ -127,6 +133,19 @@ export async function renameDesign(id: string, title: string): Promise<void> {
       updatedAt: Date.now(),
     });
   }
+  await tx.done;
+}
+
+/** Moves a design into a folder (null = out of any folder) or stars it. */
+export async function updateDesignMeta(
+  id: string,
+  patch: { folderId?: string | null; starred?: boolean },
+): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('designs', 'readwrite');
+  const current = await tx.store.get(id);
+  // Not a content change: revision and updatedAt stay, so open editors are not disturbed.
+  if (current) await tx.store.put({ ...current, ...patch });
   await tx.done;
 }
 

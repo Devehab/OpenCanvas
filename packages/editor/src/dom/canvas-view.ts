@@ -229,6 +229,7 @@ export class CanvasView {
       viewport: visiblePageRect(camera, s.viewport),
       hiddenIds: s.editingTextId ? new Set([s.editingTextId]) : undefined,
       quality: 'interactive',
+      framePlaceholders: true,
     });
   }
 
