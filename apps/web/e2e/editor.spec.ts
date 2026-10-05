@@ -37,11 +37,11 @@ test.describe('editor', () => {
 
   test('adds shapes, lines, frames, icons and text from the side panels @smoke', async ({ page }) => {
     await openPanel(page, 'elements');
-    await page.getByTestId('shape-star').click();
-    await page.getByTestId('line-arrow').click();
-    await page.getByTestId('frame-ellipse').click();
-    await page.getByRole('searchbox', { name: 'Search icons' }).fill('قلب');
-    await page.getByTestId('icon-heart').click();
+    await page.getByTestId('element-shape-star-5').click();
+    await page.getByTestId('element-line-solid').click();
+    await page.getByTestId('element-frame-ellipse').click();
+    await page.getByTestId('elements-search').fill('قلب');
+    await page.getByTestId('icon-lucide-heart').click();
     await openPanel(page, 'text');
     await page.getByTestId('text-preset-heading').click();
     await waitForCanvasIdle(page);

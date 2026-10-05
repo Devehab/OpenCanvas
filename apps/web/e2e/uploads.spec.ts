@@ -111,7 +111,7 @@ test.describe('uploads', () => {
 
   test('dropping a photo onto a frame fills the frame', async ({ page }) => {
     await openPanel(page, 'elements');
-    await page.getByTestId('frame-ellipse').click();
+    await page.getByTestId('element-frame-ellipse').click();
     const [frame] = await getNodes(page);
     const at = await nodeCenter(page, frame!.id);
     const base64 = samplePng(400, 200).toString('base64');

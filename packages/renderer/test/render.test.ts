@@ -15,7 +15,8 @@ describe('renderer goldens', () => {
         { offset: 1, color: '#e0e7ff' },
       ],
     });
-    SHAPE_KINDS.forEach((shape, i) => {
+    // The first 18 kinds; newer kinds have their own golden below.
+    SHAPE_KINDS.slice(0, 18).forEach((shape, i) => {
       const col = i % 6;
       const row = Math.floor(i / 6);
       add({
@@ -60,6 +61,28 @@ describe('renderer goldens', () => {
     });
     const { canvas } = rasterizePage(renderer, platform, store, pageId);
     await expectGolden('shapes', canvas);
+  });
+
+  it('template, procedural and compound shapes', async () => {
+    const { platform, measurer, renderer } = createTestRenderer();
+    const { store, pageId, add } = createScene(measurer, 720, 380);
+    SHAPE_KINDS.slice(18).forEach((shape, i) => {
+      add({
+        type: 'shape',
+        shape,
+        x: 20 + (i % 6) * 115,
+        y: 20 + Math.floor(i / 6) * 120,
+        width: 95,
+        height: 95,
+        sides: 12,
+        innerRatio: 0.55,
+        cornerRadius: i % 2 ? 10 : 0,
+        fill: { type: 'solid', color: i % 2 ? '#0ea5e9' : '#6d5dfc' },
+        stroke: i % 3 === 0 ? { color: '#0f172a', width: 3, style: 'solid' } : null,
+      } as never);
+    });
+    const { canvas } = rasterizePage(renderer, platform, store, pageId);
+    await expectGolden('shapes-extra', canvas);
   });
 
   it('typography: wrapping, alignment, Arabic RTL, bidi, lists and effects', async () => {

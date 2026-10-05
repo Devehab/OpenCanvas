@@ -414,13 +414,13 @@ export function flattenPath(
   return polylines;
 }
 
-/** Tight-ish bounds of a path (curves are flattened). */
-export function pathBounds(commands: readonly PathCommand[]): Box {
+/** Tight-ish bounds of a path (curves are flattened to `tolerance` units). */
+export function pathBounds(commands: readonly PathCommand[], tolerance = 0.25): Box {
   let minX = Number.POSITIVE_INFINITY;
   let minY = Number.POSITIVE_INFINITY;
   let maxX = Number.NEGATIVE_INFINITY;
   let maxY = Number.NEGATIVE_INFINITY;
-  for (const poly of flattenPath(commands, 0.25)) {
+  for (const poly of flattenPath(commands, tolerance)) {
     for (const p of poly.points) {
       minX = Math.min(minX, p.x);
       minY = Math.min(minY, p.y);

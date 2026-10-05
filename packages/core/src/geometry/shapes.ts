@@ -127,21 +127,22 @@ export function starPoints(points: number, innerRatio: number, w: number, h: num
   return fitPoints(pts, w, h);
 }
 
-let heartTemplate: {
-  commands: PathCommand[];
-  box: { x: number; y: number; width: number; height: number };
-} | null = null;
+const templates = new Map<
+  string,
+  { commands: PathCommand[]; box: { x: number; y: number; width: number; height: number } }
+>();
 
-function heartPath(w: number, h: number): PathCommand[] {
-  if (!heartTemplate) {
-    const commands = parseSvgPath(
-      'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
-    );
-    heartTemplate = { commands, box: pathBounds(commands) };
+/** An SVG path (any coordinates) stretched to fill the box exactly. */
+function templatePath(d: string, w: number, h: number): PathCommand[] {
+  let template = templates.get(d);
+  if (!template) {
+    const commands = parseSvgPath(d);
+    template = { commands, box: pathBounds(commands, 0.001) };
+    templates.set(d, template);
   }
-  const { commands, box } = heartTemplate;
-  const sx = w / box.width;
-  const sy = h / box.height;
+  const { commands, box } = template;
+  const sx = w / (box.width || 1);
+  const sy = h / (box.height || 1);
   const X = (x: number) => (x - box.x) * sx;
   const Y = (y: number) => (y - box.y) * sy;
   return commands.map((c): PathCommand => {
@@ -158,6 +159,88 @@ function heartPath(w: number, h: number): PathCommand[] {
         return ['Z'];
     }
   });
+}
+
+const TEMPLATES = {
+  heart:
+    'M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z',
+  arch: 'M0 100V50A50 50 0 0 1 100 50V100Z',
+  'half-circle': 'M0 50A50 50 0 0 1 100 50Z',
+  'quarter-circle': 'M0 0A100 100 0 0 1 100 100H0Z',
+  crescent: 'M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z',
+  drop: 'M50 0C50 0 90 40 90 66A40 40 0 0 1 10 66C10 40 50 0 50 0Z',
+  cloud: 'M24 90A22 22 0 0 1 20 46A30 30 0 0 1 76 36A27 27 0 0 1 78 90Z',
+  blob: 'M47 3C72-2 97 14 99 42C101 68 83 94 55 98C27 102 3 86 1 58C-1 31 22 8 47 3Z',
+  shield: 'M50 0L95 14V46C95 74 76 92 50 100C24 92 5 74 5 46V14Z',
+  'round-bubble': 'M50 0A50 44 0 1 1 33 85L6 98L14 72A50 44 0 0 1 50 0Z',
+} as const;
+
+/** Circle with `n` rounded bumps around its edge (badge / flower frame). */
+function scallopPath(n: number, w: number, h: number): PathCommand[] {
+  const count = Math.max(5, Math.min(40, Math.round(n)));
+  const pts: Vec[] = [];
+  for (let i = 0; i < count; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / count;
+    pts.push({ x: Math.cos(a) * 0.86, y: Math.sin(a) * 0.86 });
+  }
+  const controls = pts.map((_, i) => {
+    const a = -Math.PI / 2 + ((i + 0.5) * 2 * Math.PI) / count;
+    // Control point beyond the chord: each bump rises ~35% of its width.
+    const r = 0.86 * Math.cos(Math.PI / count) + 2 * 0.86 * Math.sin(Math.PI / count) * 0.7;
+    return { x: Math.cos(a) * r, y: Math.sin(a) * r };
+  });
+  const out: PathCommand[] = [['M', pts[0]!.x, pts[0]!.y]];
+  for (let i = 0; i < count; i++) {
+    const next = pts[(i + 1) % count]!;
+    out.push(['Q', controls[i]!.x, controls[i]!.y, next.x, next.y]);
+  }
+  out.push(['Z']);
+  // Normalize like a template so the bumps touch the box.
+  const box = pathBounds(out, 0.0001);
+  const sx = w / box.width;
+  const sy = h / box.height;
+  return out.map((c): PathCommand => {
+    if (c[0] === 'M' || c[0] === 'L') return [c[0], (c[1] - box.x) * sx, (c[2] - box.y) * sy];
+    if (c[0] === 'Q')
+      return ['Q', (c[1] - box.x) * sx, (c[2] - box.y) * sy, (c[3] - box.x) * sx, (c[4] - box.y) * sy];
+    return c;
+  });
+}
+
+/** Superellipse (|x|^4 + |y|^4 = 1): the "app icon" rounded square. */
+function squirclePath(w: number, h: number): PathCommand[] {
+  const steps = 72;
+  const pts: Vec[] = [];
+  for (let i = 0; i < steps; i++) {
+    const t = (i / steps) * 2 * Math.PI;
+    const c = Math.cos(t);
+    const s = Math.sin(t);
+    pts.push({
+      x: (w / 2) * (1 + Math.sign(c) * Math.abs(c) ** 0.5),
+      y: (h / 2) * (1 + Math.sign(s) * Math.abs(s) ** 0.5),
+    });
+  }
+  return polygonPath(pts);
+}
+
+/** Donut: outer ellipse plus a reversed inner ellipse (a hole under any fill rule). */
+function ringPath(w: number, h: number, innerRatio: number): PathCommand[] {
+  const r = Math.max(0.1, Math.min(0.95, innerRatio));
+  const iw = w * r;
+  const ih = h * r;
+  const inner = ellipsePath((w - iw) / 2, (h - ih) / 2, iw, ih);
+  // Reverse the inner subpath's direction.
+  const pts = inner.filter((c) => c[0] === 'C') as ['C', number, number, number, number, number, number][];
+  const start = inner[0] as ['M', number, number];
+  const reversed: PathCommand[] = [['M', start[1], start[2]]];
+  for (let i = pts.length - 1; i >= 0; i--) {
+    const c = pts[i]!;
+    const prev = i > 0 ? pts[i - 1]! : null;
+    const end = prev ? { x: prev[5], y: prev[6] } : { x: start[1], y: start[2] };
+    reversed.push(['C', c[3], c[4], c[1], c[2], end.x, end.y]);
+  }
+  reversed.push(['Z']);
+  return [...ellipsePath(0, 0, w, h), ...reversed];
 }
 
 function speechBubblePath(w: number, h: number, radius: number): PathCommand[] {
@@ -301,7 +384,67 @@ export function getShapePath(
       );
     }
     case 'heart':
-      return heartPath(w, h);
+    case 'arch':
+    case 'half-circle':
+    case 'quarter-circle':
+    case 'crescent':
+    case 'drop':
+    case 'cloud':
+    case 'blob':
+    case 'shield':
+    case 'round-bubble':
+      return templatePath(TEMPLATES[kind], w, h);
+    case 'ring':
+      return ringPath(w, h, params.innerRatio ?? 0.6);
+    case 'scallop':
+      return scallopPath(params.sides ?? 12, w, h);
+    case 'squircle':
+      return squirclePath(w, h);
+    case 'banner': {
+      const d = Math.min(w * 0.15, h * 0.5);
+      return polygonPath(
+        [
+          { x: 0, y: 0 },
+          { x: w, y: 0 },
+          { x: w - d, y: h / 2 },
+          { x: w, y: h },
+          { x: 0, y: h },
+          { x: d, y: h / 2 },
+        ],
+        radius,
+      );
+    }
+    case 'tag': {
+      const d = Math.min(w * 0.3, h * 0.5);
+      return polygonPath(
+        [
+          { x: 0, y: 0 },
+          { x: w - d, y: 0 },
+          { x: w, y: h / 2 },
+          { x: w - d, y: h },
+          { x: 0, y: h },
+        ],
+        radius,
+      );
+    }
+    case 'double-arrow': {
+      const head = Math.min(w * 0.3, h * 0.8);
+      return polygonPath(
+        [
+          { x: 0, y: h / 2 },
+          { x: head, y: 0 },
+          { x: head, y: h * 0.28 },
+          { x: w - head, y: h * 0.28 },
+          { x: w - head, y: 0 },
+          { x: w, y: h / 2 },
+          { x: w - head, y: h },
+          { x: w - head, y: h * 0.72 },
+          { x: head, y: h * 0.72 },
+          { x: head, y: h },
+        ],
+        radius,
+      );
+    }
     case 'speech-bubble':
       return speechBubblePath(w, h, radius);
     case 'parallelogram': {

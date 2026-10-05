@@ -47,7 +47,8 @@ export function getFrameClipPath(
 ): PathCommand[] {
   return getShapePath(node.shape, node.width, node.height, {
     cornerRadius: node.cornerRadius,
-    sides: 5,
+    // Frames have no shape parameters of their own: classic star, 12-bump badge.
+    sides: node.shape === 'scallop' ? 12 : 5,
     innerRatio: 0.5,
   });
 }

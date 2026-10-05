@@ -236,6 +236,21 @@ export const SHAPE_KINDS = [
   'speech-bubble',
   'parallelogram',
   'trapezoid',
+  'arch',
+  'half-circle',
+  'quarter-circle',
+  'ring',
+  'crescent',
+  'drop',
+  'cloud',
+  'blob',
+  'scallop',
+  'squircle',
+  'shield',
+  'banner',
+  'tag',
+  'double-arrow',
+  'round-bubble',
 ] as const;
 export type ShapeKind = (typeof SHAPE_KINDS)[number];
 
@@ -244,9 +259,9 @@ export interface ShapeNode extends BaseNode<'shape'> {
   fill: Fill | null;
   stroke: Stroke | null;
   cornerRadius: number;
-  /** Number of sides (`polygon`) or points (`star`). */
+  /** Number of sides (`polygon`), points (`star`) or bumps (`scallop`). */
   sides: number;
-  /** Inner radius ratio for `star` (0.1–0.95). */
+  /** Inner radius ratio for `star` and `ring` (0.1–0.95). */
   innerRatio: number;
 }
 

@@ -93,3 +93,8 @@
     6px -6px,
     -6px 0;
 }
+
+/* Search fields bring their own clear button where one is useful. */
+input[type="search"]::-webkit-search-cancel-button {
+  appearance: none;
+}
