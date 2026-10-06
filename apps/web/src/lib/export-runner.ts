@@ -27,6 +27,17 @@ export interface ExportRequest {
   scale: number;
   transparent: boolean;
   quality: number;
+  /** Smaller files: palette PNG, lower JPEG/WebP quality, lighter PDF images. */
+  compress?: boolean;
+  /** Raster formats: largest file size in bytes (quality and size are lowered to fit). */
+  maxBytes?: number;
+}
+
+/** Thrown when a file cannot be made small enough for the size limit. */
+export class SizeLimitError extends Error {
+  constructor() {
+    super('size-limit');
+  }
 }
 
 export interface ExportResult {
@@ -71,9 +82,9 @@ export async function runExport(
 
   if (request.type === 'pdf' || request.type === 'pdfPrint') {
     const data = await exportPdf(ctx, request.pageIds, {
-      dpi: request.type === 'pdfPrint' ? 300 : 150,
+      dpi: request.type === 'pdfPrint' ? 300 : request.compress ? 96 : 150,
       imageFormat: 'jpeg',
-      quality: request.type === 'pdfPrint' ? 0.95 : 0.9,
+      quality: request.type === 'pdfPrint' ? 0.95 : request.compress ? 0.7 : 0.9,
     });
     onProgress?.(total, total);
     return { data, fileName: `${title}.pdf`, mimeType: 'application/pdf' };
@@ -116,13 +127,7 @@ export async function runExport(
       });
     } else {
       const format = request.type as RasterFormat;
-      const r = await exportPageRaster(ctx, pageId, {
-        format,
-        // DPI metadata keeps the printed size equal to the design size at any scale.
-        ...(format === 'webp' ? { scale: request.scale } : { dpi: DESIGN_DPI * request.scale }),
-        transparent: request.transparent,
-        quality: request.quality,
-      });
+      const r = await renderRaster(ctx, pageId, format, request);
       const ext = format === 'jpeg' ? 'jpg' : format;
       files.push({ name: `${title}-${pageNumber(pageId)}.${ext}`, data: r.data, mime: r.mimeType });
     }
@@ -134,4 +139,49 @@ export async function runExport(
     return { data: only.data, fileName: only.name.replace(/-\d+(\.\w+)$/, '$1'), mimeType: only.mime };
   }
   return { data: zipFiles(files), fileName: `${title}.zip`, mimeType: 'application/zip' };
+}
+
+/** One raster page, honoring compression and the size limit. */
+async function renderRaster(
+  ctx: ExportContext,
+  pageId: string,
+  format: RasterFormat,
+  request: ExportRequest,
+): Promise<{ data: Uint8Array; mimeType: string }> {
+  const render = (scale: number, quality: number, compress: boolean) =>
+    exportPageRaster(ctx, pageId, {
+      format,
+      // DPI metadata keeps the printed size equal to the design size at any scale.
+      ...(format === 'webp' ? { scale } : { dpi: DESIGN_DPI * scale }),
+      transparent: request.transparent,
+      quality,
+      compress: format === 'png' && compress,
+    });
+  const quality = request.compress && format !== 'png' ? Math.min(request.quality, 0.7) : request.quality;
+  const first = await render(request.scale, quality, request.compress === true);
+  const limit = request.maxBytes;
+  if (!limit || first.data.length <= limit) return first;
+
+  // Lower the quality first (lossy formats), then the size, until the file fits.
+  if (format !== 'png') {
+    for (const q of [0.8, 0.7, 0.6, 0.5, 0.4]) {
+      if (q >= quality) continue;
+      const r = await render(request.scale, q, false);
+      if (r.data.length <= limit) return r;
+    }
+  } else if (!request.compress) {
+    const r = await render(request.scale, quality, true);
+    if (r.data.length <= limit) return r;
+  }
+  let scale = request.scale;
+  let size = first.data.length;
+  for (let attempt = 0; attempt < 10; attempt++) {
+    // File size grows roughly with the pixel count.
+    scale *= Math.max(0.5, Math.min(0.95, Math.sqrt(limit / size) * 0.95));
+    if (scale < 0.05) break;
+    const r = await render(scale, format === 'png' ? quality : 0.6, true);
+    if (r.data.length <= limit) return r;
+    size = r.data.length;
+  }
+  throw new SizeLimitError();
 }

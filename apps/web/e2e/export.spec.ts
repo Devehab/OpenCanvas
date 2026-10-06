@@ -1,5 +1,6 @@
 import type { AnyNodeProps } from '@opencanvas/core';
 import { expect, type Page, test } from '@playwright/test';
+import { readFileSync } from 'node:fs';
 import { strFromU8, unzipSync } from 'fflate';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';
@@ -200,6 +201,67 @@ test.describe('export', () => {
     const files = unzipSync(new Uint8Array(bytes));
     expect(Object.keys(files).sort()).toEqual(['Instagram Post-1.png', 'Instagram Post-2.png']);
     for (const data of Object.values(files)) expect(decodePng(Buffer.from(data)).width).toBe(1080);
+  });
+
+  test('compressed PNG is a smaller palette PNG of the same size', async ({ page }) => {
+    await buildScene(page);
+    const high = await exportDesign(page, 'png');
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-quality-compress').click();
+    const pending = page.waitForEvent('download');
+    await page.getByTestId('export-start').click();
+    const small = await (await pending).path().then((p) => readFileSync(p));
+    expect(small.length).toBeLessThan(high.bytes.length);
+    // Color type 3 = indexed color.
+    expect(small[25]).toBe(3);
+    expect([decodePng(small).width, decodePng(small).height]).toEqual([1080, 1080]);
+  });
+
+  test('size limit keeps a JPEG under the limit', async ({ page }) => {
+    await buildScene(page);
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-type').click();
+    await page.getByTestId('export-type-jpeg').click();
+    await page.getByTestId('export-scale-input').fill('2');
+    await page.getByTestId('export-scale-input').press('Enter');
+    await page.getByTestId('export-quality-limit').click();
+    await page.getByTestId('export-limit').fill('60');
+    const pending = page.waitForEvent('download');
+    await page.getByTestId('export-start').click();
+    const bytes = await (await pending).path().then((p) => readFileSync(p));
+    expect(bytes.length).toBeLessThanOrEqual(60 * 1024);
+    expect(bytes[0]).toBe(0xff); // still a JPEG
+  });
+
+  test('custom page selection, hidden pages and saved settings', async ({ page }) => {
+    await buildScene(page);
+    await page.getByTestId('page-duplicate').click();
+    await page.getByTestId('page-duplicate').click();
+    // Hide the last page: "All" downloads the two others.
+    await page.getByTestId('page-hide').click();
+    const file = await exportDesign(page, 'png', { pages: 'all' });
+    expect(Object.keys(unzipSync(new Uint8Array(file.bytes)))).toHaveLength(2);
+
+    // Custom: only page 1, and remember the settings (JPEG).
+    await page.getByTestId('open-export').click();
+    await page.getByTestId('export-type').click();
+    await page.getByTestId('export-type-jpeg').click();
+    await page.getByTestId('export-pages-custom').click();
+    const checks = page.getByTestId('export-page-check');
+    await expect(checks).toHaveCount(3);
+    // The current page starts checked; pick page 1 instead.
+    await checks.nth(2).uncheck();
+    await checks.nth(0).check();
+    await page.getByTestId('export-remember').click();
+    const pending = page.waitForEvent('download');
+    await page.getByTestId('export-start').click();
+    const download = await pending;
+    expect(download.suggestedFilename()).toBe('Instagram Post.jpg');
+
+    // Reopening starts from the saved settings.
+    await page.getByTestId('open-export').click();
+    await expect(page.getByTestId('export-type')).toContainText('JPG');
+    await expect(page.getByTestId('export-remember')).toHaveAttribute('aria-checked', 'true');
   });
 
   test('.opencanvas package round-trips through "Open file"', async ({ page }) => {

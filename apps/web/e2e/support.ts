@@ -144,13 +144,12 @@ export async function exportDesign(
   options: { scale?: number; transparent?: boolean; pages?: 'all' | 'current' } = {},
 ): Promise<{ name: string; bytes: Buffer }> {
   await page.getByTestId('open-export').click();
-  await page.getByTestId(`export-type-${type}`).check();
-  if (options.pages) await page.getByTestId('export-pages').selectOption(options.pages);
+  await page.getByTestId('export-type').click();
+  await page.getByTestId(`export-type-${type}`).click();
+  if (options.pages) await page.getByTestId(`export-pages-${options.pages}`).click();
   if (options.scale && options.scale !== 1) {
-    // The slider moves in 0.25 steps from 0.25; use the keyboard for exact values.
-    const slider = page.getByTestId('export-scale').getByRole('slider');
-    await slider.focus();
-    for (let v = 1; v < options.scale; v += 0.25) await page.keyboard.press('ArrowRight');
+    await page.getByTestId('export-scale-input').fill(String(options.scale));
+    await page.getByTestId('export-scale-input').press('Enter');
   }
   if (options.transparent) await page.getByTestId('export-transparent').click();
   const pending = page.waitForEvent('download');

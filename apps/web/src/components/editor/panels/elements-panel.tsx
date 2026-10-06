@@ -3,7 +3,7 @@
 import type { AnyNodeProps } from '@opencanvas/core';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Segmented } from '@/components/ui/segmented';
+import { Segmented } from '@/components/ui/fields';
 import { useEditorContext } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import {
@@ -475,7 +475,7 @@ function IconBrowser({
       <CategoryChips value={category} onChange={onCategory} />
       <div className="flex items-center justify-between gap-2 px-4 pb-2">
         <Segmented
-          size="sm"
+          showLabels
           label={t('editor.elements.iconStyle')}
           value={style}
           onChange={setStyle}

@@ -195,11 +195,18 @@ export function Segmented<T extends string>({
   value,
   options,
   onChange,
+  showLabels = false,
+  size = 'sm',
+  testId,
 }: {
   label: string;
   value: T | null;
-  options: readonly { value: T; label: string; icon?: ReactNode }[];
+  options: readonly { value: T; label: string; icon?: ReactNode; disabled?: boolean }[];
   onChange: (value: T) => void;
+  /** Show labels next to icons (icons alone otherwise). */
+  showLabels?: boolean;
+  size?: 'sm' | 'md';
+  testId?: string;
 }) {
   const refs = useRef<(HTMLButtonElement | null)[]>([]);
   const selected = options.findIndex((o) => o.value === value);
@@ -224,6 +231,7 @@ export function Segmented<T extends string>({
       aria-label={label}
       className="flex rounded-lg bg-slate-100 p-0.5"
       onKeyDown={onKeyDown}
+      data-testid={testId}
     >
       {options.map((o, i) => (
         // biome-ignore lint/a11y/useSemanticElements: styled radio buttons following the WAI-ARIA radio group pattern
@@ -235,16 +243,26 @@ export function Segmented<T extends string>({
           type="button"
           role="radio"
           aria-checked={value === o.value}
-          aria-label={o.label}
+          aria-label={showLabels ? undefined : o.label}
           tabIndex={i === tabStop ? 0 : -1}
-          title={o.label}
+          title={showLabels ? undefined : o.label}
+          disabled={o.disabled}
           onClick={() => onChange(o.value)}
+          data-testid={testId ? `${testId}-${o.value}` : undefined}
           className={cn(
-            'flex h-7 flex-1 items-center justify-center rounded-md text-xs font-medium text-slate-600 transition-colors',
+            'flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 font-medium text-slate-600 transition-colors disabled:opacity-40',
+            size === 'md' ? 'h-9 text-sm' : 'h-7 text-xs',
             value === o.value ? 'bg-white text-slate-900 shadow-sm' : 'hover:text-slate-900',
           )}
         >
-          {o.icon ?? o.label}
+          {showLabels ? (
+            <>
+              {o.icon}
+              <span className="truncate">{o.label}</span>
+            </>
+          ) : (
+            (o.icon ?? o.label)
+          )}
         </button>
       ))}
     </div>

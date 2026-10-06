@@ -5,11 +5,13 @@
 import type { DocumentStore, Id } from '@opencanvas/core';
 import {
   type CanvasLike,
+  context2d,
   type RenderPlatform,
   rasterizePage,
   type SceneRenderer,
 } from '@opencanvas/renderer';
 import { setJpegDpi, setPngDpi } from './dpi';
+import { encodeIndexedPng, quantizeRgba } from './quantize';
 
 export type RasterFormat = 'png' | 'jpeg' | 'webp';
 
@@ -43,6 +45,8 @@ export interface RasterExportOptions {
   quality?: number;
   /** Safety cap on output pixels. */
   maxPixels?: number;
+  /** PNG only: reduce to a 256-color palette (much smaller files). */
+  compress?: boolean;
 }
 
 export interface RasterExportResult {
@@ -73,7 +77,13 @@ export async function exportPageRaster(
     placeholders: false,
     maxPixels: options.maxPixels,
   });
-  let data = await ctx.encoder.encode(raster.canvas, options.format, options.quality ?? 0.92);
+  let data: Uint8Array;
+  if (options.format === 'png' && options.compress) {
+    const pixels = context2d(raster.canvas).getImageData(0, 0, raster.width, raster.height).data;
+    data = await encodeIndexedPng(raster.width, raster.height, quantizeRgba(pixels, 256));
+  } else {
+    data = await ctx.encoder.encode(raster.canvas, options.format, options.quality ?? 0.92);
+  }
   if (options.dpi) {
     if (options.format === 'png') data = setPngDpi(data, options.dpi);
     else if (options.format === 'jpeg') data = setJpegDpi(data, options.dpi);
