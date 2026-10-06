@@ -56,7 +56,7 @@ export interface RenderOptions {
   viewport?: Box | null;
   /** Draw placeholders for images that are not loaded yet. Default true. */
   placeholders?: boolean;
-  /** Show an illustration in empty photo frames (editor only; exports keep the frame fill). */
+  /** Show an illustration in empty frames (editor only; exports keep the frame fill). */
   framePlaceholders?: boolean;
   /** `export` processes images at full resolution. Default `interactive`. */
   quality?: 'interactive' | 'export';
@@ -351,7 +351,8 @@ export class SceneRenderer {
     if (node.fill) this.fillPath(ctx, path, node.fill, node.width, node.height);
     if (
       state.options.framePlaceholders &&
-      !state.store.getChildren(node.id).some((c) => c.type === 'image' && c.visible)
+      // Only empty frames: a frame used as a container for other elements keeps its look.
+      !state.store.getChildren(node.id).some((c) => c.visible)
     ) {
       ctx.save();
       ctx.beginPath();

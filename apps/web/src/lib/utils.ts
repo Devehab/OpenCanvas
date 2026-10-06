@@ -1,4 +1,5 @@
 import { type ClassValue, clsx } from 'clsx';
+import { useEffect, useState } from 'react';
 
 export function cn(...classes: ClassValue[]): string {
   return clsx(classes);
@@ -51,4 +52,17 @@ export function parseUserNumber(raw: string): number {
     .replace(/[\u066B,]/g, '.')
     .replace(/\u2212/g, '-');
   return /^[-+]?(\d+\.?\d*|\.\d+)$/.test(ascii) ? Number(ascii) : Number.NaN;
+}
+
+/** Tracks a CSS media query (`fallback` during server rendering and the first render). */
+export function useMediaQuery(query: string, fallback: boolean): boolean {
+  const [matches, setMatches] = useState(fallback);
+  useEffect(() => {
+    const media = window.matchMedia(query);
+    const sync = () => setMatches(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, [query]);
+  return matches;
 }

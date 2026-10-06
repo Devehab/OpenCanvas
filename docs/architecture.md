@@ -40,7 +40,7 @@ A design is a **flat map of immutable records** keyed by id — never a nested t
 | `node` | `type`, `parentId`, `index`, geometry (`x`, `y`, `width`, `height`, `rotation`, `flipX`, `flipY`), appearance (`opacity`, `blendMode`, `shadow`, `blur`), `visible`, `locked`, `semantic`, `meta` + type-specific fields |
 | `asset` | `hash` (`sha256-…`), `mimeType`, `width`, `height`, `size`, `src` |
 
-Node types: `shape` (18 parametric kinds), `line`, `path` (SVG path data, used for icons), `text`, `image`, `group`, `frame` (clipping container, also an image placeholder).
+Node types: `shape` (33 parametric kinds), `line`, `path` (SVG path data, used for icons), `text`, `image`, `group`, `frame` (clipping container, also an image placeholder).
 
 - **Hierarchy** is expressed with `parentId`; **z-order** with a fractional `index` key (base-62 fractional indexing). Inserting between two layers never renumbers siblings, which keeps diffs small and is what real-time collaboration needs later.
 - **Geometry**: a node's local transform is `T(center) · R(rotation) · S(flip) · T(−size/2)`; page transforms compose parent transforms. Hit-testing, bounds, snapping and the renderer share these functions.

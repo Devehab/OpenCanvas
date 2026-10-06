@@ -9,7 +9,7 @@ import { useToast } from '@/components/ui/toast';
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { importPackageFile } from '@/lib/package-io';
-import { cn } from '@/lib/utils';
+import { cn, useMediaQuery } from '@/lib/utils';
 import { CreateDialog } from './create-dialog';
 import { LanguageSwitcher } from './language-switcher';
 import { Logo } from './logo';
@@ -21,6 +21,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  // One language switcher, in the sidebar or (on phones, where it is hidden) in the header.
+  const isDesktop = useMediaQuery('(min-width: 768px)', true);
 
   const nav = [
     { href: '/', label: t('nav.home'), icon: House },
@@ -77,7 +79,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto space-y-3 px-2">
           <p className="text-xs leading-relaxed text-slate-500">{t('home.localNotice')}</p>
-          <LanguageSwitcher />
+          {isDesktop ? <LanguageSwitcher /> : null}
         </div>
       </aside>
       <input
@@ -103,6 +105,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <main className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <Logo />
+          {isDesktop ? null : <LanguageSwitcher />}
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />
             {t('nav.create')}

@@ -43,10 +43,10 @@ Scope from the spec: canvas, objects, text, images, layers, pages, undo/redo, sa
 These editor capabilities from the spec are scheduled into later phases:
 
 - Objects: charts, tables, QR codes, stickers, patterns (Phase 2); video and audio (Phase 3).
-- Transform and layout aids: skew, rulers, grid, margins, safe areas, user guides (Phase 2).
+- Transform and layout aids: skew, margins, safe areas (Phase 2). Rulers, guides and column/grid guide presets are done.
 - Text: font upload (Phase 2), text on a path (Phase 2).
 - Image tools: sharpness, duotone and filter presets (Phase 2); background removal/replacement, erase, magic expand, upscaling (Phase 5).
-- Compression options beyond JPEG/WebP quality (Phase 2).
+- Done since Phase 1: palette-PNG compression and size-limited downloads, page views (single, thumbnails, scroll, grid), crop mode, photo frames with drag and drop, a 2,900-icon open-source library.
 
 ## Phase 2 — Design platform
 
@@ -54,7 +54,8 @@ These editor capabilities from the spec are scheduled into later phases:
 - Server sync on top of local-first persistence: the revision-based save protocol already used between tabs becomes the client/server protocol; offline edits sync when the connection returns.
 - Template engine: templates are designs with semantic slots; "replace all photos" and "apply my brand".
 - Asset library (uploads, stock providers via adapters) and font upload.
-- Brand kits: logos, colors, fonts, typography presets and rules.
+- Brand kits: logos, colors, fonts, voice, images and brand templates already work locally; next: sharing them through accounts and "apply my brand" to a whole design.
+- Projects and folders already work locally; next: shared team folders.
 - Vector PDF export with embedded font subsets; compression options.
 - Remaining editor objects and aids listed above.
 - Security tests for authentication, authorization, CSRF, rate limiting, signed URLs and tenant isolation.

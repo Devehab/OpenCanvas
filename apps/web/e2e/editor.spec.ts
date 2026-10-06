@@ -10,6 +10,7 @@ import {
   openPanel,
   toScreen,
   waitForCanvasIdle,
+  showInspector,
   waitForSaved,
 } from './support';
 
@@ -50,6 +51,7 @@ test.describe('editor', () => {
     expect(nodes.map((n) => n.type)).toEqual(['shape', 'line', 'frame', 'path', 'text']);
     // Each insert selects the new element.
     expect((await getSelection(page)).map((n) => n.type)).toEqual(['text']);
+    await showInspector(page);
     await expect(page.getByTestId('inspector').getByRole('heading', { level: 2 })).toHaveText('Text');
   });
 

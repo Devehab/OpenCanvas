@@ -15,9 +15,9 @@ test('brand kit: create, edit, and use it in the editor', async ({ page }) => {
   await expect(page.getByTestId('brand-color')).toHaveCount(4);
 
   // Logo upload.
-  await page.getByTestId('brand-input-logos').setInputFiles([
-    { name: 'logo.png', mimeType: 'image/png', buffer: samplePng(200, 100) },
-  ]);
+  await page
+    .getByTestId('brand-input-logos')
+    .setInputFiles([{ name: 'logo.png', mimeType: 'image/png', buffer: samplePng(200, 100) }]);
   await expect(page.getByTestId('brand-images-logos').locator('li')).toHaveCount(1);
 
   // Fonts and voice.
@@ -32,9 +32,13 @@ test('brand kit: create, edit, and use it in the editor', async ({ page }) => {
   await expect(page.getByTestId('brand-panel')).toBeVisible();
   await expect(page.getByTestId('brand-select')).toHaveValue(/brand_/);
 
-  const [shapeId] = await insertNodes(page, [{ type: 'shape', shape: 'rect', x: 10, y: 10, width: 100, height: 100 }], {
-    center: false,
-  });
+  const [shapeId] = await insertNodes(
+    page,
+    [{ type: 'shape', shape: 'rect', x: 10, y: 10, width: 100, height: 100 }],
+    {
+      center: false,
+    },
+  );
   await page.evaluate((id) => window.__opencanvas!.editor.select([id]), shapeId!);
   await page.getByTestId('brand-panel-color').first().click();
   const [shape] = await getNodes(page);
@@ -42,7 +46,9 @@ test('brand kit: create, edit, and use it in the editor', async ({ page }) => {
 
   // Brand heading: Cairo, bold.
   await page.getByTestId('brand-panel-font-heading').click();
-  const text = (await getNodes(page)).find((n) => n.type === 'text') as { style: { fontFamily: string; fontWeight: number } };
+  const text = (await getNodes(page)).find((n) => n.type === 'text') as {
+    style: { fontFamily: string; fontWeight: number };
+  };
   expect(text.style).toMatchObject({ fontFamily: 'Cairo', fontWeight: 700 });
 
   // Logo onto the page.

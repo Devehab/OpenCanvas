@@ -612,6 +612,7 @@ export class Editor {
       x: (s.viewport.width - page.width * zoom) / 2,
       y: fitsHeight ? (s.viewport.height - page.height * zoom) / 2 + PAGE_GAP_PX / 4 : PAGE_GAP_PX,
     });
+    this.cameraFitted = true;
   }
 
   goToPage(offset: 1 | -1): void {
@@ -630,10 +631,16 @@ export class Editor {
     if (prev.width === width && prev.height === height) return;
     const first = prev.width === 0 || prev.height === 0;
     this.state.set({ viewport: { width, height } });
-    if (first) this.zoomToFit();
+    // Keep the page fitted while the layout settles or the window resizes,
+    // until the user pans or zooms themselves.
+    if (first || this.cameraFitted) this.revealPage();
   }
 
+  /** True while the camera shows the automatic fit (no manual pan/zoom since). */
+  private cameraFitted = false;
+
   setCamera(camera: Camera): void {
+    this.cameraFitted = false;
     this.state.set({ camera: { ...camera, zoom: clampZoom(camera.zoom) } });
   }
 
@@ -671,6 +678,7 @@ export class Editor {
       2,
     );
     this.setCamera({ ...camera, y: camera.y + top });
+    this.cameraFitted = true;
   }
 
   zoomToSelection(): void {

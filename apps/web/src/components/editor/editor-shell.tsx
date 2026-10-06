@@ -4,6 +4,7 @@ import type { AnyNodeProps } from '@opencanvas/core';
 import { serializeDocument } from '@opencanvas/core';
 import type { CanvasView } from '@opencanvas/editor/dom';
 import { isEditableTarget, toKeyInput } from '@opencanvas/editor/dom';
+import { SlidersHorizontal } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, buttonClasses } from '@/components/ui/button';
@@ -87,8 +88,12 @@ function EditorLayout({ session }: { session: EditorSession }) {
   const toast = useToast();
   const editor = session.editor;
   const viewRef = useRef<CanvasView | null>(null);
-  const [panel, setPanel] = useState<PanelId | null>('elements');
+  // Phones start with the canvas: the side panel opens on demand.
+  const [panel, setPanel] = useState<PanelId | null>(() =>
+    typeof window !== 'undefined' && window.innerWidth < 768 ? null : 'elements',
+  );
   const [dialog, setDialog] = useState<DialogId>(null);
+  const [inspectorOpen, setInspectorOpen] = useState(false);
 
   const uploadFiles = useCallback(
     async (files: File[], options: UploadOptions = {}) => {
@@ -208,9 +213,20 @@ function EditorLayout({ session }: { session: EditorSession }) {
             <SidePanel />
             <div className="relative flex min-w-0 flex-1 flex-col">
               <CanvasArea />
+              {/* Phones: the inspector opens over the canvas. */}
+              <button
+                type="button"
+                onClick={() => setInspectorOpen((o) => !o)}
+                aria-pressed={inspectorOpen}
+                className="absolute end-3 top-3 z-10 flex h-9 items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 shadow-md md:hidden"
+                data-testid="toggle-inspector"
+              >
+                <SlidersHorizontal className="size-4" />
+                {t('editor.inspector.label')}
+              </button>
               <PagesBar />
             </div>
-            <Inspector />
+            <Inspector open={inspectorOpen} onClose={() => setInspectorOpen(false)} />
           </div>
         </div>
         <ErrorReporter />

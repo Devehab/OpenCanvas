@@ -284,7 +284,7 @@ export function ExportDialog({
                 {formatNumber(width)} × {formatNumber(height)} {t('common.px')}
               </span>
               {type !== 'webp' ? (
-                <span className="text-slate-400">
+                <span className="text-slate-500">
                   {' · '}
                   {formatNumber(round(DESIGN_DPI * scale, 1))} {t('editor.exportDialog.dpiShort')}
                 </span>
@@ -533,7 +533,7 @@ function PageChecklist({
           />
           <span>{t('editor.pages.page', { n: formatNumber(i + 1) })}</span>
           {names[i] ? (
-            <span className="truncate text-slate-400" dir="auto">
+            <span className="truncate text-slate-500" dir="auto">
               {names[i]}
             </span>
           ) : null}

@@ -30,7 +30,10 @@ export function SidePanel() {
     layers: <LayersPanel />,
   };
   return (
-    <aside className="flex shrink-0 border-e border-slate-200 bg-white" aria-label={t('editor.panels.label')}>
+    <aside
+      className="relative z-20 flex shrink-0 border-e border-slate-200 bg-white"
+      aria-label={t('editor.panels.label')}
+    >
       <div
         role="tablist"
         aria-orientation="vertical"
@@ -65,7 +68,7 @@ export function SidePanel() {
           role="tabpanel"
           id={`panel-${panel}`}
           aria-labelledby={`panel-tab-${panel}`}
-          className="relative flex w-72 flex-col max-lg:w-60"
+          className="relative flex w-72 flex-col bg-white max-lg:w-60 max-md:absolute max-md:inset-y-0 max-md:start-[72px] max-md:border-e max-md:border-slate-200 max-md:shadow-xl"
         >
           <button
             type="button"

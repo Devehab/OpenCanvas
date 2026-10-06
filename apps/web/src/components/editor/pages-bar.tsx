@@ -259,7 +259,7 @@ export function PagesBar() {
           data-testid="toggle-thumbnails"
         >
           <PanelBottom className="size-4" />
-          {t('editor.pages.label')}
+          <span className="max-sm:sr-only">{t('editor.pages.label')}</span>
           <ChevronDown
             className={cn('size-3.5 transition-transform', view !== 'thumbnails' && 'rotate-180')}
           />
@@ -299,10 +299,11 @@ export function PagesBar() {
             <MenuItem onSelect={() => editor.zoomToFit()}>{t('editor.zoom.fit')}</MenuItem>
           </MenuContent>
         </Menu>
-        <div className="mx-1 h-5 w-px bg-slate-200" />
+        <div className="mx-1 h-5 w-px bg-slate-200 max-sm:hidden" />
         <IconButton
           size="sm"
           label={t('editor.pages.previous')}
+          className="max-sm:hidden"
           disabled={index <= 0}
           onClick={() => editor.goToPage(-1)}
           tooltipSide="top"
@@ -325,6 +326,7 @@ export function PagesBar() {
         <IconButton
           size="sm"
           label={t('editor.pages.next')}
+          className="max-sm:hidden"
           disabled={index >= pages.length - 1}
           onClick={() => editor.goToPage(1)}
           tooltipSide="top"
@@ -344,6 +346,7 @@ export function PagesBar() {
         <IconButton
           size="sm"
           label={fullscreen.on ? t('editor.pages.exitFullscreen') : t('editor.pages.fullscreen')}
+          className="max-sm:hidden"
           onClick={fullscreen.toggle}
           tooltipSide="top"
         >

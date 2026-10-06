@@ -9,6 +9,7 @@ import {
   samplePng,
   waitForCanvasIdle,
   waitForEditor,
+  showInspector,
   waitForSaved,
 } from './support';
 
@@ -56,6 +57,7 @@ test.describe('uploads', () => {
     const asset = await page.evaluate((id) => window.__opencanvas!.editor.store.getAsset(id), image!.assetId);
     expect(asset).toMatchObject({ mimeType: 'image/png', width: 640, height: 480 });
     expect(asset!.hash).toMatch(/^sha256-[0-9a-f]{64}$/);
+    await showInspector(page);
     await expect(page.getByTestId('inspector').getByRole('heading', { level: 2 })).toHaveText('Image');
 
     await waitForSaved(page);

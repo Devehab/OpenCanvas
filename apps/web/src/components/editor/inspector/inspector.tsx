@@ -37,6 +37,7 @@ import {
   Ungroup,
   Unlink2,
   Unlock,
+  X,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Button, IconButton } from '@/components/ui/button';
@@ -45,6 +46,7 @@ import { NumberField, SelectField, SliderField, Toggle } from '@/components/ui/f
 import { Section } from '@/components/ui/section';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
+import { cn } from '@/lib/utils';
 import { FillControl, ShadowControl, StrokeControl, useDocumentColors } from './controls';
 import { ImageSection } from './image-section';
 import { TextSection } from './text-section';
@@ -492,7 +494,8 @@ function SemanticSection({ node }: { node: NodeRecord }) {
   );
 }
 
-export function Inspector() {
+/** On phones the inspector is an overlay opened with `open` (always shown on larger screens). */
+export function Inspector({ open = false, onClose }: { open?: boolean; onClose?: () => void }) {
   const { t } = useI18n();
   const { editor } = useEditorContext();
   const nodes = useEditorValue((e) => e.getSelectedNodes());
@@ -503,10 +506,24 @@ export function Inspector() {
   const locked = nodes.length > 0 && nodes.every((n) => n.locked);
   return (
     <aside
-      className="w-72 shrink-0 overflow-y-auto border-s border-slate-200 bg-white max-lg:w-64"
+      className={cn(
+        'w-72 shrink-0 overflow-y-auto border-s border-slate-200 bg-white max-lg:w-64',
+        'max-md:absolute max-md:inset-y-0 max-md:end-0 max-md:z-30 max-md:shadow-xl',
+        !open && 'max-md:hidden',
+      )}
       aria-label={t('editor.inspector.label')}
       data-testid="inspector"
     >
+      {onClose ? (
+        <button
+          type="button"
+          onClick={onClose}
+          className="flex w-full items-center justify-end gap-1 border-b border-slate-100 px-4 py-2 text-sm text-slate-600 md:hidden"
+        >
+          <X className="size-4" />
+          {t('common.close')}
+        </button>
+      ) : null}
       {nodes.length === 0 ? (
         <PageSection />
       ) : (

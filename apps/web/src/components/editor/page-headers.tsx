@@ -48,7 +48,7 @@ function PageTitle({ pageId, name }: { pageId: Id; name: string }) {
       aria-label={t('editor.pages.title')}
       maxLength={256}
       dir="auto"
-      className="min-w-20 flex-1 truncate rounded-md bg-transparent px-1.5 py-1 text-sm text-slate-700 outline-none placeholder:text-slate-400 hover:bg-white/80 focus:bg-white focus:ring-2 focus:ring-brand-200"
+      className="min-w-20 flex-1 truncate rounded-md bg-transparent px-1.5 py-1 text-sm text-slate-700 outline-none placeholder:text-slate-500 hover:bg-white/80 focus:bg-white focus:ring-2 focus:ring-brand-200"
       data-testid="page-title"
     />
   );

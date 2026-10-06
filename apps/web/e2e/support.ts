@@ -44,7 +44,10 @@ export async function waitForCanvasIdle(page: Page): Promise<void> {
 }
 
 /** Opens a side panel tab (clicking the active tab would collapse the panel). */
-export async function openPanel(page: Page, id: 'elements' | 'text' | 'uploads' | 'layers'): Promise<void> {
+export async function openPanel(
+  page: Page,
+  id: 'elements' | 'text' | 'brand' | 'uploads' | 'layers',
+): Promise<void> {
   const tab = page.getByTestId(`panel-tab-${id}`);
   if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click();
   await expect(tab).toHaveAttribute('aria-selected', 'true');
@@ -199,4 +202,10 @@ export function samplePng(width = 64, height = 48): Buffer {
     }
   }
   return PNG.sync.write(png);
+}
+
+/** Phones show the inspector over the canvas on demand: open it if needed. */
+export async function showInspector(page: Page): Promise<void> {
+  const toggle = page.getByTestId('toggle-inspector');
+  if ((await toggle.isVisible()) && (await toggle.getAttribute('aria-pressed')) !== 'true') await toggle.click();
 }

@@ -492,7 +492,7 @@ function IconBrowser({
         ) : null}
       </div>
       <IconGrid icons={results} failed={failed} onRemember={onRemember} />
-      <p className="px-4 pt-4 text-[11px] leading-relaxed text-slate-400">
+      <p className="px-4 pt-4 text-[11px] leading-relaxed text-slate-500">
         {t('editor.elements.iconCredits')}
       </p>
     </>

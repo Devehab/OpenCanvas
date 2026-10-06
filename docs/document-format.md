@@ -83,7 +83,12 @@ Exactly one, with id `"document"`.
 | `width`, `height` | number | Design pixels (CSS px, 96 per inch); 1–10 000 |
 | `background` | Fill | Solid color or gradient |
 | `notes` | string | Presenter notes |
+| `hidden` | boolean | Hidden pages stay in the design but are skipped when downloading all pages (default `false`) |
+| `locked` | boolean | Elements on a locked page cannot be changed or added (default `false`) |
+| `guides` | `{ axis: "x" \| "y", position }[]` | Ruler guides in page units (≤ 200); `x` guides are vertical lines. Elements snap to them |
 | `meta` | object | |
+
+Older documents without `hidden`, `locked` or `guides` load with the defaults.
 
 ### `asset`
 
@@ -126,7 +131,7 @@ Colors are normalized to lowercase `#rrggbb` or `#rrggbbaa`.
 
 | Type | Specific fields |
 | --- | --- |
-| `shape` | `shape` (`rect`, `ellipse`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `octagon`, `polygon`, `star`, `arrow-right`, `arrow-left`, `chevron`, `cross`, `heart`, `speech-bubble`, `parallelogram`, `trapezoid`), `fill`, `stroke`, `cornerRadius`, `sides` (polygon sides / star points), `innerRatio` (star) |
+| `shape` | `shape` (`rect`, `ellipse`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `octagon`, `polygon`, `star`, `arrow-right`, `arrow-left`, `chevron`, `cross`, `heart`, `speech-bubble`, `parallelogram`, `trapezoid`, `arch`, `half-circle`, `quarter-circle`, `ring`, `crescent`, `drop`, `cloud`, `blob`, `scallop`, `squircle`, `shield`, `banner`, `tag`, `double-arrow`, `round-bubble`), `fill`, `stroke`, `cornerRadius`, `sides` (polygon sides / star points / scallop bumps), `innerRatio` (star, ring) |
 | `line` | `stroke`, `startArrow`, `endArrow` (`none`, `arrow`, `triangle`, `circle`, `square`, `bar`). The line runs from the left-middle to the right-middle of its box; length = `width`, angle = `rotation` |
 | `path` | `path` (SVG path data), `viewBox`, `fill`, `stroke`, `fillRule` — icons and imported vector shapes |
 | `text` | `content.paragraphs[]` (`runs[]` of `{ text, style }` overrides, `list`: `none` / `bullet` / `number`, `indent` 0–4), base `style` (`fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `color`, `underline`, `strikethrough`, `letterSpacing` in 1/1000 em, `textTransform`), `align` (`left`, `center`, `right`, `justify`), `verticalAlign`, `direction` (`auto`, `ltr`, `rtl`), `lineHeight`, `paragraphSpacing`, `sizing` (`auto-width`, `auto-height`, `fixed`), `autoFit`, `effect` (outline, hollow, background, neon, echo) |
