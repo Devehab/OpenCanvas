@@ -140,7 +140,7 @@ export class CanvasView {
 
   private invalidate(): void {
     const s = this.editor.state.get();
-    const key = `${this.editor.store.version}|${s.pageId}|${s.pageView}|${s.camera.x},${s.camera.y},${s.camera.zoom}|${s.viewport.width}x${s.viewport.height}|${this.dpr}|${s.editingTextId ?? ''}`;
+    const key = `${this.editor.store.version}|${s.pageId}|${s.pageView}|${s.camera.x},${s.camera.y},${s.camera.zoom}|${s.viewport.width}x${s.viewport.height}|${this.dpr}|${s.editingTextId ?? ''}|${s.croppingId ?? ''}`;
     if (key !== this.sceneKey) {
       this.sceneKey = key;
       this.sceneDirty = true;
