@@ -6,7 +6,9 @@ export type ChannelMessage =
   | { type: 'design-saved'; designId: string; revision: number; tabId: string }
   | { type: 'designs-changed'; tabId: string }
   | { type: 'thumbnail-updated'; designId: string; tabId: string }
-  | { type: 'uploads-changed'; tabId: string };
+  | { type: 'uploads-changed'; tabId: string }
+  | { type: 'folders-changed'; tabId: string }
+  | { type: 'brands-changed'; tabId: string };
 
 export const TAB_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());

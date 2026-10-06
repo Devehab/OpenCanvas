@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react';
+import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Star, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -19,16 +19,21 @@ import {
   getDesign,
   renameDesign,
   setTrashed,
+  updateDesignMeta,
 } from '@/lib/storage/designs';
+import type { FolderRecord } from '@/lib/storage/folders';
+import { DESIGN_DRAG_TYPE, MoveToFolderMenu } from './folders';
 
 export function DesignCard({
   design,
   trashed,
   onChange,
+  folders,
 }: {
   design: DesignSummary;
   trashed?: boolean;
   onChange: () => void;
+  folders?: readonly FolderRecord[];
 }) {
   const { t, formatRelative } = useI18n();
   const router = useRouter();
@@ -45,7 +50,15 @@ export function DesignCard({
   const href = `/design/${design.id}`;
 
   return (
-    <li className="group relative" data-testid="design-card">
+    <li
+      className="group relative"
+      data-testid="design-card"
+      draggable={!trashed}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(DESIGN_DRAG_TYPE, design.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
+    >
       <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-slate-100 transition group-hover:border-brand-300 group-hover:shadow-md">
         {trashed ? null : (
           <Link
@@ -54,6 +67,12 @@ export function DesignCard({
             aria-label={`${t('common.open')} ${design.title}`}
           />
         )}
+        {design.starred && !trashed ? (
+          <Star
+            className="absolute start-2 top-2 z-20 size-4 fill-amber-400 text-amber-500"
+            aria-label={t('projects.starred')}
+          />
+        ) : null}
         {thumbnail ? (
           // biome-ignore lint/performance/noImgElement: local blob URL thumbnail
           <img
@@ -122,6 +141,24 @@ export function DesignCard({
                 >
                   {t('common.duplicate')}
                 </MenuItem>
+                <MenuItem
+                  icon={<Star className="size-4" />}
+                  onSelect={async () => {
+                    await updateDesignMeta(design.id, { starred: !design.starred });
+                    changed();
+                  }}
+                  testId="design-star"
+                >
+                  {design.starred ? t('projects.unstar') : t('projects.star')}
+                </MenuItem>
+                {folders ? (
+                  <MoveToFolderMenu
+                    folders={folders}
+                    current={design.folderId}
+                    kind="design"
+                    id={design.id}
+                  />
+                ) : null}
                 <MenuItem
                   icon={<Download className="size-4" />}
                   onSelect={async () => {
@@ -210,10 +247,12 @@ export function DesignGrid({
   designs,
   trashed,
   onChange,
+  folders,
 }: {
   designs: DesignSummary[];
   trashed?: boolean;
   onChange: () => void;
+  folders?: readonly FolderRecord[];
 }) {
   return (
     <ul
@@ -221,7 +260,7 @@ export function DesignGrid({
       data-testid="design-grid"
     >
       {designs.map((d) => (
-        <DesignCard key={d.id} design={d} trashed={trashed} onChange={onChange} />
+        <DesignCard key={d.id} design={d} trashed={trashed} onChange={onChange} folders={folders} />
       ))}
     </ul>
   );
