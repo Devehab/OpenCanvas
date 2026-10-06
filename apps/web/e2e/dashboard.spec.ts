@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createDesign, waitForSaved } from './support';
+import { createDesign, samplePng, waitForEditor, waitForSaved } from './support';
 
 test.describe('dashboard', () => {
   test('creates a design from a format and lists it under recent designs @smoke', async ({ page }) => {
@@ -38,6 +38,44 @@ test.describe('dashboard', () => {
     });
     // A4 at 96 DPI.
     expect(size).toEqual([794, 1123]);
+  });
+
+  test('create dialog: categories, platform filter and search', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('create-design').click();
+    const dialog = page.getByTestId('create-dialog');
+    await expect(dialog).toBeVisible();
+    await page.getByTestId('create-tab-social').click();
+    await page.getByTestId('platform-pinterest').click();
+    await expect(dialog.getByTestId('format-pinterest-pin')).toBeVisible();
+    await expect(dialog.getByTestId('format-instagram-post')).toHaveCount(0);
+    await page.getByTestId('create-search').fill('whiteboard');
+    await dialog.getByTestId('format-whiteboard').click();
+    await page.waitForURL(/\/design\//);
+    await waitForEditor(page);
+    const page0 = await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      return editor.store.getPage(editor.pageId)!;
+    });
+    expect([page0.width, page0.height]).toEqual([3840, 2160]);
+  });
+
+  test('photo editor creates a design at the photo size', async ({ page }) => {
+    await page.goto('/');
+    await page.getByTestId('create-design').click();
+    await page.getByTestId('create-tab-photo').click();
+    await page.getByTestId('create-photo-input').setInputFiles([
+      { name: 'Holiday.png', mimeType: 'image/png', buffer: samplePng(900, 600) },
+    ]);
+    await page.waitForURL(/\/design\//);
+    await waitForEditor(page);
+    const state = await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      const p = editor.store.getPage(editor.pageId)!;
+      const nodes = editor.store.getChildren(p.id);
+      return { w: p.width, h: p.height, title: editor.store.getDocument()!.title, nodes: nodes.map((n) => [n.type, n.width, n.height]) };
+    });
+    expect(state).toEqual({ w: 900, h: 600, title: 'Holiday', nodes: [['image', 900, 600]] });
   });
 
   test('renames, duplicates, trashes, restores and deletes designs', async ({ page }) => {

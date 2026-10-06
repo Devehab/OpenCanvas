@@ -123,3 +123,38 @@ describe('font embedding', () => {
     expect(selectSources(sources, { ...face, family: 'Unknown' })).toEqual([]);
   });
 });
+
+describe('photo designs', () => {
+  it('creates a page at the photo size with the photo filling it', async () => {
+    const { photoDesignSnapshot, photoPageSize } = await import('../src/lib/photo-design');
+    expect(photoPageSize(4000, 3000)).toEqual({ width: 4000, height: 3000 });
+    expect(photoPageSize(20000, 10000)).toEqual({ width: 10000, height: 5000 });
+    const snapshot = photoDesignSnapshot(
+      {
+        typeName: 'asset',
+        id: 'asset_photo',
+        kind: 'image',
+        name: 'beach.jpg',
+        mimeType: 'image/jpeg',
+        width: 1200,
+        height: 800,
+        size: 1,
+        hash: `sha256-${'f'.repeat(64)}`,
+        src: null,
+      },
+      'Beach',
+    );
+    const page = snapshot.records.find((r) => r.typeName === 'page');
+    const image = snapshot.records.find((r) => r.typeName === 'node');
+    expect(page).toMatchObject({ width: 1200, height: 800 });
+    expect(image).toMatchObject({
+      type: 'image',
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: 800,
+      assetId: 'asset_photo',
+    });
+    expect(snapshot.records.find((r) => r.typeName === 'document')).toMatchObject({ title: 'Beach' });
+  });
+});

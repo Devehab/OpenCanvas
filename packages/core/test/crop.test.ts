@@ -4,7 +4,7 @@ import { imageFrame, panCrop, resizeImageCrop, scaleCropImage } from '../src';
 // A 400×200 box showing the middle half of a photo horizontally.
 const node = { width: 400, height: 200, crop: { x: 0.25, y: 0, width: 0.5, height: 1 } };
 const r = (v: number) => Math.round(v * 1e6) / 1e6;
-const round = (c: Record<string, number>) => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r(v)]));
+const round = (c: object) => Object.fromEntries(Object.entries(c).map(([k, v]) => [k, r(v as number)]));
 
 describe('crop mode', () => {
   it('describes the whole photo around the crop box', () => {
