@@ -33,6 +33,7 @@ import { ASSET_DRAG_TYPE, parseAssetDrag, placeImage } from '@/lib/place-image';
 import { cn } from '@/lib/utils';
 import { PageGrid } from './page-grid';
 import { PageHeaders } from './page-headers';
+import { Rulers } from './rulers';
 import { ELEMENT_DRAG_TYPE } from './side-panel';
 
 function ToolBar() {
@@ -199,6 +200,7 @@ export function CanvasArea() {
         {t('editor.a11y.canvasDescription')}
       </p>
       <PageHeaders />
+      <Rulers />
       {pageView === 'grid' ? <PageGrid /> : <ToolBar />}
       {dragging ? (
         <div className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center">

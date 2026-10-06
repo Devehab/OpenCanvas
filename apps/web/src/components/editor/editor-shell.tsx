@@ -29,6 +29,7 @@ import { createDesignCopy } from '@/lib/storage/designs';
 import { prepareImage } from '@/lib/upload';
 import { CanvasArea } from './canvas-area';
 import { ExportDialog } from './dialogs/export-dialog';
+import { GuidesDialog } from './dialogs/guides-dialog';
 import { ResizeDialog } from './dialogs/resize-dialog';
 import { ShortcutsDialog } from './dialogs/shortcuts-dialog';
 import { Inspector } from './inspector/inspector';
@@ -214,6 +215,7 @@ function EditorLayout({ session }: { session: EditorSession }) {
       <SelectionAnnouncer />
       <ExportDialog open={dialog === 'export'} onOpenChange={(o) => setDialog(o ? 'export' : null)} />
       <ResizeDialog open={dialog === 'resize'} onOpenChange={(o) => setDialog(o ? 'resize' : null)} />
+      <GuidesDialog open={dialog === 'guides'} onOpenChange={(o) => setDialog(o ? 'guides' : null)} />
       <ShortcutsDialog
         open={dialog === 'shortcuts'}
         onOpenChange={(o) => setDialog(o ? 'shortcuts' : null)}

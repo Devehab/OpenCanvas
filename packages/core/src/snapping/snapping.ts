@@ -13,7 +13,7 @@ export interface SnapTarget {
   /** Extent of the target along the other axis (for drawing the guide). */
   from: number;
   to: number;
-  kind: 'page' | 'node';
+  kind: 'page' | 'node' | 'guide';
 }
 
 export interface SnapTargets {
@@ -50,6 +50,12 @@ export function collectSnapTargets(
       targets.y.push({ value, from: b.x, to: b.x + b.width, kind });
   };
   push({ x: 0, y: 0, width: page.width, height: page.height }, 'page');
+  // Ruler guides span the whole page.
+  for (const guide of page.guides ?? []) {
+    if (guide.axis === 'x')
+      targets.x.push({ value: guide.position, from: 0, to: page.height, kind: 'guide' });
+    else targets.y.push({ value: guide.position, from: 0, to: page.width, kind: 'guide' });
+  }
   for (const node of store.getChildren(page.id)) {
     if (!node.visible || exclude.has(node.id)) continue;
     push(getPageBounds(store, node), 'node');

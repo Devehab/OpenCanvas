@@ -1,6 +1,6 @@
+import { readFileSync } from 'node:fs';
 import type { AnyNodeProps } from '@opencanvas/core';
 import { expect, type Page, test } from '@playwright/test';
-import { readFileSync } from 'node:fs';
 import { strFromU8, unzipSync } from 'fflate';
 import pixelmatch from 'pixelmatch';
 import { PNG } from 'pngjs';

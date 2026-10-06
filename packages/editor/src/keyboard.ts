@@ -26,6 +26,7 @@ export const SHORTCUTS: readonly ShortcutInfo[] = [
   { keys: 'Mod+Shift+L', action: 'Lock / Unlock' },
   { keys: 'Mod+= / Mod+- / Mod+0', action: 'Zoom in / out / fit' },
   { keys: 'Shift+2', action: 'Zoom to selection' },
+  { keys: 'Shift+R', action: 'Show rulers and guides' },
   { keys: 'V T R O L F H', action: 'Select · Text · Rectangle · Ellipse · Line · Frame · Hand' },
   { keys: 'Space + drag', action: 'Pan' },
   { keys: 'Enter / Esc', action: 'Edit text / Exit' },
@@ -170,6 +171,10 @@ export function handleKeyDown(editor: Editor, k: KeyInput): boolean {
       editor.setTool('text');
       return true;
     case 'r':
+      if (k.shiftKey) {
+        editor.state.set({ rulers: !state.rulers });
+        return true;
+      }
       editor.setTool('rect');
       return true;
     case 'o':

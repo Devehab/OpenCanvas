@@ -133,4 +133,22 @@ describe('snapping', () => {
     const none = snapMovingBox({ x: 420, y: 300, width: 10, height: 10 }, targets, 5);
     expect(none).toMatchObject({ dx: 0, dy: 0 });
   });
+
+  it('snaps to ruler guides across the whole page', () => {
+    const t = createTestDoc({ width: 1000, height: 800 });
+    t.run('page.update', {
+      id: t.pageId,
+      patch: {
+        guides: [
+          { axis: 'x', position: 123 },
+          { axis: 'y', position: 456 },
+        ],
+      },
+    });
+    const targets = collectSnapTargets(t.store, t.store.getPage(t.pageId)!, new Set());
+    const r = snapMovingBox({ x: 120, y: 420, width: 50, height: 40 }, targets, 5);
+    expect(r).toMatchObject({ dx: 3, dy: -4 });
+    expect(r.guides).toContainEqual({ axis: 'x', position: 123, from: 0, to: 800 });
+    expect(r.guides).toContainEqual({ axis: 'y', position: 456, from: 0, to: 1000 });
+  });
 });

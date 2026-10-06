@@ -17,6 +17,7 @@ import {
   Group,
   Keyboard,
   LayoutGrid,
+  LayoutTemplate,
   Loader2,
   Lock,
   Maximize,
@@ -56,7 +57,7 @@ import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { buildPackage, importPackageFile } from '@/lib/package-io';
 import { setPageView } from '@/lib/page-view';
 import { duplicateDesign } from '@/lib/storage/designs';
-import { downloadBytes } from '@/lib/utils';
+import { downloadBytes, shortcut } from '@/lib/utils';
 
 function MenuButton({ label }: { label: string }) {
   return (
@@ -144,18 +145,21 @@ export function TopBar() {
   const toast = useToast();
   const { editor, session, setDialog } = useEditorContext();
   const fileInput = useRef<HTMLInputElement>(null);
-  const { canUndo, canRedo, hasSelection, snapping, locked, isGroup, multi } = useEditorValue((e) => {
-    const nodes = e.getSelectedNodes();
-    return {
-      canUndo: e.history.canUndo,
-      canRedo: e.history.canRedo,
-      hasSelection: nodes.length > 0,
-      snapping: e.state.get().snapping,
-      locked: nodes.length > 0 && nodes.every((n) => n.locked),
-      isGroup: nodes.some((n) => n.type === 'group'),
-      multi: nodes.length > 1,
-    };
-  });
+  const { canUndo, canRedo, hasSelection, snapping, rulers, hasGuides, locked, isGroup, multi } =
+    useEditorValue((e) => {
+      const nodes = e.getSelectedNodes();
+      return {
+        canUndo: e.history.canUndo,
+        canRedo: e.history.canRedo,
+        hasSelection: nodes.length > 0,
+        snapping: e.state.get().snapping,
+        rulers: e.state.get().rulers,
+        hasGuides: (e.store.getPage(e.pageId)?.guides.length ?? 0) > 0,
+        locked: nodes.length > 0 && nodes.every((n) => n.locked),
+        isGroup: nodes.some((n) => n.type === 'group'),
+        multi: nodes.length > 1,
+      };
+    });
   const execCopy = (type: 'copy' | 'cut') => {
     // Menu clicks have no clipboard event: keep the design in memory, put text on the system clipboard.
     const data = type === 'cut' ? editor.cut() : editor.copy();
@@ -396,6 +400,30 @@ export function TopBar() {
             <MenuCheckItem checked={snapping} onCheckedChange={(v) => editor.state.set({ snapping: v })}>
               {t('editor.menu.snapping')}
             </MenuCheckItem>
+            <MenuCheckItem checked={rulers} onCheckedChange={(v) => editor.state.set({ rulers: v })}>
+              <span className="flex items-center justify-between gap-6">
+                {t('editor.rulers.show')}
+                <span className="text-xs text-slate-500" dir="ltr">
+                  {shortcut('Shift+R')}
+                </span>
+              </span>
+            </MenuCheckItem>
+            <MenuItem
+              icon={<LayoutTemplate className="size-4" />}
+              onSelect={() => {
+                editor.state.set({ rulers: true });
+                setDialog('guides');
+              }}
+              testId="menu-add-guides"
+            >
+              {t('editor.rulers.addGuides')}
+            </MenuItem>
+            <MenuItem
+              disabled={!hasGuides}
+              onSelect={() => editor.updatePage(editor.pageId, { guides: [] }, 'Clear guides')}
+            >
+              {t('editor.rulers.clearGuides')}
+            </MenuItem>
             <MenuItem
               icon={<Keyboard className="size-4" />}
               shortcut="?"
