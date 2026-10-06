@@ -9,7 +9,14 @@
  *
  * Keyboard shortcuts are attached by the application (it decides focus rules).
  */
-import { getNodeAtPoint, type TextMeasurer, type Vec } from '@opencanvas/core';
+import {
+  getNodeAtPoint,
+  getPageTransform,
+  imageFrame,
+  multiply,
+  type TextMeasurer,
+  type Vec,
+} from '@opencanvas/core';
 import type { Context2D, RenderPlatform, SceneRenderer } from '@opencanvas/renderer';
 import { cameraMatrix, visiblePageRect, zoomAt } from '../camera';
 import type { Editor } from '../editor';
@@ -240,6 +247,7 @@ export class CanvasView {
         quality: 'interactive',
         framePlaceholders: true,
       });
+      if (current && s.croppingId) this.drawCropGhost(ctx, pageCamera);
       if (page.hidden) {
         // Hidden pages are shown faded.
         ctx.save();
@@ -248,6 +256,30 @@ export class CanvasView {
         ctx.restore();
       }
     }
+  }
+
+  /**
+   * Crop mode: the parts of the photo outside the crop box, faded, so you see
+   * what you can bring into view.
+   */
+  private drawCropGhost(ctx: Context2D, camera: { x: number; y: number; zoom: number }): void {
+    const node = this.editor.store.getNode(this.editor.state.get().croppingId ?? '');
+    if (node?.type !== 'image') return;
+    const asset = this.editor.store.getAsset(node.assetId);
+    const source = asset ? this.options.renderer.imageFor(asset) : null;
+    if (!source) return;
+    const image = this.options.renderer.adjustedImages.get(source, node.adjustments, 4096);
+    const m = multiply(cameraMatrix(camera, this.dpr), getPageTransform(this.editor.store, node));
+    const f = imageFrame(node);
+    ctx.save();
+    ctx.setTransform(m.a, m.b, m.c, m.d, m.e, m.f);
+    ctx.beginPath();
+    ctx.rect(f.x, f.y, f.width, f.height);
+    ctx.rect(0, 0, node.width, node.height);
+    ctx.clip('evenodd');
+    ctx.globalAlpha = 0.45;
+    ctx.drawImage(image, 0, 0, image.width, image.height, f.x, f.y, f.width, f.height);
+    ctx.restore();
   }
 
   // ---------------------------------------------------------------------------

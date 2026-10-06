@@ -38,6 +38,31 @@ export function handleKeyDown(editor: Editor, k: KeyInput): boolean {
   const key = k.key.length === 1 ? k.key.toLowerCase() : k.key;
   const state = editor.state.get();
 
+  // Crop mode: Enter/Escape finish, arrows move the photo, undo discards the crop.
+  if (state.croppingId) {
+    if (key === 'Enter' || key === 'Escape') {
+      editor.finishCrop();
+      return true;
+    }
+    const step = k.shiftKey ? 10 : 1;
+    const arrows: Record<string, [number, number]> = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+    };
+    if (arrows[key]) {
+      editor.nudgeCrop(...arrows[key]!);
+      return true;
+    }
+    if (mod && key === 'z' && !k.shiftKey) {
+      editor.cancelCrop();
+      return true;
+    }
+    // Other shortcuts wait until cropping is done.
+    return true;
+  }
+
   // While editing text, the DOM editor owns the keyboard except for these.
   if (state.editingTextId) {
     if (key === 'Escape') {

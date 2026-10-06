@@ -5,9 +5,11 @@ import type { Editor } from '@opencanvas/editor';
 import { CanvasView } from '@opencanvas/editor/dom';
 import {
   BringToFront,
+  Check,
   Circle,
   ClipboardPaste,
   Copy,
+  Crop as CropIcon,
   Frame,
   Group,
   Hand,
@@ -23,7 +25,7 @@ import {
 } from 'lucide-react';
 import { DropdownMenu } from 'radix-ui';
 import { useEffect, useRef, useState } from 'react';
-import { IconButton } from '@/components/ui/button';
+import { Button, IconButton } from '@/components/ui/button';
 import { MenuItem, MenuSeparator } from '@/components/ui/menu';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
@@ -71,6 +73,34 @@ function ToolBar() {
   );
 }
 
+/** Shown while cropping: Reset and Done (like Canva's crop toolbar). */
+function CropBar() {
+  const { t } = useI18n();
+  const { editor } = useEditorContext();
+  const cropping = useEditorValue((e) => e.state.get().croppingId !== null);
+  if (!cropping) return null;
+  return (
+    <div
+      role="toolbar"
+      aria-label={t('editor.crop.toolbar')}
+      className="absolute start-1/2 top-3 z-10 flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-md ltr:-translate-x-1/2 rtl:translate-x-1/2"
+      data-testid="crop-bar"
+    >
+      <span className="flex items-center gap-1.5 whitespace-nowrap px-2 text-xs text-slate-600 max-md:hidden">
+        <CropIcon className="size-4" />
+        {t('editor.crop.hint')}
+      </span>
+      <Button size="sm" variant="ghost" onClick={() => editor.resetCrop()} data-testid="crop-reset">
+        {t('common.reset')}
+      </Button>
+      <Button size="sm" variant="primary" onClick={() => editor.finishCrop()} data-testid="crop-done">
+        <Check className="size-4" />
+        {t('editor.crop.done')}
+      </Button>
+    </div>
+  );
+}
+
 /** The frame whose photo "Detach image" would take out, given the selection. */
 function filledFrameOf(editor: Editor): string | null {
   const nodes = editor.getSelectedNodes();
@@ -97,6 +127,7 @@ export function CanvasArea() {
       locked: nodes.length > 0 && nodes.every((n) => n.locked),
       // A selected photo frame (or the photo inside one) that can give its photo back.
       filledFrame: filledFrameOf(e),
+      image: nodes.length === 1 && nodes[0]!.type === 'image' && e.isEditable(nodes[0]!.id),
     };
   });
 
@@ -201,6 +232,7 @@ export function CanvasArea() {
       </p>
       <PageHeaders />
       <Rulers />
+      <CropBar />
       {pageView === 'grid' ? <PageGrid /> : <ToolBar />}
       {dragging ? (
         <div className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center">
@@ -267,6 +299,11 @@ export function CanvasArea() {
             >
               {t('editor.menu.delete')}
             </MenuItem>
+            {selection.image ? (
+              <MenuItem icon={<CropIcon className="size-4" />} onSelect={() => editor.startCrop()}>
+                {t('editor.crop.crop')}
+              </MenuItem>
+            ) : null}
             {selection.filledFrame ? (
               <MenuItem
                 icon={<ImageOff className="size-4" />}

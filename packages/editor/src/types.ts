@@ -33,6 +33,8 @@ export interface EditorUIState {
   /** Group/frame the user has "entered" by double-clicking; clicks select its children. */
   focusedGroupId: Id | null;
   editingTextId: Id | null;
+  /** Image in crop mode (double-click an image), or null. */
+  croppingId: Id | null;
   tool: ToolId;
   camera: Camera;
   viewport: { width: number; height: number };

@@ -3,7 +3,17 @@
  * marquee, size/angle badges) in screen space on its own canvas, so the
  * design canvas only re-renders when the document or camera changes.
  */
-import { getNodeOutline, getPageTransform, multiply, type NodeRecord, tracePath } from '@opencanvas/core';
+import {
+  applyToPoint,
+  getNodeOutline,
+  getPageTransform,
+  type ImageNode,
+  imageFrame,
+  multiply,
+  type NodeRecord,
+  tracePath,
+  type Vec,
+} from '@opencanvas/core';
 import type { Context2D } from '@opencanvas/renderer';
 import { cameraMatrix } from './camera';
 import type { Editor } from './editor';
@@ -78,6 +88,11 @@ export function drawOverlay(ctx: Context2D, editor: Editor, dpr: number): void {
   if (s.editingTextId) {
     const node = editor.store.getNode(s.editingTextId);
     if (node) outlineNode(ctx, editor, node, dpr, OVERLAY_COLORS.selection, 1.5);
+  }
+
+  if (s.croppingId) {
+    const node = editor.store.getNode(s.croppingId);
+    if (node?.type === 'image') drawCropOverlay(ctx, editor, node, dpr);
   }
 
   const frame = editor.getSelectionFrame();
@@ -199,4 +214,107 @@ export function drawOverlay(ctx: Context2D, editor: Editor, dpr: number): void {
     ctx.fillText(s.feedback.text, x + padding, y + 11);
     ctx.restore();
   }
+}
+
+/**
+ * Crop mode: the whole photo's outline with round scale handles at its
+ * corners, and the crop box with L-shaped corner and bar edge handles plus a
+ * rule-of-thirds grid.
+ */
+function drawCropOverlay(ctx: Context2D, editor: Editor, node: ImageNode, dpr: number): void {
+  const m = multiply(cameraMatrix(editor.state.get().camera, dpr), getPageTransform(editor.store, node));
+  const pt = (x: number, y: number) => applyToPoint(m, { x, y });
+  const poly = (points: Vec[]) => {
+    ctx.beginPath();
+    ctx.moveTo(points[0]!.x, points[0]!.y);
+    for (const p of points.slice(1)) ctx.lineTo(p.x, p.y);
+    ctx.closePath();
+  };
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const f = imageFrame(node);
+  const frameCorners = [
+    pt(f.x, f.y),
+    pt(f.x + f.width, f.y),
+    pt(f.x + f.width, f.y + f.height),
+    pt(f.x, f.y + f.height),
+  ];
+  poly(frameCorners);
+  ctx.strokeStyle = 'rgba(255,255,255,0.95)';
+  ctx.lineWidth = 1 * dpr;
+  ctx.stroke();
+  ctx.strokeStyle = 'rgba(15,23,42,0.45)';
+  ctx.setLineDash([4 * dpr, 4 * dpr]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  for (const c of frameCorners) {
+    ctx.beginPath();
+    ctx.arc(c.x, c.y, 6 * dpr, 0, Math.PI * 2);
+    ctx.fillStyle = OVERLAY_COLORS.handleFill;
+    ctx.fill();
+    ctx.strokeStyle = OVERLAY_COLORS.selection;
+    ctx.lineWidth = 1.5 * dpr;
+    ctx.stroke();
+  }
+
+  const { width: w, height: h } = node;
+  const box = [pt(0, 0), pt(w, 0), pt(w, h), pt(0, h)];
+  // Rule of thirds.
+  ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+  ctx.lineWidth = 1 * dpr;
+  ctx.beginPath();
+  for (const t of [1 / 3, 2 / 3]) {
+    const a = pt(w * t, 0);
+    const b = pt(w * t, h);
+    const c = pt(0, h * t);
+    const d = pt(w, h * t);
+    ctx.moveTo(a.x, a.y);
+    ctx.lineTo(b.x, b.y);
+    ctx.moveTo(c.x, c.y);
+    ctx.lineTo(d.x, d.y);
+  }
+  ctx.stroke();
+  poly(box);
+  ctx.strokeStyle = OVERLAY_COLORS.selection;
+  ctx.lineWidth = 1.5 * dpr;
+  ctx.stroke();
+
+  if (editor.store.getNode(node.parentId)?.type !== 'frame') {
+    // Crop box handles: thick L corners and bars on the edges.
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineCap = 'round';
+    const arm = Math.min(16, w / 4, h / 4);
+    const corners: [number, number, number, number][] = [
+      [0, 0, 1, 1],
+      [w, 0, -1, 1],
+      [w, h, -1, -1],
+      [0, h, 1, -1],
+    ];
+    for (const shadow of [true, false]) {
+      ctx.strokeStyle = shadow ? 'rgba(15,23,42,0.35)' : '#ffffff';
+      ctx.lineWidth = (shadow ? 6 : 4) * dpr;
+      ctx.beginPath();
+      for (const [x, y, sx, sy] of corners) {
+        const a = pt(x + sx * arm, y);
+        const c = pt(x, y);
+        const b = pt(x, y + sy * arm);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(c.x, c.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      for (const [x0, y0, x1, y1] of [
+        [w / 2 - arm / 2, 0, w / 2 + arm / 2, 0],
+        [w / 2 - arm / 2, h, w / 2 + arm / 2, h],
+        [0, h / 2 - arm / 2, 0, h / 2 + arm / 2],
+        [w, h / 2 - arm / 2, w, h / 2 + arm / 2],
+      ] as [number, number, number, number][]) {
+        const a = pt(x0, y0);
+        const b = pt(x1, y1);
+        ctx.moveTo(a.x, a.y);
+        ctx.lineTo(b.x, b.y);
+      }
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
 }

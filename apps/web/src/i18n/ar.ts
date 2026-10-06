@@ -258,7 +258,6 @@ export const ar: Dictionary = {
       },
       dropHint: 'اسحب الملفات إلى هنا أو انقر للرفع',
       dropToUpload: 'أفلِت الملفات لرفعها',
-      uploaded: 'رُفعت الصور ({count})',
       search: 'ابحث في الملفات المرفوعة',
       all: 'الكل',
       noMatches: 'لا توجد ملفات مرفوعة تطابق بحثك.',
@@ -630,6 +629,12 @@ export const ar: Dictionary = {
         '3x3': 'شبكة ٣×٣',
         custom: 'مخصّص',
       },
+    },
+    crop: {
+      crop: 'قص',
+      hint: 'اسحب للتعديل، ثم انقر نقرًا مزدوجًا أو اضغط Enter للإنهاء.',
+      toolbar: 'القص',
+      done: 'تم',
     },
   },
   projects: {

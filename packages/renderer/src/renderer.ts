@@ -7,6 +7,7 @@
  * exactly what you export.
  */
 import {
+  type AssetRecord,
   applyToPoint,
   type Box,
   boxCorners,
@@ -36,7 +37,7 @@ import {
 } from '@opencanvas/core';
 import { arrowSize, visualBoundsInParent, visualLocalBounds } from './bounds';
 import { blurRGBA } from './filters';
-import { AdjustedImageCache, type ImageResolver } from './images';
+import { AdjustedImageCache, type DrawableImage, type ImageResolver } from './images';
 import { dashPattern, toCanvasPaint, toCompositeOperation } from './paint';
 import { type Context2D, context2d, type RenderPlatform } from './platform';
 import { drawText } from './text';
@@ -103,6 +104,11 @@ export class SceneRenderer {
   invalidateText(measurer?: TextMeasurer): void {
     if (measurer) this.measurer = measurer;
     this.textLayouts.clear(this.measurer);
+  }
+
+  /** The decoded image for an asset, if it is loaded. */
+  imageFor(asset: AssetRecord): DrawableImage | null {
+    return this.images.get(asset) ?? null;
   }
 
   getMeasurer(): TextMeasurer {

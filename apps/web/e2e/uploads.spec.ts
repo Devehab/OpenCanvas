@@ -109,6 +109,53 @@ test.describe('uploads', () => {
     expect(dialogs).toEqual([]);
   });
 
+  test('uploads library: drag onto a frame, rename in details, delete', async ({ page }) => {
+    await upload(page, [{ name: 'wide.png', mimeType: 'image/png', buffer: samplePng(400, 200) }]);
+    await expect(page.getByTestId('upload-item')).toHaveCount(1);
+    // Start over with an empty page and a heart frame.
+    await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      editor.selectAll();
+      editor.deleteSelected();
+    });
+    await openPanel(page, 'elements');
+    await page.getByTestId('element-frame-heart').click();
+    const [frame] = await getNodes(page);
+    await openPanel(page, 'uploads');
+
+    // Drag the library item onto the frame.
+    const at = await nodeCenter(page, frame!.id);
+    const item = page.getByTestId('upload-item').first().getByRole('button').first();
+    await item.dragTo(page.getByTestId('canvas'), {
+      targetPosition: await page.getByTestId('canvas').evaluate((el, p) => {
+        const r = el.getBoundingClientRect();
+        return { x: p.x - r.left, y: p.y - r.top };
+      }, at),
+    });
+    await expect.poll(async () => (await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
+    const nodes = await getNodes(page);
+    expect(nodes[1]!.parentId).toBe(frame!.id);
+
+    // Details: rename.
+    await page.getByTestId('upload-item').first().hover();
+    await page.getByTestId('upload-menu').click();
+    await page.getByRole('menuitem', { name: 'Details' }).click();
+    await page.getByTestId('upload-name').fill('Sunset');
+    await page.getByTestId('save-upload-details').click();
+    await expect(page.getByTestId('upload-item').first().getByRole('button').first()).toHaveAttribute(
+      'title',
+      'Sunset',
+    );
+
+    // Delete: gone from the library, the design keeps its image.
+    await page.getByTestId('upload-item').first().hover();
+    await page.getByTestId('upload-menu').click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
+    await page.getByTestId('confirm-delete-upload').click();
+    await expect(page.getByTestId('upload-item')).toHaveCount(0);
+    expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
+  });
+
   test('dropping a photo onto a frame fills the frame', async ({ page }) => {
     await openPanel(page, 'elements');
     await page.getByTestId('element-frame-ellipse').click();

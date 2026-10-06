@@ -119,13 +119,13 @@ export function UploadsPanel() {
     }
     setBusy(true);
     try {
-      const placed = await uploadFiles(images, { insert: false });
+      // Uploaded images go into the design too (into the selected frame, if any).
+      const placed = await uploadFiles(images);
       // Uploading while a folder is open files the images into that folder.
       if (folderId) {
         await Promise.all(placed.map((p) => updateUpload(p.hash, { folderId })));
         broadcast({ type: 'uploads-changed', tabId: TAB_ID }, { self: true });
       }
-      if (placed.length) toast(t('editor.uploads.uploaded', { count: placed.length }), 'success');
     } finally {
       setBusy(false);
     }

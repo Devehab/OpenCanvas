@@ -12,10 +12,12 @@
 import {
   type AnyNodeProps,
   type Box,
+  boxFromLocal,
   boxUnion,
   CommandError,
   type CommandRegistry,
   type CommandResult,
+  coverCrop,
   createDefaultCommandRegistry,
   createRandomIdGenerator,
   createTextAutosizeFinalizer,
@@ -54,6 +56,7 @@ import { computeSelectionFrame, type SelectionFrame } from './handles';
 import { handleKeyDown } from './keyboard';
 import { PAGE_GAP_PX, type PageSlot, scrollLayout, slotAtScreenPoint, slotScreenRect } from './page-layout';
 import { CreateTool } from './tools/create';
+import { CropSession } from './tools/crop';
 import { HandTool } from './tools/hand';
 import { SelectTool } from './tools/select';
 import type {
@@ -99,6 +102,7 @@ export class Editor {
   private _version = 0;
   private gestureDepth = 0;
   private textSession: { id: Id; batches: number; newNode: boolean } | null = null;
+  private readonly cropSession = new CropSession(this);
   private pasteCount = 0;
   private lastPasteKey = '';
   readonly now: () => number;
@@ -118,6 +122,7 @@ export class Editor {
       dropTargetId: null,
       focusedGroupId: null,
       editingTextId: null,
+      croppingId: null,
       tool: 'select',
       camera: { x: 0, y: 0, zoom: 1 },
       viewport: { width: 0, height: 0 },
@@ -197,6 +202,13 @@ export class Editor {
     if (s.hoveredId && !this.store.getNode(s.hoveredId)) patch.hoveredId = null;
     if (s.dropTargetId && !this.store.getNode(s.dropTargetId)) patch.dropTargetId = null;
     if (s.focusedGroupId && !this.store.getNode(s.focusedGroupId)) patch.focusedGroupId = null;
+    if (s.croppingId && !this.store.getNode(s.croppingId)) {
+      // The cropped image disappeared (remote change): leave crop mode.
+      this.cropSession.cancel();
+      if (this.gestureDepth > 0) this.endGesture();
+      patch.croppingId = null;
+      patch.interaction = null;
+    }
     if (s.editingTextId && !this.store.getNode(s.editingTextId) && source !== 'user') {
       // The edited text disappeared through undo/redo or a remote change.
       this.textSession = null;
@@ -261,7 +273,7 @@ export class Editor {
 
   getSelectionFrame(): SelectionFrame | null {
     const s = this.state.get();
-    if (s.editingTextId) return null;
+    if (s.editingTextId || s.croppingId) return null;
     return computeSelectionFrame(this.store, s.camera, s.selectedIds, (ids) => this.getSelectionBounds(ids));
   }
 
@@ -330,12 +342,18 @@ export class Editor {
   }
 
   undo(): void {
+    if (this.croppingId) {
+      // Undo while cropping discards this crop session.
+      this.cancelCrop();
+      return;
+    }
     this.cancelInteraction();
     if (this.textSession) this.stopEditingText();
     this.history.undo();
   }
 
   redo(): void {
+    this.finishCrop();
     this.cancelInteraction();
     if (this.textSession) this.stopEditingText();
     this.history.redo();
@@ -419,11 +437,83 @@ export class Editor {
 
   setCurrentPage(pageId: Id, options: { fit?: boolean } = {}): void {
     if (!this.store.getPage(pageId) || pageId === this.pageId) return;
+    this.finishCrop();
     if (this.textSession) this.stopEditingText();
     this.cancelInteraction();
     this.state.set({ pageId, selectedIds: [], hoveredId: null, focusedGroupId: null });
     this.history.markStateChanged();
     if (options.fit !== false) this.revealPage();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Crop mode
+  // ---------------------------------------------------------------------------
+
+  get croppingId(): Id | null {
+    return this.state.get().croppingId;
+  }
+
+  /** Enters crop mode for an image (the selected one by default). Returns false if not possible. */
+  startCrop(id: Id | undefined = this.selectedIds.length === 1 ? this.selectedIds[0] : undefined): boolean {
+    const node = id ? this.store.getNode(id) : null;
+    if (node?.type !== 'image' || !this.isEditable(node.id)) return false;
+    if (this.croppingId === node.id) return true;
+    this.finishCrop();
+    if (this.textSession) this.stopEditingText();
+    this.cancelInteraction();
+    this.beginGesture('Crop image');
+    this.state.set({ croppingId: node.id, selectedIds: [node.id], hoveredId: null, cursor: 'move' });
+    return true;
+  }
+
+  /** Leaves crop mode keeping the changes (one undo step). */
+  finishCrop(): void {
+    if (!this.croppingId) return;
+    this.cropSession.cancel();
+    this.state.set({ croppingId: null, interaction: null, cursor: 'default' });
+    this.endGesture('Crop image');
+  }
+
+  /** Leaves crop mode restoring the image as it was. */
+  cancelCrop(): void {
+    if (!this.croppingId) return;
+    this.cropSession.cancel();
+    this.state.set({ croppingId: null, interaction: null, cursor: 'default' });
+    this.cancelGesture();
+  }
+
+  /** Shows the whole photo again (photos in frames: centered to cover the frame). */
+  resetCrop(): void {
+    const id = this.croppingId ?? (this.selectedIds.length === 1 ? this.selectedIds[0] : undefined);
+    const node = id ? this.store.getNode(id) : null;
+    if (node?.type !== 'image' || !this.isEditable(node.id)) return;
+    const asset = this.store.getAsset(node.assetId);
+    const inFrame = this.store.getNode(node.parentId)?.type === 'frame';
+    const run = (fn: (tx: Transaction) => void) =>
+      this.croppingId
+        ? this.updateGesture(fn, 'Reset crop')
+        : this.store.transact(fn, { source: 'user', label: 'Reset crop' });
+    run((tx) => {
+      if (inFrame && asset) {
+        tx.update<NodeRecord>(node.id, {
+          crop: coverCrop(asset.width, asset.height, node.width, node.height),
+        } as Partial<NodeRecord>);
+        return;
+      }
+      // Whole photo at the current width, keeping the photo's proportions.
+      const fullW = node.width / node.crop.width;
+      const fullH = node.height / node.crop.height;
+      const height = node.width * (fullH / fullW);
+      tx.update<NodeRecord>(node.id, {
+        ...boxFromLocal(node, { x: 0, y: 0, width: node.width, height }),
+        crop: { x: 0, y: 0, width: 1, height: 1 },
+      } as Partial<NodeRecord>);
+    });
+  }
+
+  /** Arrow keys in crop mode. */
+  nudgeCrop(dx: number, dy: number): void {
+    if (this.croppingId) this.cropSession.nudge(dx, dy);
   }
 
   // ---------------------------------------------------------------------------
@@ -437,6 +527,7 @@ export class Editor {
   setPageView(pageView: PageView): void {
     const previous = this.pageView;
     if (previous === pageView) return;
+    this.finishCrop();
     if (pageView === 'grid') {
       this.cancelInteraction();
       if (this.textSession) this.stopEditingText();
@@ -599,6 +690,7 @@ export class Editor {
   setTool(tool: ToolId): void {
     const current = this.state.get().tool;
     if (current === tool) return;
+    this.finishCrop();
     this.tools[current].onCancel();
     this.tools[current].onExit?.();
     if (this.textSession) this.stopEditingText();
@@ -617,6 +709,11 @@ export class Editor {
   }
 
   pointerDown(p: PointerInput): void {
+    if (this.croppingId && p.button === 0) {
+      // Inside the photo: crop gesture; outside: done cropping, then a normal click.
+      if (this.cropSession.pointerDown(this.toToolPointer(p))) return;
+      this.finishCrop();
+    }
     // In the scroll view, clicking another page works on that page.
     if (p.button === 0 && !this.state.get().interaction) this.focusPageAt(p.point);
     if (p.button === 1) {
@@ -627,15 +724,28 @@ export class Editor {
   }
 
   pointerMove(p: PointerInput): void {
+    if (this.croppingId) {
+      this.cropSession.pointerMove(this.toToolPointer(p));
+      return;
+    }
     this.activeTool().onPointerMove(this.toToolPointer(p));
   }
 
   pointerUp(p: PointerInput): void {
+    if (this.croppingId) {
+      this.cropSession.pointerUp();
+      return;
+    }
     this.activeTool().onPointerUp(this.toToolPointer(p));
     if (p.button === 1) this.spacePanning = false;
   }
 
   doubleClick(p: PointerInput): void {
+    if (this.croppingId) {
+      // Double-click inside the photo confirms the crop (like Canva).
+      if (this.cropSession.hitTest(p.point)) this.finishCrop();
+      return;
+    }
     this.activeTool().onDoubleClick?.(this.toToolPointer(p));
   }
 
@@ -827,6 +937,7 @@ export class Editor {
   startEditingText(id: Id, options: { newNode?: boolean } = {}): boolean {
     const node = this.store.getNode(id);
     if (node?.type !== 'text' || !this.isEditable(id)) return false;
+    this.finishCrop();
     if (this.textSession) this.stopEditingText();
     this.history.beginBatch('Edit text');
     this.textSession = { id, batches: options.newNode ? 2 : 1, newNode: options.newNode === true };

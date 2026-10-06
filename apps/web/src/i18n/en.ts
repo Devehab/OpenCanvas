@@ -256,7 +256,6 @@ export const en = {
       },
       dropHint: 'Drag files here or click to upload',
       dropToUpload: 'Drop to upload',
-      uploaded: 'Uploaded {count} image(s)',
       search: 'Search uploads',
       all: 'All',
       noMatches: 'No uploads match your search.',
@@ -628,6 +627,12 @@ export const en = {
         '3x3': '3×3 grid',
         custom: 'Custom',
       },
+    },
+    crop: {
+      crop: 'Crop',
+      hint: 'Drag to adjust. Double-click or press Enter when done.',
+      toolbar: 'Crop',
+      done: 'Done',
     },
   },
   projects: {

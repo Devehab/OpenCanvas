@@ -235,6 +235,11 @@ export class SelectTool implements Tool {
       editor.startEditingText(hit.id);
       return;
     }
+    if (hit.type === 'image') {
+      // Double-click a photo to crop it.
+      editor.startCrop(hit.id);
+      return;
+    }
     if (hit.type === 'group' || hit.type === 'frame') {
       // Enter the container and select the child under the pointer.
       const child = getNodeAtPoint(editor.store, hit.id, p.page, { tolerance: 3 / this.zoom });
@@ -242,6 +247,8 @@ export class SelectTool implements Tool {
         editor.setFocusedGroup(hit.id);
         editor.select([child.id]);
         if (child.type === 'text') editor.startEditingText(child.id);
+        // A photo in a frame: adjust it inside the frame.
+        else if (child.type === 'image' && hit.type === 'frame') editor.startCrop(child.id);
       }
     }
   }

@@ -1,7 +1,7 @@
 'use client';
 
 import { DEFAULT_IMAGE_ADJUSTMENTS, type ImageAdjustments, type ImageNode } from '@opencanvas/core';
-import { RefreshCw } from 'lucide-react';
+import { Crop, RefreshCw } from 'lucide-react';
 import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { SliderField } from '@/components/ui/fields';
@@ -63,22 +63,22 @@ export function ImageSection({ node }: { node: ImageNode }) {
             }
           }}
         />
-        {cropped ? (
+        <div className="flex gap-2">
           <Button
-            variant="ghost"
-            size="sm"
-            className="w-full"
-            onClick={() => {
-              const asset = editor.store.getAsset(node.assetId);
-              if (!asset) return;
-              // Reset to the full image, keeping the current width.
-              const height = (node.width * asset.height) / asset.width;
-              editor.updateSelected({ crop: { x: 0, y: 0, width: 1, height: 1 }, height });
-            }}
+            className="flex-1"
+            onClick={() => editor.startCrop(node.id)}
+            data-testid="crop-image"
+            title={t('editor.crop.hint')}
           >
-            {t('editor.inspector.resetCrop')}
+            <Crop className="size-4" />
+            {t('editor.crop.crop')}
           </Button>
-        ) : null}
+          {cropped ? (
+            <Button variant="ghost" onClick={() => editor.resetCrop()} data-testid="reset-crop">
+              {t('editor.inspector.resetCrop')}
+            </Button>
+          ) : null}
+        </div>
       </Section>
       <Section
         title={t('editor.inspector.adjust')}
