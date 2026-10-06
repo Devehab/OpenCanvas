@@ -64,16 +64,21 @@ test.describe('dashboard', () => {
     await page.goto('/');
     await page.getByTestId('create-design').click();
     await page.getByTestId('create-tab-photo').click();
-    await page.getByTestId('create-photo-input').setInputFiles([
-      { name: 'Holiday.png', mimeType: 'image/png', buffer: samplePng(900, 600) },
-    ]);
+    await page
+      .getByTestId('create-photo-input')
+      .setInputFiles([{ name: 'Holiday.png', mimeType: 'image/png', buffer: samplePng(900, 600) }]);
     await page.waitForURL(/\/design\//);
     await waitForEditor(page);
     const state = await page.evaluate(() => {
       const { editor } = window.__opencanvas!;
       const p = editor.store.getPage(editor.pageId)!;
       const nodes = editor.store.getChildren(p.id);
-      return { w: p.width, h: p.height, title: editor.store.getDocument()!.title, nodes: nodes.map((n) => [n.type, n.width, n.height]) };
+      return {
+        w: p.width,
+        h: p.height,
+        title: editor.store.getDocument()!.title,
+        nodes: nodes.map((n) => [n.type, n.width, n.height]),
+      };
     });
     expect(state).toEqual({ w: 900, h: 600, title: 'Holiday', nodes: [['image', 900, 600]] });
   });
