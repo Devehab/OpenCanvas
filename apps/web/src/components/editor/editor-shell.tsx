@@ -22,6 +22,7 @@ import {
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { readClipboard, recallClipboard, writeClipboard } from '@/lib/clipboard';
+import { CUSTOM_FONTS_EVENT, startCustomFonts } from '@/lib/custom-fonts';
 import { nodeLabel } from '@/lib/node-label';
 import { restorePageView } from '@/lib/page-view';
 import { type LibraryImage, placeImage } from '@/lib/place-image';
@@ -117,6 +118,13 @@ function EditorLayout({ session }: { session: EditorSession }) {
 
   // The page view chosen last time (single page, thumbnails or scroll).
   useEffect(() => restorePageView(editor), [editor]);
+  // Uploaded fonts: register them, and redraw text whenever they change.
+  useEffect(() => {
+    const changed = () => viewRef.current?.fontsChanged();
+    window.addEventListener(CUSTOM_FONTS_EVENT, changed);
+    void startCustomFonts();
+    return () => window.removeEventListener(CUSTOM_FONTS_EVENT, changed);
+  }, []);
 
   const value = useMemo<EditorContextValue>(
     () => ({ session, editor, viewRef, panel, setPanel, dialog, setDialog, uploadFiles }),

@@ -13,7 +13,8 @@ export function proxy(request: NextRequest) {
     // React style props are inline style attributes; they cannot execute code.
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' blob: data:",
-    "font-src 'self' data:",
+    // Uploaded fonts are served to @font-face rules as blob: URLs.
+    "font-src 'self' blob: data:",
     "connect-src 'self' blob: data:",
     "worker-src 'self' blob:",
     "media-src 'self' blob: data:",

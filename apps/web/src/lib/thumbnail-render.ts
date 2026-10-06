@@ -39,6 +39,7 @@ export async function renderThumbnail(
 async function renderSnapshot(snapshot: DocumentSnapshot): Promise<Blob | null> {
   // The dashboard does not ship the font catalog CSS until a preview needs it.
   await import('./font-faces');
+  await (await import('./custom-fonts')).startCustomFonts();
   const { store } = loadDocument(snapshot);
   await loadFonts(collectFontRequests(store), 6000);
   const platform = createBrowserPlatform();

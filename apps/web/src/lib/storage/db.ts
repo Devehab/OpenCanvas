@@ -100,16 +100,64 @@ export interface ThumbnailRecord {
   revision?: number;
 }
 
+/** A font file the person uploaded (one weight/style of a family). */
+export interface CustomFontRecord {
+  id: string;
+  family: string;
+  weight: number;
+  style: 'normal' | 'italic';
+  format: 'woff2' | 'woff' | 'truetype' | 'opentype';
+  fileName: string;
+  size: number;
+  data: Blob;
+  createdAt: number;
+}
+
+/** An icon added by the person or by a plugin, drawn from SVG path data. */
+export interface CustomIcon {
+  id: string;
+  name: string;
+  keywords: string[];
+  /** viewBox of the source SVG. */
+  viewBox: [number, number, number, number];
+  /** Sanitized SVG path data. */
+  paths: { d: string; fill: boolean; stroke: boolean; fillRule?: 'evenodd' | 'nonzero' }[];
+  strokeWidth?: number;
+}
+
+export interface IconPackRecord {
+  id: string;
+  name: string;
+  /** Set when a plugin installed the pack (removed with the plugin). */
+  pluginId?: string;
+  icons: CustomIcon[];
+  createdAt: number;
+}
+
+/** An installed plugin: its validated manifest and files. */
+export interface PluginRecord {
+  id: string;
+  manifest: unknown;
+  /** Plugin files by path inside the package. */
+  files: Record<string, Blob>;
+  enabled: boolean;
+  installedAt: number;
+  updatedAt: number;
+}
+
 interface OpenCanvasDB extends DBSchema {
   designs: { key: string; value: DesignRecord; indexes: { updatedAt: number } };
   assets: { key: string; value: AssetBlobRecord; indexes: { createdAt: number } };
   thumbnails: { key: string; value: ThumbnailRecord };
   folders: { key: string; value: FolderRecord };
   brands: { key: string; value: BrandRecord };
+  fonts: { key: string; value: CustomFontRecord };
+  iconPacks: { key: string; value: IconPackRecord };
+  plugins: { key: string; value: PluginRecord };
 }
 
 const DB_NAME = 'opencanvas';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<OpenCanvasDB>> | null = null;
 
@@ -127,6 +175,11 @@ export function getDB(): Promise<IDBPDatabase<OpenCanvasDB>> {
       if (oldVersion < 2) {
         db.createObjectStore('folders', { keyPath: 'id' });
         db.createObjectStore('brands', { keyPath: 'id' });
+      }
+      if (oldVersion < 3) {
+        db.createObjectStore('fonts', { keyPath: 'id' });
+        db.createObjectStore('iconPacks', { keyPath: 'id' });
+        db.createObjectStore('plugins', { keyPath: 'id' });
       }
     },
     blocking() {

@@ -70,6 +70,11 @@ export class FontWatcher {
     private readonly onLoaded: () => void,
   ) {}
 
+  /** Forgets what was loaded, so the next check loads (and re-measures) again. */
+  forget(): void {
+    this.loaded.clear();
+  }
+
   /**
    * Loads fonts the document uses that are not loaded yet. A check requested
    * while one is running runs again afterwards, so fonts added in the

@@ -12,14 +12,22 @@ import {
   ListOrdered,
   Strikethrough,
   Underline,
+  Upload,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { IconButton } from '@/components/ui/button';
 import { ColorField } from '@/components/ui/color-field';
 import { NumberField, Segmented, SelectField, SliderField, Toggle } from '@/components/ui/fields';
 import { Section } from '@/components/ui/section';
+import { useToast } from '@/components/ui/toast';
 import { useEditorContext } from '@/hooks/use-editor';
+import { useFontCatalog } from '@/hooks/use-fonts';
 import { useI18n } from '@/i18n';
-import { FONT_CATALOG, nearestWeight } from '@/lib/fonts';
+import { syncCustomFonts } from '@/lib/custom-fonts';
+import { fontErrorMessage } from '@/lib/font-errors';
+import { FONT_ACCEPT } from '@/lib/font-files';
+import { fontInfo, nearestWeight } from '@/lib/fonts';
+import { addCustomFont } from '@/lib/storage/fonts';
 import { cn } from '@/lib/utils';
 import { useDocumentColors } from './controls';
 
@@ -28,10 +36,32 @@ const NAMED_WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900] as const;
 type NamedWeight = (typeof NAMED_WEIGHTS)[number];
 const isNamedWeight = (w: number): w is NamedWeight => (NAMED_WEIGHTS as readonly number[]).includes(w);
 
+const FONT_GROUPS = ['custom', 'sans', 'serif', 'display', 'handwriting'] as const;
+
 function FontPicker({ value, onChange }: { value: string | 'mixed'; onChange: (family: string) => void }) {
   const { t } = useI18n();
+  const toast = useToast();
+  const catalog = useFontCatalog();
+  const upload = useRef<HTMLInputElement>(null);
   const [filter, setFilter] = useState<'all' | 'arabic'>('all');
-  const fonts = FONT_CATALOG.filter((f) => filter === 'all' || f.arabic);
+  const fonts = catalog.filter((f) => filter === 'all' || f.arabic);
+  const onUpload = async (files: File[]) => {
+    let first: string | null = null;
+    for (const file of files) {
+      try {
+        const font = await addCustomFont(file);
+        first ??= font.family;
+        toast(t('settings.fonts.added', { name: font.family }), 'success');
+      } catch (error) {
+        toast(fontErrorMessage(t, error, file.name), 'error');
+      }
+    }
+    // Uploading from the picker applies the new font right away.
+    if (first) {
+      await syncCustomFonts();
+      onChange(first);
+    }
+  };
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between">
@@ -46,25 +76,56 @@ function FontPicker({ value, onChange }: { value: string | 'mixed'; onChange: (f
           ]}
         />
       </div>
-      <select
-        aria-label={t('editor.inspector.font')}
-        data-testid="font-family"
-        value={value === 'mixed' ? '' : value}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-brand-400"
-        style={{ fontFamily: value === 'mixed' ? undefined : `"${value}"` }}
-      >
-        {value === 'mixed' ? <option value="">—</option> : null}
-        {fonts.map((f) => (
-          <option key={f.family} value={f.family} style={{ fontFamily: `"${f.family}"` }}>
-            {f.family}
-            {f.arabic ? ' · عربي' : ''}
-          </option>
-        ))}
-        {value !== 'mixed' && !FONT_CATALOG.some((f) => f.family === value) ? (
-          <option value={value}>{value}</option>
-        ) : null}
-      </select>
+      <div className="flex gap-1.5">
+        <select
+          aria-label={t('editor.inspector.font')}
+          data-testid="font-family"
+          value={value === 'mixed' ? '' : value}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 min-w-0 flex-1 rounded-md border border-slate-200 bg-white px-2 text-sm outline-none focus:border-brand-400"
+          style={{ fontFamily: value === 'mixed' ? undefined : `"${value}"` }}
+        >
+          {value === 'mixed' ? <option value="">—</option> : null}
+          {FONT_GROUPS.map((group) => {
+            const list = fonts.filter((f) => f.category === group);
+            if (list.length === 0) return null;
+            return (
+              <optgroup key={group} label={t(`editor.inspector.fontGroups.${group}`)}>
+                {list.map((f) => (
+                  <option key={f.family} value={f.family} style={{ fontFamily: `"${f.family}"` }}>
+                    {f.family}
+                    {f.arabic && !f.custom ? ' · عربي' : ''}
+                  </option>
+                ))}
+              </optgroup>
+            );
+          })}
+          {value !== 'mixed' && !catalog.some((f) => f.family === value) ? (
+            <option value={value}>{value}</option>
+          ) : null}
+        </select>
+        <IconButton
+          label={t('editor.inspector.uploadFont')}
+          onClick={() => upload.current?.click()}
+          className="size-9 shrink-0 border border-slate-200"
+          data-testid="upload-font"
+        >
+          <Upload className="size-4" />
+        </IconButton>
+        <input
+          ref={upload}
+          type="file"
+          accept={FONT_ACCEPT}
+          multiple
+          hidden
+          data-testid="upload-font-input"
+          onChange={(e) => {
+            const files = [...(e.target.files ?? [])];
+            e.target.value = '';
+            void onUpload(files);
+          }}
+        />
+      </div>
     </div>
   );
 }
@@ -104,7 +165,7 @@ export function TextSection({ nodes }: { nodes: TextNode[] }) {
   const family = uniform('fontFamily');
   const firstColor = node.content.paragraphs[0]?.runs[0]?.style.color ?? node.style.color;
   const weight = uniform('fontWeight');
-  const info = FONT_CATALOG.find((f) => f.family === family);
+  const info = typeof family === 'string' ? fontInfo(family) : undefined;
   const weights = info?.weights ?? [400, 700];
   const toggle = (key: 'underline' | 'strikethrough') => setStyle({ [key]: uniform(key) !== true });
   const isBold = weight !== 'mixed' && weight >= 600;

@@ -32,9 +32,9 @@ import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { brandsChanged, useAssetUrls } from '@/hooks/use-brands';
 import { useDesigns, useThumbnail } from '@/hooks/use-designs';
+import { useFontCatalog } from '@/hooks/use-fonts';
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
-import { FONT_CATALOG } from '@/lib/fonts';
 import { colorsFromImage } from '@/lib/palette-from-image';
 import { getAssetBlob } from '@/lib/storage/assets';
 import {
@@ -513,6 +513,7 @@ function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
 
 function FontsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
   const { t } = useI18n();
+  const catalog = useFontCatalog();
   const roles = ['heading', 'subheading', 'body'] as const;
   return (
     <Card
@@ -524,7 +525,7 @@ function FontsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
       <div className="divide-y divide-slate-100">
         {roles.map((role) => {
           const font = brand.fonts[role];
-          const info = FONT_CATALOG.find((f) => f.family === font.family);
+          const info = catalog.find((f) => f.family === font.family);
           const set = (patch: Partial<typeof font>) =>
             void save((b) => ({ ...b, fonts: { ...b.fonts, [role]: { ...b.fonts[role], ...patch } } }));
           return (
@@ -552,7 +553,7 @@ function FontsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
                   className="h-9 rounded-lg border border-slate-200 bg-white px-2 text-sm"
                   data-testid={`brand-font-${role}-family`}
                 >
-                  {FONT_CATALOG.map((f) => (
+                  {catalog.map((f) => (
                     <option key={f.family} value={f.family}>
                       {f.family}
                     </option>

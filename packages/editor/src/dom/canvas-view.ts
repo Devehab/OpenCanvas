@@ -132,6 +132,15 @@ export class CanvasView {
     this.cleanup.push(() => target.removeEventListener(type, handler, options));
   }
 
+  /**
+   * New font faces became available (for example fonts the person uploaded):
+   * load the ones the design uses, then re-measure and redraw text.
+   */
+  fontsChanged(): void {
+    this.fontWatcher.forget();
+    this.scheduleFontCheck(0);
+  }
+
   /** Forces a full scene redraw (e.g. after an image finished loading). */
   invalidateScene(): void {
     this.sceneDirty = true;
