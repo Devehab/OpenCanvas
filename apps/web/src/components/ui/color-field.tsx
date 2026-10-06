@@ -1,6 +1,6 @@
 'use client';
 
-import { normalizeColor, toCssColor } from '@opencanvas/core';
+import { normalizeColor, parseUserColor, toCssColor } from '@opencanvas/core';
 import { Pipette } from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -75,7 +75,7 @@ export function ColorField({
   useEffect(() => setHex(value), [value]);
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
   const commitHex = (raw: string) => {
-    const normalized = normalizeColor(raw.startsWith('#') || !/^[0-9a-f]{3,8}$/i.test(raw) ? raw : `#${raw}`);
+    const normalized = parseUserColor(raw);
     if (normalized) onChange(normalized, true);
     else setHex(value);
   };

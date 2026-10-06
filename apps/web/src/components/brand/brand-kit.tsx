@@ -4,7 +4,7 @@
  * Brand kit editor (dashboard): logos, colors, fonts, brand voice, photos,
  * graphics, icons and brand templates. Every change is saved immediately.
  */
-import { createRandomIdGenerator, normalizeColor } from '@opencanvas/core';
+import { createRandomIdGenerator, normalizeColor, parseUserColor } from '@opencanvas/core';
 import {
   ArrowLeft,
   CloudUpload,
@@ -35,6 +35,8 @@ import { useDesigns, useThumbnail } from '@/hooks/use-designs';
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { FONT_CATALOG } from '@/lib/fonts';
+import { colorsFromImage } from '@/lib/palette-from-image';
+import { getAssetBlob } from '@/lib/storage/assets';
 import {
   type BrandImageSection,
   type BrandRecord,
@@ -249,7 +251,12 @@ function SwatchEditor({
 }) {
   const { t } = useI18n();
   const [draft, setDraft] = useState(color);
-  useEffect(() => setDraft(color), [color]);
+  const [text, setText] = useState(color.toUpperCase());
+  useEffect(() => {
+    setDraft(color);
+    setText(color.toUpperCase());
+  }, [color]);
+  const invalid = text.trim() !== '' && parseUserColor(text) === null;
   return (
     <Popover.Root onOpenChange={(open) => !open && draft !== color && onChange(draft)}>
       <Popover.Trigger
@@ -271,15 +278,48 @@ function SwatchEditor({
           <div className="oc-colorful">
             <HexAlphaColorPicker
               color={draft}
-              onChange={(c) => setDraft(normalizeColor(c) ?? c)}
+              onChange={(c) => {
+                const next = normalizeColor(c) ?? c;
+                setDraft(next);
+                setText(next.toUpperCase());
+              }}
               style={{ width: '100%' }}
             />
           </div>
           <div className="flex items-center gap-2">
             <ColorSwatch color={draft} />
-            <span className="flex-1 font-mono text-sm uppercase" dir="ltr">
-              {draft}
-            </span>
+            <input
+              value={text}
+              onChange={(e) => {
+                // Typing or pasting a valid code updates the picker right away.
+                setText(e.target.value);
+                const parsed = parseUserColor(e.target.value);
+                if (parsed) setDraft(parsed);
+              }}
+              onKeyDown={(e) => {
+                if (e.key !== 'Enter') return;
+                const parsed = parseUserColor(text);
+                if (parsed) {
+                  setDraft(parsed);
+                  setText(parsed.toUpperCase());
+                  onChange(parsed);
+                }
+              }}
+              onBlur={() => setText(draft.toUpperCase())}
+              aria-label={t('brand.colorCode')}
+              aria-invalid={invalid}
+              title={invalid ? t('brand.invalidColor') : undefined}
+              spellCheck={false}
+              autoComplete="off"
+              dir="ltr"
+              className={cn(
+                'h-8 min-w-0 flex-1 rounded-md border px-2 font-mono text-sm uppercase outline-none focus:ring-2',
+                invalid
+                  ? 'border-red-300 focus:ring-red-100'
+                  : 'border-slate-200 focus:border-brand-400 focus:ring-brand-100',
+              )}
+              data-testid="brand-color-input"
+            />
             <button
               type="button"
               onClick={onRemove}
@@ -295,8 +335,52 @@ function SwatchEditor({
   );
 }
 
+/** The main colors of the brand's logos (computed from the stored images). */
+function useLogoColors(brand: BrandRecord): string[] {
+  const [colors, setColors] = useState<string[]>([]);
+  const key = brand.logos.map((l) => l.hash).join(',');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `key` stands for the logo list
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const found: string[] = [];
+      for (const logo of brand.logos.slice(0, 4)) {
+        const blob = await getAssetBlob(logo.hash);
+        if (!blob) continue;
+        try {
+          for (const c of await colorsFromImage(blob)) if (!found.includes(c)) found.push(c);
+        } catch {
+          // An image that cannot be decoded simply has no suggestions.
+        }
+      }
+      if (alive) setColors(found.slice(0, MAX_PALETTE_COLORS));
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [key]);
+  return colors;
+}
+
 function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
   const { t } = useI18n();
+  const logoColors = useLogoColors(brand);
+  const used = new Set(brand.palettes.flatMap((p) => p.colors.map((c) => c.toLowerCase())));
+  const suggestions = logoColors.filter((c) => !used.has(c.toLowerCase()));
+  const addColors = (colors: string[]) =>
+    save((b) => {
+      const [first, ...rest] = b.palettes;
+      if (first && first.colors.length + colors.length <= MAX_PALETTE_COLORS) {
+        return { ...b, palettes: [{ ...first, colors: [...first.colors, ...colors] }, ...rest] };
+      }
+      return {
+        ...b,
+        palettes: [
+          ...b.palettes,
+          { id: newId('palette'), name: t('brand.logoPalette'), colors: colors.slice(0, MAX_PALETTE_COLORS) },
+        ],
+      };
+    });
   const patchPalette = (
     id: string,
     fn: (colors: string[], name: string) => { colors?: string[]; name?: string },
@@ -331,6 +415,40 @@ function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
       }
     >
       <div className="space-y-5">
+        {suggestions.length > 0 ? (
+          <div className="rounded-xl bg-slate-50 p-3" data-testid="brand-logo-colors">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="size-4 text-brand-600" />
+              <p className="flex-1 text-sm font-medium text-slate-800">
+                {t('brand.fromLogo')}
+                <span className="ms-2 font-normal text-slate-500">{t('brand.fromLogoHint')}</span>
+              </p>
+              <Button size="sm" variant="secondary" onClick={() => void addColors(suggestions)}>
+                {t('brand.addAllLogoColors')}
+              </Button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {suggestions.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => void addColors([c])}
+                  aria-label={t('brand.addLogoColor', { color: c.toUpperCase() })}
+                  title={c.toUpperCase()}
+                  className="group relative rounded-lg ring-offset-2 focus-visible:ring-2 focus-visible:ring-brand-400"
+                  data-testid="brand-logo-color"
+                  data-color={c}
+                >
+                  <span
+                    className="block size-10 rounded-lg border border-black/10 shadow-sm"
+                    style={{ background: c }}
+                  />
+                  <Plus className="absolute inset-0 m-auto size-4 text-white opacity-0 drop-shadow group-hover:opacity-100" />
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
         {brand.palettes.map((p) => (
           <div key={p.id} className="space-y-2" data-testid="brand-palette">
             <div className="flex items-center gap-2">
@@ -357,7 +475,8 @@ function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
             <div className="flex flex-wrap gap-2">
               {p.colors.map((c, i) => (
                 <SwatchEditor
-                  key={c}
+                  // biome-ignore lint/suspicious/noArrayIndexKey: a swatch keeps its place (and open editor) while its color changes
+                  key={i}
                   color={c}
                   onChange={(next) =>
                     void patchPalette(p.id, (colors) => ({

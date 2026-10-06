@@ -174,3 +174,58 @@ export function contrastRatio(a: string, b: string): number {
   const [hi, lo] = la > lb ? [la, lb] : [lb, la];
   return (hi + 0.05) / (lo + 0.05);
 }
+
+/**
+ * Parses a color typed or pasted by a person: `285CFF`, `#285cff`, `#fff`,
+ * `rgb(40 92 255)`, `hsl(…)` or a CSS name, tolerating surrounding quotes,
+ * a `color:` prefix and a trailing semicolon. Returns the canonical form or null.
+ */
+export function parseUserColor(input: string): string | null {
+  let value = input
+    .trim()
+    .replace(/^color\s*:\s*/i, '')
+    .replace(/;+$/, '')
+    .replace(/^["'`]|["'`]$/g, '')
+    .trim();
+  if (/^([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(value)) value = `#${value}`;
+  return normalizeColor(value);
+}
+
+/**
+ * The main colors of an image (for example a logo): up to `count` distinct
+ * opaque colors, most used first. `rgba` is raw RGBA pixel data; transparent
+ * pixels are ignored, so a logo's empty background does not count.
+ */
+export function extractPalette(
+  rgba: Uint8Array | Uint8ClampedArray,
+  options: { count?: number; minDistance?: number } = {},
+): string[] {
+  const count = options.count ?? 6;
+  const minDistance = options.minDistance ?? 56;
+  // 4 bits per channel: 4096 bins with summed channels for exact averages.
+  const bins = new Map<number, { r: number; g: number; b: number; n: number }>();
+  for (let i = 0; i + 3 < rgba.length; i += 4) {
+    if (rgba[i + 3]! < 128) continue;
+    const r = rgba[i]!;
+    const g = rgba[i + 1]!;
+    const b = rgba[i + 2]!;
+    const key = ((r >> 4) << 8) | ((g >> 4) << 4) | (b >> 4);
+    const bin = bins.get(key);
+    if (bin) {
+      bin.r += r;
+      bin.g += g;
+      bin.b += b;
+      bin.n++;
+    } else bins.set(key, { r, g, b, n: 1 });
+  }
+  const candidates = [...bins.values()]
+    .map((bin) => ({ r: bin.r / bin.n, g: bin.g / bin.n, b: bin.b / bin.n, n: bin.n }))
+    .sort((a, b) => b.n - a.n);
+  const picked: { r: number; g: number; b: number }[] = [];
+  for (const c of candidates) {
+    if (picked.length >= count) break;
+    const distinct = picked.every((p) => Math.hypot(p.r - c.r, p.g - c.g, p.b - c.b) >= minDistance);
+    if (distinct) picked.push(c);
+  }
+  return picked.map((c) => rgbaToHex({ r: c.r, g: c.g, b: c.b, a: 1 }));
+}
