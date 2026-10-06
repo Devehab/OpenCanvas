@@ -2,6 +2,8 @@
 
 **An open-source visual creation platform built on a real design engine.** Every element stays editable — text, images, shapes, frames and layers — and Arabic is supported properly from day one.
 
+**Website:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/) (English and Arabic, with recorded demos of every feature)
+
 ![The OpenCanvas editor](docs/images/editor.png)
 
 OpenCanvas is not a template viewer or a UI prototype. Designs are structured documents; every change is a validated, undoable command; the same renderer draws the editor, every export and the server-side tests. That foundation is what later phases — templates, brand kits, video, real-time collaboration and AI that edits designs instead of generating flat images — are built on.

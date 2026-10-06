@@ -1,0 +1,1825 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script>
+      // Pick the language before anything renders: the visitor's own choice,
+      // then ?lang=, then the device languages, then the time zone (a
+      // privacy-friendly stand-in for the country; no location lookup).
+      (() => {
+        const ARAB_TIME_ZONES = [
+          'Asia/Riyadh', 'Asia/Dubai', 'Asia/Qatar', 'Asia/Bahrain', 'Asia/Kuwait', 'Asia/Muscat',
+          'Asia/Aden', 'Asia/Baghdad', 'Asia/Damascus', 'Asia/Amman', 'Asia/Beirut', 'Asia/Gaza',
+          'Asia/Hebron', 'Africa/Cairo', 'Africa/Tripoli', 'Africa/Tunis', 'Africa/Algiers',
+          'Africa/Casablanca', 'Africa/El_Aaiun', 'Africa/Khartoum', 'Africa/Nouakchott',
+          'Africa/Mogadishu', 'Africa/Djibouti', 'Indian/Comoro',
+        ];
+        const valid = (value) => (value === 'ar' || value === 'en' ? value : null);
+        const fromQuery = () => {
+          try {
+            return valid(new URLSearchParams(location.search).get('lang'));
+          } catch {
+            return null;
+          }
+        };
+        const fromStorage = () => {
+          try {
+            return valid(localStorage.getItem('oc-site-lang'));
+          } catch {
+            return null;
+          }
+        };
+        const fromDevice = () => {
+          const list = navigator.languages?.length ? navigator.languages : [navigator.language || ''];
+          for (const tag of list) {
+            const match = valid(String(tag).slice(0, 2).toLowerCase());
+            if (match) return match;
+          }
+          return null;
+        };
+        const fromTimeZone = () => {
+          try {
+            return ARAB_TIME_ZONES.includes(Intl.DateTimeFormat().resolvedOptions().timeZone) ? 'ar' : null;
+          } catch {
+            return null;
+          }
+        };
+        const lang = fromQuery() || fromStorage() || fromDevice() || fromTimeZone() || 'en';
+        const root = document.documentElement;
+        root.lang = lang;
+        root.dir = lang === 'ar' ? 'rtl' : 'ltr';
+        root.classList.add('js');
+        if (lang === 'ar') document.title = 'OpenCanvas — محرّر تصاميم مجاني ومفتوح المصدر تملكه أنت';
+      })();
+    </script>
+    <title>OpenCanvas — The free, open-source design editor you own</title>
+    <meta
+      name="description"
+      content="OpenCanvas is a free, open-source alternative to paid online design tools: photo frames, crop, about 2,900 icons, brand kits, multi-page designs and pro exports. Host it yourself; your designs stay on your device."
+    />
+    <meta name="theme-color" content="#0b0a1f" />
+    <meta name="color-scheme" content="light" />
+    <link rel="canonical" href="https://devehab.github.io/OpenCanvas/" />
+    <link rel="alternate" hreflang="en" href="https://devehab.github.io/OpenCanvas/?lang=en" />
+    <link rel="alternate" hreflang="ar" href="https://devehab.github.io/OpenCanvas/?lang=ar" />
+    <link rel="alternate" hreflang="x-default" href="https://devehab.github.io/OpenCanvas/" />
+    <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="OpenCanvas" />
+    <meta property="og:title" content="OpenCanvas — The free, open-source design editor you own" />
+    <meta
+      property="og:description"
+      content="Everything the paid design platforms do: free, self-hosted, and your designs never leave your device. English and Arabic."
+    />
+    <meta property="og:url" content="https://devehab.github.io/OpenCanvas/" />
+    <meta property="og:image" content="https://devehab.github.io/OpenCanvas/assets/img/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="ar_AR" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preload" href="assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="assets/fonts/inter-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="assets/css/site.css" />
+    <script src="assets/js/site.js" defer></script>
+  </head>
+  <body>
+    <svg width="0" height="0" style="position: absolute" aria-hidden="true" focusable="false">
+      <defs>
+        <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+        <symbol id="i-languages" viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></symbol>
+        <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
+        <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+        <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8"/><path d="m4 17 6-6-6-6"/></symbol>
+        <symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></symbol>
+        <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+        <symbol id="i-badge-dollar-sign" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></symbol>
+        <symbol id="i-code-xml" viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></symbol>
+        <symbol id="i-heart" viewBox="0 0 24 24"><path d="M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"/></symbol>
+        <symbol id="i-frame" viewBox="0 0 24 24"><line x1="22" x2="2" y1="6" y2="6"/><line x1="22" x2="2" y1="18" y2="18"/><line x1="6" x2="6" y1="2" y2="22"/><line x1="18" x2="18" y1="2" y2="22"/></symbol>
+        <symbol id="i-crop" viewBox="0 0 24 24"><path d="M6 2v14a2 2 0 0 0 2 2h14"/><path d="M18 22V8a2 2 0 0 0-2-2H2"/></symbol>
+        <symbol id="i-shapes" viewBox="0 0 24 24"><path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z"/><rect x="3" y="14" width="7" height="7" rx="1"/><circle cx="17.5" cy="17.5" r="3.5"/></symbol>
+        <symbol id="i-layout-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+        <symbol id="i-file-down" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M12 18v-6"/><path d="m9 15 3 3 3-3"/></symbol>
+        <symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"/><circle cx="13.5" cy="6.5" r=".5" fill="currentColor"/><circle cx="17.5" cy="10.5" r=".5" fill="currentColor"/><circle cx="6.5" cy="12.5" r=".5" fill="currentColor"/><circle cx="8.5" cy="7.5" r=".5" fill="currentColor"/></symbol>
+        <symbol id="i-ruler" viewBox="0 0 24 24"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></symbol>
+        <symbol id="i-layout-template" viewBox="0 0 24 24"><rect width="18" height="7" x="3" y="3" rx="1"/><rect width="9" height="7" x="3" y="14" rx="1"/><rect width="5" height="7" x="16" y="14" rx="1"/></symbol>
+        <symbol id="i-type" viewBox="0 0 24 24"><path d="M12 4v16"/><path d="M4 7V5a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v2"/><path d="M9 20h6"/></symbol>
+        <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/></symbol>
+        <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/></symbol>
+        <symbol id="i-undo-2" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/></symbol>
+        <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M12 20h.01"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><path d="M5 12.859a10 10 0 0 1 5.17-2.69"/><path d="M19 12.859a10 10 0 0 0-2.007-1.523"/><path d="M2 8.82a15 15 0 0 1 4.177-2.643"/><path d="M22 8.82a15 15 0 0 0-11.288-3.764"/><path d="m2 2 20 20"/></symbol>
+        <symbol id="i-image" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></symbol>
+        <symbol id="i-monitor-smartphone" viewBox="0 0 24 24"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8"/><path d="M10 19v-3.96 3.15"/><path d="M7 19h5"/><rect width="6" height="10" x="16" y="12" rx="2"/></symbol>
+        <symbol id="i-file-code" viewBox="0 0 24 24"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="M10 12.5 8 15l2 2.5"/><path d="m14 12.5 2 2.5-2 2.5"/></symbol>
+        <symbol id="i-git-fork" viewBox="0 0 24 24"><circle cx="12" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><path d="M18 9v2c0 .6-.4 1-1 1H7c-.6 0-1-.4-1-1V9"/><path d="M12 12v3"/></symbol>
+        <symbol id="i-git-branch" viewBox="0 0 24 24"><path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/></symbol>
+        <symbol id="i-git-pull-request" viewBox="0 0 24 24"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" x2="6" y1="9" y2="21"/></symbol>
+        <symbol id="i-bug" viewBox="0 0 24 24"><path d="M12 20v-9"/><path d="M14 7a4 4 0 0 1 4 4v3a6 6 0 0 1-12 0v-3a4 4 0 0 1 4-4z"/><path d="M14.12 3.88 16 2"/><path d="M21 21a4 4 0 0 0-3.81-4"/><path d="M21 5a4 4 0 0 1-3.55 3.97"/><path d="M22 13h-4"/><path d="M3 21a4 4 0 0 1 3.81-4"/><path d="M3 5a4 4 0 0 0 3.55 3.97"/><path d="M6 13H2"/><path d="m8 2 1.88 1.88"/><path d="M9 7.13V6a3 3 0 1 1 6 0v1.13"/></symbol>
+        <symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 5v16"/><path d="M20.001 19A2 2 0 0022 17V5a2 2 0 00-1.999-2L16 3.002A5 5 0 0012 5a5 5 0 00-4-2H4a2 2 0 00-2 2v12a2 2 0 001.999 2H8a5 5 0 014 2 5 5 0 014-2z"/></symbol>
+        <symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></symbol>
+        <symbol id="i-rocket" viewBox="0 0 24 24"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"/><path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"/></symbol>
+        <symbol id="i-server" viewBox="0 0 24 24"><rect width="20" height="8" x="2" y="2" rx="2" ry="2"/><rect width="20" height="8" x="2" y="14" rx="2" ry="2"/><line x1="6" x2="6.01" y1="6" y2="6"/><line x1="6" x2="6.01" y1="18" y2="18"/></symbol>
+        <symbol id="i-apple" viewBox="0 0 24 24"><path d="M12 6.528V3a1 1 0 0 1 1-1h0"/><path d="M18.237 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.472A6 6 0 0 0 2 11a15.1 15.1 0 0 0 3.763 10 3 3 0 0 0 3.648.648 5.5 5.5 0 0 1 5.178 0A3 3 0 0 0 18.237 21"/></symbol>
+        <symbol id="i-laptop" viewBox="0 0 24 24"><path d="M18 5a2 2 0 0 1 2 2v8.526a2 2 0 0 0 .212.897l1.068 2.127a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45l1.068-2.127A2 2 0 0 0 4 15.526V7a2 2 0 0 1 2-2z"/><path d="M20.054 15.987H3.946"/></symbol>
+        <symbol id="i-container" viewBox="0 0 24 24"><path d="M22 7.7c0-.6-.4-1.2-.8-1.5l-6.3-3.9a1.72 1.72 0 0 0-1.7 0l-10.3 6c-.5.2-.9.8-.9 1.4v6.6c0 .5.4 1.2.8 1.5l6.3 3.9a1.72 1.72 0 0 0 1.7 0l10.3-6c.5-.3.9-1 .9-1.5Z"/><path d="M10 21.9V14L2.1 9.1"/><path d="m10 14 11.9-6.9"/><path d="M14 19.8v-8.1"/><path d="M18 17.5V9.4"/></symbol>
+        <symbol id="i-package" viewBox="0 0 24 24"><path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z"/><path d="M12 22V12"/><polyline points="3.29 7 12 12 20.71 7"/><path d="m7.5 4.27 9 5.15"/></symbol>
+        <symbol id="i-lock-open" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+        <symbol id="i-infinity" viewBox="0 0 24 24"><path d="M6 16c5 0 7-8 12-8a4 4 0 0 1 0 8c-5 0-7-8-12-8a4 4 0 1 0 0 8"/></symbol>
+        <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></symbol>
+        <symbol id="i-wand-sparkles" viewBox="0 0 24 24"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></symbol>
+        <symbol id="i-film" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/></symbol>
+        <symbol id="i-blend" viewBox="0 0 24 24"><circle cx="15" cy="9" r="7"/><circle cx="9" cy="15" r="7"/></symbol>
+        <symbol id="i-keyboard" viewBox="0 0 24 24"><path d="M10 8h.01"/><path d="M12 12h.01"/><path d="M14 8h.01"/><path d="M16 12h.01"/><path d="M18 8h.01"/><path d="M6 8h.01"/><path d="M7 16h10"/><path d="M8 12h.01"/><rect width="20" height="16" x="2" y="4" rx="2"/></symbol>
+        <symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+        <symbol id="i-scan-search" viewBox="0 0 24 24"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><circle cx="12" cy="12" r="3"/><path d="m16 16-1.9-1.9"/></symbol>
+        <symbol id="i-github" viewBox="0 0 24 24">
+          <path
+            d="M12 .5C5.73.5.5 5.74.5 12.02c0 5.08 3.29 9.39 7.86 10.91.58.1.79-.25.79-.56 0-.27-.01-1-.02-1.96-3.2.7-3.87-1.54-3.87-1.54-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14 0 1.55-.01 2.8-.01 3.18 0 .31.21.67.8.56A11.53 11.53 0 0 0 23.5 12.02C23.5 5.74 18.27.5 12 .5Z"
+          />
+        </symbol>
+      </defs>
+    </svg>
+
+    <a class="skip-link" href="#main"><span data-l="en">Skip to content</span><span data-l="ar">انتقل إلى المحتوى</span></a>
+
+    <!-- ============ Header ============ -->
+    <header class="site-header" id="top">
+      <div class="container nav">
+        <a class="brand" href="#top" aria-label="OpenCanvas">
+          <img src="assets/img/logo.svg" alt="" width="32" height="32" />
+          OpenCanvas
+        </a>
+        <ul class="nav-links" id="nav-links">
+          <li><a href="#features"><span data-l="en">Features</span><span data-l="ar">الميزات</span></a></li>
+          <li><a href="#why"><span data-l="en">Why free</span><span data-l="ar">لماذا مجاني؟</span></a></li>
+          <li><a href="#install"><span data-l="en">Install</span><span data-l="ar">التثبيت</span></a></li>
+          <li><a href="#contribute"><span data-l="en">Contribute</span><span data-l="ar">المساهمة</span></a></li>
+          <li><a href="#faq"><span data-l="en">FAQ</span><span data-l="ar">الأسئلة الشائعة</span></a></li>
+        </ul>
+        <div class="nav-actions">
+          <button type="button" class="lang-toggle" data-lang-toggle>
+            <svg class="i"><use href="#i-languages" /></svg>
+            <span data-l="en" lang="ar">العربية</span><span data-l="ar" lang="en">English</span>
+          </button>
+          <a class="gh-link" href="https://github.com/Devehab/OpenCanvas">
+            <svg class="i gh"><use href="#i-github" /></svg>
+            <span class="label">GitHub</span>
+          </a>
+          <button
+            type="button"
+            class="menu-toggle"
+            aria-expanded="false"
+            aria-controls="nav-links"
+            data-menu-toggle
+          >
+            <svg class="i"><use href="#i-menu" /></svg>
+            <span class="sr-only"><span data-l="en">Menu</span><span data-l="ar">القائمة</span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main id="main">
+      <!-- ============ Hero ============ -->
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="container">
+          <div class="hero-inner">
+            <p class="pill">
+              <b>MIT</b>
+              <span data-l="en">Free &amp; open source — every feature, forever</span>
+              <span data-l="ar">مجاني ومفتوح المصدر، بكل الميزات، إلى الأبد</span>
+            </p>
+            <h1 id="hero-title">
+              <span data-l="en">Design anything.<br /><span class="gradient-text"><span class="nowrap">Pay nothing.</span> <span class="nowrap">Keep everything.</span></span></span>
+              <span data-l="ar">صمّم ما تريد.<br /><span class="gradient-text"><span class="nowrap">بلا اشتراك،</span> <span class="nowrap">وتصاميمك ملكك.</span></span></span>
+            </h1>
+            <p class="lead" data-l="en">
+              OpenCanvas is a free, open-source design editor you run yourself: photo frames, crop, about 2,900 icons,
+              brand kits, multi-page designs and professional exports. No subscriptions, no premium tier, no account. Your
+              designs never leave your device.
+            </p>
+            <p class="lead" data-l="ar">
+              OpenCanvas محرّر تصاميم مجاني ومفتوح المصدر تشغّله بنفسك: إطارات للصور، وقصّ، ونحو 2900 أيقونة، وحزم هوية،
+              وتصاميم متعددة الصفحات، وتصدير احترافي. لا اشتراكات ولا باقات مميّزة ولا حسابات، ولا تغادر تصاميمك جهازك أبدًا.
+            </p>
+            <div class="hero-cta">
+              <a class="btn btn-primary" href="#install">
+                <span data-l="en">Get started in 2 minutes</span><span data-l="ar">ابدأ خلال دقيقتين</span>
+                <svg class="i flip"><use href="#i-arrow-right" /></svg>
+              </a>
+              <a class="btn btn-ghost" href="https://github.com/Devehab/OpenCanvas">
+                <svg class="i gh"><use href="#i-github" /></svg>
+                <span data-l="en">View on GitHub</span><span data-l="ar">المشروع على GitHub</span>
+              </a>
+            </div>
+            <ul class="hero-meta">
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">No account needed</span><span data-l="ar">بلا حساب</span>
+              </li>
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">Runs on your own machine</span><span data-l="ar">يعمل على جهازك</span>
+              </li>
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">No tracking, no ads</span><span data-l="ar">بلا تتبّع ولا إعلانات</span>
+              </li>
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">English &amp; Arabic interface</span><span data-l="ar">واجهة عربية وإنجليزية</span>
+              </li>
+            </ul>
+          </div>
+
+          <div class="hero-shot">
+            <div class="float-chip chip-a" aria-hidden="true">
+              <span class="dot" style="background: #dcfce7; color: #15803d"><svg class="i"><use href="#i-save" /></svg></span>
+              <span>
+                <span data-l="en">Saved on this device</span><span data-l="ar">محفوظ على جهازك</span>
+                <small><span data-l="en">No cloud, no account</span><span data-l="ar">بلا سحابة ولا حساب</span></small>
+              </span>
+            </div>
+            <div class="float-chip chip-b" aria-hidden="true">
+              <span class="dot" style="background: #fef9c3; color: #a16207"><svg class="i"><use href="#i-badge-dollar-sign" /></svg></span>
+              <span>
+                <span data-l="en">$0 / month</span><span data-l="ar">مجانًا، دائمًا</span>
+                <small><span data-l="en">Every feature unlocked</span><span data-l="ar">كل الميزات مفتوحة</span></small>
+              </span>
+            </div>
+            <div class="window">
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/design</span></div>
+              <img
+                data-l="en"
+                src="assets/media/editor-en.webp"
+                width="2880"
+                height="1800"
+                alt="The OpenCanvas editor with an Instagram post design: a desert sunset inside a heart frame, Arabic and English headlines, the elements panel and the properties panel"
+                fetchpriority="high"
+                loading="lazy"
+              />
+              <img
+                data-l="ar"
+                src="assets/media/editor-ar.webp"
+                width="2880"
+                height="1800"
+                alt="محرّر OpenCanvas بالواجهة العربية وفيه تصميم منشور إنستغرام: صورة داخل إطار على شكل قلب وعناوين بالعربية والإنجليزية"
+                fetchpriority="high"
+                loading="lazy"
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Stats ============ -->
+      <section class="stats" aria-label="OpenCanvas in numbers">
+        <div class="container">
+          <ul>
+            <li>
+              <strong>$0</strong>
+              <span data-l="en">every feature, forever</span><span data-l="ar">لكل الميزات، دائمًا</span>
+            </li>
+            <li>
+              <strong>70</strong>
+              <span data-l="en">ready-made design sizes</span><span data-l="ar">مقاسًا جاهزًا للتصميم</span>
+            </li>
+            <li>
+              <strong>~2,900</strong>
+              <span data-l="en">open-source icons</span><span data-l="ar">أيقونة مفتوحة المصدر</span>
+            </li>
+            <li>
+              <strong>33</strong>
+              <span data-l="en">shapes, plus stars &amp; badges</span><span data-l="ar">شكلًا إضافةً إلى النجوم والشارات</span>
+            </li>
+            <li>
+              <strong>14</strong>
+              <span data-l="en">Arabic font families</span><span data-l="ar">عائلة خطوط عربية</span>
+            </li>
+            <li>
+              <strong>480+</strong>
+              <span data-l="en">automated tests</span><span data-l="ar">اختبارًا آليًا</span>
+            </li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- ============ Why ============ -->
+      <section class="section" id="why" aria-labelledby="why-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Why OpenCanvas</span><span data-l="ar">لماذا OpenCanvas؟</span></span>
+            <h2 id="why-title">
+              <span data-l="en">Everything the paid design platforms do — free, on your own machine.</span>
+              <span data-l="ar">كل ما تقدّمه منصات التصميم المدفوعة، مجانًا وعلى جهازك أنت.</span>
+            </h2>
+            <p data-l="en">
+              Online design tools are great until you hit the paywall: the frame you wanted is Pro, the transparent export is
+              Pro, the brand kit is Pro. OpenCanvas takes the opposite approach: build it in the open, give every feature to
+              everyone, and let you keep your work.
+            </p>
+            <p data-l="ar">
+              أدوات التصميم على الإنترنت رائعة حتى تصطدم بجدار الدفع: الإطار الذي أردته للمشتركين فقط، والتصدير بخلفية شفافة
+              للمشتركين، وحزمة الهوية للمشتركين. أمّا OpenCanvas فيسلك الطريق المعاكس: يُبنى في العلن، ويمنح كل ميزة للجميع،
+              ويترك أعمالك بين يديك.
+            </p>
+          </div>
+          <div class="pillars">
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-badge-dollar-sign" /></svg></span>
+              <h3><span data-l="en">Free. Actually free.</span><span data-l="ar">مجاني فعلًا</span></h3>
+              <p data-l="en">
+                No trials, no watermarks, no “Pro” crown on the feature you need. Everything in the editor is available to
+                everyone.
+              </p>
+              <p data-l="ar">لا فترات تجريبية ولا علامات مائية ولا تاج «Pro» على الميزة التي تحتاجها. كل ما في المحرّر متاح للجميع.</p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-server" /></svg></span>
+              <h3><span data-l="en">Host it yourself</span><span data-l="ar">استضِفه بنفسك</span></h3>
+              <p data-l="en">
+                Run it on your laptop with two commands, or on your own server with Docker for your team, school or company.
+              </p>
+              <p data-l="ar">شغّله على حاسوبك بأمرين، أو على خادمك الخاص عبر Docker لفريقك أو مدرستك أو شركتك.</p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-shield-check" /></svg></span>
+              <h3><span data-l="en">Your designs stay with you</span><span data-l="ar">تصاميمك تبقى عندك</span></h3>
+              <p data-l="en">
+                Designs and uploads are saved in your browser, on your own device. No account, no upload to anyone's cloud,
+                no one looking at your work.
+              </p>
+              <p data-l="ar">
+                تُحفَظ التصاميم والصور المرفوعة في متصفحك على جهازك. لا حساب، ولا رفع إلى سحابة أحد، ولا أحد يطّلع على أعمالك.
+              </p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-code-xml" /></svg></span>
+              <h3><span data-l="en">Open source, MIT</span><span data-l="ar">مفتوح المصدر برخصة MIT</span></h3>
+              <p data-l="en">
+                Read every line, change anything, fork it, translate it, build a business on it. The MIT license makes it
+                truly yours.
+              </p>
+              <p data-l="ar">اقرأ كل سطر، وعدّل ما تشاء، وانسخه، وترجمه، وابنِ عليه مشروعك التجاري. رخصة MIT تجعله ملكك حقًا.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Founder ============ -->
+      <section class="founder" aria-labelledby="founder-title">
+        <div class="container">
+          <div class="founder-card">
+            <div class="founder-id reveal">
+              <div class="avatar" aria-hidden="true"><span data-l="en">EK</span><span data-l="ar">إ.ق</span></div>
+              <div>
+                <p class="name"><span data-l="en">Ehab Kahwati</span><span data-l="ar">إيهاب قهواتي</span></p>
+                <p class="role"><span data-l="en">Creator of OpenCanvas</span><span data-l="ar">مؤسّس OpenCanvas</span></p>
+              </div>
+            </div>
+            <div class="reveal">
+              <span class="eyebrow"><span data-l="en">Why I built this</span><span data-l="ar">لماذا بنيت هذا المشروع</span></span>
+              <h2 id="founder-title">
+                <span data-l="en">We can build our own tools — and own them.</span>
+                <span data-l="ar">نستطيع أن نبني أدواتنا بأنفسنا، وأن نملكها.</span>
+              </h2>
+              <blockquote data-l="en">
+                <p class="big">
+                  I believe software is something we have a right to: all of it, with every feature, for free.
+                </p>
+                <p>
+                  Whatever tool exists online today, we can build one just like it, use it for free and keep our data
+                  private. We don't have to accept a monthly bill and someone else's cloud as the price of being creative.
+                </p>
+                <p>
+                  I want us to be builders, not just consumers: people who make things that belong to us, instead of
+                  renting them one subscription at a time.
+                </p>
+                <p class="highlight">
+                  And for the first time, that dream is within reach. With the power of AI, a small team, even one
+                  determined person, can build what used to take an entire company. OpenCanvas is my proof. Now it's yours,
+                  too.
+                </p>
+                <p class="signature">— <strong>Ehab Kahwati</strong>, creator of OpenCanvas</p>
+              </blockquote>
+              <blockquote data-l="ar">
+                <p class="big">أؤمن بأن البرمجيات حقٌّ لنا جميعًا: أن نحصل عليها مجانًا، بكل ميزاتها، دون أن يُحجَب عنّا شيء.</p>
+                <p>
+                  أيّ برنامج تراه اليوم على الإنترنت، نستطيع أن نبني مثله تمامًا، ونستخدمه مجانًا، ونحافظ على خصوصية بياناتنا.
+                  لسنا مضطرين إلى قبول فاتورة شهرية وسحابةٍ لا نملكها ثمنًا لإبداعنا.
+                </p>
+                <p>أريد أن نكون صنّاعًا لا مستهلكين فحسب؛ أن نبني أشياء تخصّنا نحن، بدل أن نستأجرها اشتراكًا بعد اشتراك.</p>
+                <p class="highlight">
+                  واليوم، ولأول مرة، صار هذا الحلم في متناول أيدينا. فبقوة الذكاء الاصطناعي يستطيع فريق صغير، بل شخص واحد عازم
+                  على هدفه، أن يبني ما كان يحتاج إلى شركة كاملة. ‏OpenCanvas هو دليلي على ذلك، وهو الآن لك أيضًا.
+                </p>
+                <p class="signature">— <strong>إيهاب قهواتي</strong>، مؤسّس OpenCanvas</p>
+              </blockquote>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Features ============ -->
+      <section class="section" id="features" aria-labelledby="features-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">See it in action</span><span data-l="ar">شاهده أثناء العمل</span></span>
+            <h2 id="features-title">
+              <span data-l="en">Real features, recorded from the real app.</span>
+              <span data-l="ar">ميزات حقيقية، مسجّلة من التطبيق نفسه.</span>
+            </h2>
+            <p data-l="en">Every animation below is a screen recording of OpenCanvas running in a browser. No mockups.</p>
+            <p data-l="ar">كل صورة متحركة أدناه تسجيلٌ للشاشة من OpenCanvas وهو يعمل في المتصفح، لا تصاميم وهمية.</p>
+          </div>
+
+          <!-- Frames -->
+          <article class="feature">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-frame" /></svg></span></span>
+              <h3><span data-l="en">Photo frames</span><span data-l="ar">إطارات الصور</span></h3>
+              <p data-l="en">
+                Drag a photo onto a heart, a circle, a Polaroid, a film strip or a phone mockup and it takes the frame's shape
+                instantly. Drag another photo over it to swap.
+              </p>
+              <p data-l="ar">
+                اسحب صورة إلى قلب أو دائرة أو صورة بولارويد أو شريط أفلام أو شاشة هاتف، فتأخذ شكل الإطار فورًا. ولتبديلها اسحب
+                صورة أخرى فوقها.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Shapes, Polaroids, film strips, collage grids and device mockups</span>
+                  <span data-l="ar">أشكال وصور بولارويد وأشرطة أفلام وشبكات كولاج وإطارات أجهزة</span>
+                </li>
+                <li>
+                  <span data-l="en">The photo stays editable: reposition or replace it any time</span>
+                  <span data-l="ar">تبقى الصورة قابلة للتعديل: غيّر موضعها أو استبدلها متى شئت</span>
+                </li>
+                <li>
+                  <span data-l="en">Upload by drag and drop, with folders for your images</span>
+                  <span data-l="ar">ارفع الصور بالسحب والإفلات، ونظّمها في مجلدات</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/frames.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Dragging photos into a heart frame and a circle frame in the OpenCanvas editor"
+                  data-alt-ar="سحب صور إلى إطار على شكل قلب وإطار دائري في محرّر OpenCanvas"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Crop -->
+          <article class="feature reverse">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-crop" /></svg></span></span>
+              <h3><span data-l="en">Crop like a pro</span><span data-l="ar">قصّ احترافي للصور</span></h3>
+              <p data-l="en">
+                Double-click a photo to crop it: drag the image inside its frame, scale it from the corners and press Done.
+                The original is never lost, so you can reset whenever you like.
+              </p>
+              <p data-l="ar">
+                انقر نقرًا مزدوجًا على صورة لقصّها: اسحبها داخل إطارها، وكبّرها من الزوايا، ثم اضغط «تم». لا تضيع الصورة الأصلية
+                أبدًا، ويمكنك استعادتها متى شئت.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Works on photos and on photos inside frames</span>
+                  <span data-l="ar">يعمل على الصور وعلى الصور داخل الإطارات</span>
+                </li>
+                <li>
+                  <span data-l="en">Non-destructive: the full image is always kept</span>
+                  <span data-l="ar">قصّ غير إتلافي: تُحفَظ الصورة كاملة دائمًا</span>
+                </li>
+                <li>
+                  <span data-l="en">Finish with a double-click or the Enter key</span>
+                  <span data-l="ar">أنهِ القصّ بنقرة مزدوجة أو بمفتاح Enter</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/crop.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Cropping a sunset photo: panning it inside the crop box and scaling it from a corner"
+                  data-alt-ar="قصّ صورة غروب: تحريكها داخل مربع القصّ وتكبيرها من إحدى الزوايا"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Elements -->
+          <article class="feature">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-shapes" /></svg></span></span>
+              <h3><span data-l="en">Shapes, lines and ~2,900 icons</span><span data-l="ar">أشكال وخطوط ونحو 2900 أيقونة</span></h3>
+              <p data-l="en">
+                Pick from 33 shapes, stars and badges, 12 line styles and the complete Lucide and Tabler icon sets. Search in
+                English or Arabic: “rocket” and “صاروخ” both work.
+              </p>
+              <p data-l="ar">
+                اختر من بين 33 شكلًا ونجومًا وشارات و12 نمطًا للخطوط، ومكتبتَي Lucide وTabler كاملتين. وابحث بالعربية أو
+                الإنجليزية: «صاروخ» و«rocket» كلاهما يعمل.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Every element is a vector you can recolor and resize</span>
+                  <span data-l="ar">كل عنصر رسم متجهي يمكنك تغيير لونه وحجمه</span>
+                </li>
+                <li>
+                  <span data-l="en">Recently used items are one click away</span>
+                  <span data-l="ar">العناصر المستخدمة مؤخرًا على بُعد نقرة</span>
+                </li>
+                <li>
+                  <span data-l="en">Arrows, callouts and frames in the same panel</span>
+                  <span data-l="ar">الأسهم وفقاعات الكلام والإطارات في اللوحة نفسها</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/elements.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Adding a star and a badge from the Elements panel, then searching for and inserting a rocket icon"
+                  data-alt-ar="إضافة نجمة وشارة من لوحة العناصر، ثم البحث عن أيقونة صاروخ وإدراجها"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Pages -->
+          <article class="feature reverse">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-layout-grid" /></svg></span></span>
+              <h3><span data-l="en">Multi-page designs</span><span data-l="ar">تصاميم متعددة الصفحات</span></h3>
+              <p data-l="en">
+                Build presentations, carousels and documents. Switch between a single page, thumbnails, continuous scroll and a
+                grid of every page, then rename, reorder, hide, lock or duplicate any page.
+              </p>
+              <p data-l="ar">
+                أنشئ عروضًا تقديمية ومنشورات متعددة الشرائح ومستندات. انتقل بين عرض الصفحة الواحدة والصور المصغّرة والتمرير
+                المتواصل وشبكة تضم كل الصفحات، ثم سمِّ أي صفحة أو رتّبها أو أخفِها أو أقفِلها أو كرّرها.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Four page views, just like the big platforms</span>
+                  <span data-l="ar">أربعة أوضاع لعرض الصفحات، كما في المنصات الكبيرة</span>
+                </li>
+                <li>
+                  <span data-l="en">Page titles and per-page actions</span>
+                  <span data-l="ar">عناوين للصفحات وإجراءات خاصة بكل صفحة</span>
+                </li>
+                <li>
+                  <span data-l="en">Hidden pages are skipped on export</span>
+                  <span data-l="ar">تُستثنى الصفحات المخفية عند التصدير</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/pages.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="A four-page presentation shown as thumbnails, then in scroll view, then as a grid of all pages"
+                  data-alt-ar="عرض تقديمي من أربع صفحات يظهر بالصور المصغّرة، ثم بالتمرير المتواصل، ثم شبكةً لكل الصفحات"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Download -->
+          <article class="feature">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-file-down" /></svg></span></span>
+              <h3><span data-l="en">Pro exports, no paywall</span><span data-l="ar">تصدير احترافي بلا جدار دفع</span></h3>
+              <p data-l="en">
+                PNG, JPEG and WebP at any size, transparent backgrounds, compressed PNGs or a maximum file size; SVG with
+                embedded fonts; PDF and print PDF; and multi-page ZIPs. The features others charge for are simply there.
+              </p>
+              <p data-l="ar">
+                ملفات PNG وJPEG وWebP بأي مقاس، وخلفيات شفافة، وملفات PNG مضغوطة أو بحجم أقصى تحدّده، وSVG مع تضمين الخطوط،
+                وPDF عادي وPDF للطباعة، وملفات ZIP للتصاميم متعددة الصفحات. ما يتقاضى الآخرون ثمنه موجود هنا ببساطة.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Export every page or pick the ones you need</span>
+                  <span data-l="ar">صدّر كل الصفحات أو اختر ما تحتاج منها</span>
+                </li>
+                <li>
+                  <span data-l="en">Save as .opencanvas to keep everything editable</span>
+                  <span data-l="ar">احفظ بصيغة <bdi>.opencanvas</bdi> ليبقى كل شيء قابلًا للتعديل</span>
+                </li>
+                <li>
+                  <span data-l="en">Rendered on your device; nothing is uploaded</span>
+                  <span data-l="ar">يجري التصدير على جهازك، ولا يُرفَع شيء</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/download.gif"
+                  width="720"
+                  height="655"
+                  loading="lazy"
+                  decoding="async"
+                  style="--ratio: 720 / 655"
+                  alt="The Download dialog: choosing PNG, a compressed file, a size limit and the current page"
+                  data-alt-ar="نافذة التنزيل: اختيار PNG وملف مضغوط وحدّ أقصى للحجم والصفحة الحالية"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Brand kits -->
+          <article class="feature reverse">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-palette" /></svg></span></span>
+              <h3><span data-l="en">Brand kits</span><span data-l="ar">حزم الهوية</span></h3>
+              <p data-l="en">
+                Keep your logos, colors and fonts in one place and apply them in a click. Create as many brand kits as you need:
+                for yourself, your clients or each project.
+              </p>
+              <p data-l="ar">
+                اجمع شعاراتك وألوانك وخطوطك في مكان واحد وطبّقها بنقرة. وأنشئ ما تشاء من حزم الهوية: لنفسك أو لعملائك أو لكل
+                مشروع.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Logos, palettes, fonts, photos, graphics and icons</span>
+                  <span data-l="ar">شعارات ولوحات ألوان وخطوط وصور ورسوم وأيقونات</span>
+                </li>
+                <li>
+                  <span data-l="en">Brand voice notes and brand templates</span>
+                  <span data-l="ar">إرشادات لأسلوب العلامة وقوالب خاصة بها</span>
+                </li>
+                <li>
+                  <span data-l="en">Folders to organize designs and uploads</span>
+                  <span data-l="ar">مجلدات لتنظيم التصاميم والصور المرفوعة</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/brand.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Applying a brand kit: adding the logo, recoloring shapes with brand colors and adding a brand heading"
+                  data-alt-ar="تطبيق حزمة هوية: إضافة الشعار، وتلوين الأشكال بألوان العلامة، وإضافة عنوان بخطّها"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Guides -->
+          <article class="feature">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-ruler" /></svg></span></span>
+              <h3><span data-l="en">Rulers, guides and snapping</span><span data-l="ar">مساطر وأدلة ومحاذاة تلقائية</span></h3>
+              <p data-l="en">
+                Add a 3×3 grid of guides in one click, drag new guides straight from the rulers, and watch elements snap into
+                place. Precise layouts without the fiddling.
+              </p>
+              <p data-l="ar">
+                أضِف شبكة أدلة 3×3 بنقرة واحدة، واسحب أدلة جديدة من المساطر مباشرة، وشاهد العناصر تلتصق في مكانها بدقة. تخطيطات
+                محكمة دون عناء.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Presets for 12 columns, 3 columns and grids, with gutters and margins</span>
+                  <span data-l="ar">قوالب جاهزة لـ 12 عمودًا و3 أعمدة والشبكات، مع الفواصل والهوامش</span>
+                </li>
+                <li>
+                  <span data-l="en">Smart alignment to other elements and to the page</span>
+                  <span data-l="ar">محاذاة ذكية مع العناصر الأخرى ومع الصفحة</span>
+                </li>
+                <li>
+                  <span data-l="en">Guides are saved with each page</span>
+                  <span data-l="ar">تُحفَظ الأدلة مع كل صفحة</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/guides.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Adding a 3×3 guide grid, dragging a circle until it snaps to the guides, and pulling a new guide from the ruler"
+                  data-alt-ar="إضافة شبكة أدلة 3×3، وسحب دائرة حتى تلتصق بالأدلة، وسحب دليل جديد من المسطرة"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Create -->
+          <article class="feature reverse">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-layout-template" /></svg></span></span>
+              <h3><span data-l="en">70 formats, ready to go</span><span data-l="ar">70 مقاسًا جاهزًا</span></h3>
+              <p data-l="en">
+                Instagram posts and stories, TikTok, YouTube thumbnails, presentations, A4 and US Letter documents, posters,
+                business cards, whiteboards and more, or a custom size in pixels, millimeters or inches.
+              </p>
+              <p data-l="ar">
+                منشورات إنستغرام وقصصه، وتيك توك، وصور يوتيوب المصغّرة، والعروض التقديمية، ومستندات A4 وLetter، والملصقات،
+                وبطاقات العمل، والسبورات البيضاء، وغيرها، أو مقاس مخصّص بالبكسل أو المليمتر أو البوصة.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Browse by category and by platform</span>
+                  <span data-l="ar">تصفّح حسب الفئة والمنصة</span>
+                </li>
+                <li>
+                  <span data-l="en">Search every format instantly</span>
+                  <span data-l="ar">ابحث في كل المقاسات فورًا</span>
+                </li>
+                <li>
+                  <span data-l="en">Print sizes export at exact 300 DPI dimensions</span>
+                  <span data-l="ar">تُصدَّر مقاسات الطباعة بأبعاد دقيقة بدقة 300 DPI</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/create.gif"
+                  width="800"
+                  height="500"
+                  loading="lazy"
+                  decoding="async"
+                  style="--ratio: 800 / 500"
+                  alt="The Create a design dialog: browsing social formats by platform, print and whiteboard sizes, and searching for YouTube"
+                  data-alt-ar="نافذة إنشاء تصميم: تصفّح مقاسات التواصل الاجتماعي حسب المنصة ومقاسات الطباعة والسبورة، والبحث عن YouTube"
+                />
+              </div>
+            </figure>
+          </article>
+
+          <!-- Arabic -->
+          <article class="feature">
+            <div class="feature-text reveal">
+              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-languages" /></svg></span></span>
+              <h3><span data-l="en">Arabic, done properly</span><span data-l="ar">عربية كما يجب</span></h3>
+              <p data-l="en">
+                A fully mirrored right-to-left interface, correct letter shaping, Arabic, English and numbers mixed on the same
+                line, Arabic justification and 14 Arabic font families. Built in from day one, not bolted on.
+              </p>
+              <p data-l="ar">
+                واجهة كاملة من اليمين إلى اليسار، ووصلٌ صحيح للحروف، ونصوص تمزج العربية والإنجليزية والأرقام في السطر نفسه،
+                ومحاذاة كاملة للفقرات العربية، و14 عائلة خطوط عربية. دعمٌ أصيل منذ اليوم الأول، لا إضافة لاحقة.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Unicode bidi for mixed-direction text</span>
+                  <span data-l="ar">خوارزمية Unicode لثنائية الاتجاه في النصوص المختلطة</span>
+                </li>
+                <li>
+                  <span data-l="en">Arabic lists and correct line breaking</span>
+                  <span data-l="ar">قوائم عربية وكسر صحيح للأسطر</span>
+                </li>
+                <li>
+                  <span data-l="en">Icon search in Arabic</span>
+                  <span data-l="ar">بحث عن الأيقونات بالعربية</span>
+                </li>
+              </ul>
+            </div>
+            <figure class="media reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
+                <img
+                  src="assets/media/arabic.gif"
+                  width="800"
+                  height="645"
+                  loading="lazy"
+                  decoding="async"
+                  alt="Typing an Arabic headline with mixed English and numbers in the right-to-left Arabic interface"
+                  data-alt-ar="كتابة عنوان عربي يمزج الإنجليزية والأرقام في الواجهة العربية من اليمين إلى اليسار"
+                />
+              </div>
+            </figure>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Capabilities ============ -->
+      <section class="section alt" aria-labelledby="more-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">And much more</span><span data-l="ar">والمزيد</span></span>
+            <h2 id="more-title">
+              <span data-l="en">A complete editor, not a demo</span>
+              <span data-l="ar">محرّر متكامل، لا نسخة تجريبية</span>
+            </h2>
+          </div>
+          <div class="cap-grid">
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-type" /></svg>
+                <span data-l="en">Rich text engine</span><span data-l="ar">محرّك نصوص متكامل</span>
+              </h3>
+              <p data-l="en">Real text layout with wrapping, lists, letter and line spacing, effects and web fonts.</p>
+              <p data-l="ar">تخطيط حقيقي للنصوص مع الالتفاف والقوائم وتباعد الحروف والأسطر والتأثيرات والخطوط.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-layers" /></svg>
+                <span data-l="en">Layers and groups</span><span data-l="ar">الطبقات والمجموعات</span>
+              </h3>
+              <p data-l="en">Reorder, lock, hide, group and align. Every element stays a separate, editable layer.</p>
+              <p data-l="ar">رتّب وأقفِل وأخفِ وجمّع وحاذِ. يبقى كل عنصر طبقةً مستقلة قابلة للتعديل.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-blend" /></svg>
+                <span data-l="en">Effects and adjustments</span><span data-l="ar">تأثيرات وتعديلات</span>
+              </h3>
+              <p data-l="en">Gradients, strokes, shadows, blur, 16 blend modes and image adjustments.</p>
+              <p data-l="ar">تدرّجات لونية وحدود وظلال وتمويه و16 وضعًا للمزج وتعديلات للصور.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-undo-2" /></svg>
+                <span data-l="en">Undo for everything</span><span data-l="ar">تراجع عن أي شيء</span>
+              </h3>
+              <p data-l="en">Every change is a validated command, so undo, redo and autosave always agree.</p>
+              <p data-l="ar">كل تعديل أمرٌ موثّق ومتحقَّق منه، فيتّفق التراجع والإعادة والحفظ التلقائي دائمًا.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-save" /></svg>
+                <span data-l="en">Saves as you work</span><span data-l="ar">حفظ تلقائي آمن</span>
+              </h3>
+              <p data-l="en">
+                Saved instantly to your browser. Close the tab mid-edit and nothing is lost; two tabs never overwrite each other.
+              </p>
+              <p data-l="ar">يُحفَظ عملك فورًا في المتصفح. أغلق التبويب في منتصف التعديل ولن يضيع شيء، ولن يكتب تبويب فوق آخر.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-keyboard" /></svg>
+                <span data-l="en">Keyboard and accessibility</span><span data-l="ar">لوحة المفاتيح وسهولة الوصول</span>
+              </h3>
+              <p data-l="en">Shortcuts for everything, keyboard-only editing and WCAG 2.1 AA checks in every test run.</p>
+              <p data-l="ar">اختصارات لكل شيء، وتحرير كامل من لوحة المفاتيح، وفحوص WCAG 2.1 AA في كل تشغيل للاختبارات.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-file-code" /></svg>
+                <span data-l="en">Open file format</span><span data-l="ar">صيغة ملفات مفتوحة</span>
+              </h3>
+              <p data-l="en">Designs are structured, documented JSON, never flattened images. Your work is portable.</p>
+              <p data-l="ar">التصاميم مستندات JSON منظّمة وموثّقة، لا صور مسطّحة، فتبقى أعمالك قابلة للنقل.</p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-wand-sparkles" /></svg>
+                <span data-l="en">Ready for AI</span><span data-l="ar">جاهز للذكاء الاصطناعي</span>
+              </h3>
+              <p data-l="en">
+                Editing commands export as tool definitions, so AI agents can edit real designs instead of generating flat
+                pictures.
+              </p>
+              <p data-l="ar">
+                تُصدَّر أوامر التحرير تعريفاتٍ للأدوات، فيعدّل وكلاء الذكاء الاصطناعي تصاميم حقيقية بدل توليد صور مسطّحة.
+              </p>
+            </article>
+            <article class="cap reveal">
+              <h3>
+                <svg class="i"><use href="#i-monitor-smartphone" /></svg>
+                <span data-l="en">Desktop and mobile</span><span data-l="ar">للحاسوب والهاتف</span>
+              </h3>
+              <p data-l="en">A responsive editor that works on large screens, laptops and phones.</p>
+              <p data-l="ar">محرّر متجاوب يعمل على الشاشات الكبيرة والحواسيب المحمولة والهواتف.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Gallery ============ -->
+      <section class="section" aria-labelledby="gallery-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Screenshots</span><span data-l="ar">لقطات الشاشة</span></span>
+            <h2 id="gallery-title"><span data-l="en">A closer look</span><span data-l="ar">نظرة أقرب</span></h2>
+          </div>
+          <div class="gallery">
+            <figure class="reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000</span></div>
+                <img
+                  data-l="en"
+                  src="assets/media/dashboard-en.webp"
+                  width="2880"
+                  height="1800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="The OpenCanvas home screen with recent designs, folders and the Create a design button"
+                />
+                <img
+                  data-l="ar"
+                  src="assets/media/dashboard-ar.webp"
+                  width="2880"
+                  height="1800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="الشاشة الرئيسية في OpenCanvas بالعربية وفيها التصاميم الأخيرة والمجلدات وزر إنشاء تصميم"
+                />
+              </div>
+              <figcaption>
+                <span data-l="en">Your designs, folders and uploads, all stored locally.</span>
+                <span data-l="ar">تصاميمك ومجلداتك وصورك المرفوعة، كلها محفوظة محليًا.</span>
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000</span></div>
+                <img
+                  src="assets/media/create-dialog-en.webp"
+                  width="2880"
+                  height="1800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="The Create a design dialog with format categories and platform filters"
+                  data-alt-ar="نافذة إنشاء تصميم بفئات المقاسات وفلاتر المنصات"
+                />
+              </div>
+              <figcaption>
+                <span data-l="en">Create a design: 70 formats by category and platform.</span>
+                <span data-l="ar">إنشاء تصميم: 70 مقاسًا مصنّفة حسب الفئة والمنصة.</span>
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/brand</span></div>
+                <img
+                  src="assets/media/brand-kit-en.webp"
+                  width="1280"
+                  height="800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="A brand kit page with a logo, color palettes and brand fonts"
+                  data-alt-ar="صفحة حزمة هوية فيها شعار ولوحات ألوان وخطوط العلامة"
+                />
+              </div>
+              <figcaption>
+                <span data-l="en">Brand kits with logos, colors and fonts.</span>
+                <span data-l="ar">حزم الهوية: شعارات وألوان وخطوط.</span>
+              </figcaption>
+            </figure>
+            <figure class="reveal">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/design</span></div>
+                <img
+                  data-l="en"
+                  src="assets/media/editor-ar.webp"
+                  width="2880"
+                  height="1800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="The same editor with the Arabic right-to-left interface"
+                />
+                <img
+                  data-l="ar"
+                  src="assets/media/editor-en.webp"
+                  width="2880"
+                  height="1800"
+                  loading="lazy"
+                  decoding="async"
+                  alt="المحرّر نفسه بالواجهة الإنجليزية"
+                />
+              </div>
+              <figcaption>
+                <span data-l="en">The same editor in Arabic, fully right-to-left.</span>
+                <span data-l="ar">المحرّر نفسه بالواجهة الإنجليزية.</span>
+              </figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Comparison ============ -->
+      <section class="section alt" aria-labelledby="compare-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">The honest comparison</span><span data-l="ar">مقارنة صريحة</span></span>
+            <h2 id="compare-title">
+              <span data-l="en">Why pay for what you can own?</span>
+              <span data-l="ar">لماذا تدفع ثمن ما يمكنك امتلاكه؟</span>
+            </h2>
+          </div>
+          <section class="compare-wrap reveal" tabindex="0" aria-labelledby="compare-title">
+            <table class="compare">
+              <thead>
+                <tr>
+                  <th scope="col"><span class="sr-only"><span data-l="en">Topic</span><span data-l="ar">البند</span></span></th>
+                  <th scope="col">
+                    <span data-l="en">Typical paid design platforms</span><span data-l="ar">منصات التصميم المدفوعة عادةً</span>
+                  </th>
+                  <th scope="col" class="us">OpenCanvas</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row"><span data-l="en">Price</span><span data-l="ar">السعر</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Limited free tier; premium features need a monthly subscription</span>
+                      <span data-l="ar">باقة مجانية محدودة، والميزات المميّزة باشتراك شهري</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">Free. Every feature, forever</span>
+                      <span data-l="ar">مجاني، بكل الميزات، دائمًا</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">Locked features</span><span data-l="ar">الميزات المحجوبة</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Transparent exports, brand kits, many frames and elements</span>
+                      <span data-l="ar">التصدير بخلفية شفافة وحزم الهوية وكثير من الإطارات والعناصر</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">None. Nothing is locked</span>
+                      <span data-l="ar">لا شيء محجوب</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">Where your designs live</span><span data-l="ar">أين تُحفَظ تصاميمك</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">On the company's servers</span>
+                      <span data-l="ar">على خوادم الشركة</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">On your device</span>
+                      <span data-l="ar">على جهازك</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">Account</span><span data-l="ar">الحساب</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Required</span><span data-l="ar">إلزامي</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">Not needed</span><span data-l="ar">غير مطلوب</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">Self-hosting</span><span data-l="ar">الاستضافة الذاتية</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Not possible</span><span data-l="ar">غير ممكنة</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">Two commands, or Docker</span><span data-l="ar">بأمرين، أو عبر Docker</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">Source code</span><span data-l="ar">الشيفرة المصدرية</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Closed</span><span data-l="ar">مغلقة</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">Open, MIT license</span><span data-l="ar">مفتوحة برخصة MIT</span>
+                    </span></span>
+                  </td>
+                </tr>
+                <tr>
+                  <th scope="row"><span data-l="en">If the service shuts down</span><span data-l="ar">إذا توقّفت الخدمة</span></th>
+                  <td>
+                    <span class="mark no"><svg class="i"><use href="#i-x" /></svg><span>
+                      <span data-l="en">Your library may go with it</span><span data-l="ar">قد تخسر مكتبتك معها</span>
+                    </span></span>
+                  </td>
+                  <td class="us">
+                    <span class="mark yes"><svg class="i"><use href="#i-check" /></svg><span>
+                      <span data-l="en">Your files and the app stay yours</span><span data-l="ar">تبقى ملفاتك والتطبيق نفسه ملكك</span>
+                    </span></span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </section>
+          <p class="honest reveal" data-l="en">
+            <strong>Being honest:</strong> the big platforms still have things we don't yet: huge template and stock photo
+            libraries, real-time collaboration and video editing. They are all on our roadmap, and every contribution brings
+            them closer.
+          </p>
+          <p class="honest reveal" data-l="ar">
+            <strong>بصراحة:</strong> ما زالت المنصات الكبيرة تتفوّق في أمور لم نصل إليها بعد، مثل المكتبات الضخمة من القوالب
+            والصور الجاهزة، والتعاون اللحظي، وتحرير الفيديو. كلها على خارطة طريقنا، وكل مساهمة تقرّبنا منها.
+          </p>
+        </div>
+      </section>
+
+      <!-- ============ Install ============ -->
+      <section class="section" id="install" aria-labelledby="install-title">
+        <div class="container">
+          <div class="install-grid">
+            <div class="reveal">
+              <span class="eyebrow"><span data-l="en">Get started</span><span data-l="ar">ابدأ الآن</span></span>
+              <h2 class="h2" id="install-title">
+                <span data-l="en">Up and running in two minutes</span>
+                <span data-l="ar">جاهز للعمل خلال دقيقتين</span>
+              </h2>
+              <p class="section-sub" data-l="en" style="margin-top: 16px; color: var(--muted)">
+                Clone the repository, install and start. OpenCanvas opens in your browser at
+                <code>localhost:3000</code>, and everything runs on your machine.
+              </p>
+              <p class="section-sub" data-l="ar" style="margin-top: 16px; color: var(--muted)">
+                انسخ المستودع، وثبّت الحزم، وشغّله. يفتح OpenCanvas في متصفحك على العنوان <code>localhost:3000</code>، وكل شيء
+                يعمل على جهازك.
+              </p>
+              <ul class="requirements">
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-package" /></svg></span>
+                  <span>
+                    <b><span data-l="en">Node.js 22 or newer</span><span data-l="ar">Node.js الإصدار 22 أو أحدث</span></b>
+                    <small><a href="https://nodejs.org">nodejs.org</a></small>
+                  </span>
+                </li>
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-terminal" /></svg></span>
+                  <span>
+                    <b>pnpm 10</b>
+                    <small>
+                      <span data-l="en">Through Corepack, which ships with Node</span>
+                      <span data-l="ar">عبر Corepack المرفقة مع Node</span>
+                    </small>
+                  </span>
+                </li>
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-git-branch" /></svg></span>
+                  <span>
+                    <b>Git</b>
+                    <small><span data-l="en">To clone the repository</span><span data-l="ar">لنسخ المستودع</span></small>
+                  </span>
+                </li>
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-container" /></svg></span>
+                  <span>
+                    <b><span data-l="en">Or just Docker</span><span data-l="ar">أو Docker فقط</span></b>
+                    <small>
+                      <span data-l="en">No Node.js needed; ideal for servers</span>
+                      <span data-l="ar">دون الحاجة إلى Node.js، وهو الأنسب للخوادم</span>
+                    </small>
+                  </span>
+                </li>
+              </ul>
+            </div>
+
+            <div class="tabs reveal" data-tabs>
+              <div class="tablist" role="tablist" aria-label="Operating system">
+                <button type="button" role="tab" id="tab-macos" aria-controls="panel-macos" aria-selected="true" data-os="macos">
+                  <svg class="i"><use href="#i-laptop" /></svg>macOS
+                </button>
+                <button type="button" role="tab" id="tab-linux" aria-controls="panel-linux" aria-selected="false" tabindex="-1" data-os="linux">
+                  <svg class="i"><use href="#i-terminal" /></svg>Linux
+                </button>
+                <button type="button" role="tab" id="tab-windows" aria-controls="panel-windows" aria-selected="false" tabindex="-1" data-os="windows">
+                  <svg class="i"><use href="#i-monitor-smartphone" /></svg>Windows
+                </button>
+                <button type="button" role="tab" id="tab-docker" aria-controls="panel-docker" aria-selected="false" tabindex="-1" data-os="docker">
+                  <svg class="i"><use href="#i-container" /></svg>Docker
+                </button>
+              </div>
+
+              <!-- macOS -->
+              <div class="tabpanel" role="tabpanel" id="panel-macos" aria-labelledby="tab-macos" tabindex="0">
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">1</span>
+                    <span data-l="en">Install Node.js 22+ (skip if you have it)</span>
+                    <span data-l="ar">ثبّت Node.js 22 أو أحدث (تخطَّ هذه الخطوة إن كان مثبّتًا)</span>
+                  </p>
+                  <div class="code"><pre><code>brew install node   <span class="c"># or use the installer from nodejs.org</span></code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">2</span>
+                    <span data-l="en">Enable pnpm</span><span data-l="ar">فعّل pnpm</span>
+                  </p>
+                  <div class="code"><pre><code>corepack enable</code></pre></div>
+                  <p class="note" data-l="en">
+                    Permission error? Run <code>sudo corepack enable</code>, or install pnpm directly with
+                    <code>sudo npm install -g pnpm@10.28.0</code>.
+                  </p>
+                  <p class="note" data-l="ar">
+                    ظهر خطأ في الصلاحيات؟ شغّل <code>sudo corepack enable</code>، أو ثبّت pnpm مباشرة بالأمر
+                    <code>sudo npm install -g pnpm@10.28.0</code>.
+                  </p>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">3</span>
+                    <span data-l="en">Clone and start</span><span data-l="ar">انسخ المستودع وشغّله</span>
+                  </p>
+                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
+cd OpenCanvas
+pnpm install
+pnpm dev</code></pre></div>
+                </div>
+                <p class="open-app">
+                  <svg class="i"><use href="#i-rocket" /></svg>
+                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
+                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                </p>
+              </div>
+
+              <!-- Linux -->
+              <div class="tabpanel" role="tabpanel" id="panel-linux" aria-labelledby="tab-linux" tabindex="0" hidden>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">1</span>
+                    <span data-l="en">Install Node.js 22+ with nvm (or your package manager)</span>
+                    <span data-l="ar">ثبّت Node.js 22 أو أحدث عبر nvm (أو مدير الحزم في نظامك)</span>
+                  </p>
+                  <div class="code"><pre><code>curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
+<span class="c"># open a new terminal, then:</span>
+nvm install 22</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">2</span>
+                    <span data-l="en">Enable pnpm</span><span data-l="ar">فعّل pnpm</span>
+                  </p>
+                  <div class="code"><pre><code>corepack enable</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">3</span>
+                    <span data-l="en">Clone and start</span><span data-l="ar">انسخ المستودع وشغّله</span>
+                  </p>
+                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
+cd OpenCanvas
+pnpm install
+pnpm dev</code></pre></div>
+                </div>
+                <p class="open-app">
+                  <svg class="i"><use href="#i-rocket" /></svg>
+                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
+                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                </p>
+              </div>
+
+              <!-- Windows -->
+              <div class="tabpanel" role="tabpanel" id="panel-windows" aria-labelledby="tab-windows" tabindex="0" hidden>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">1</span>
+                    <span data-l="en">Install Node.js and Git (PowerShell)</span>
+                    <span data-l="ar">ثبّت Node.js وGit (من PowerShell)</span>
+                  </p>
+                  <div class="code"><pre><code>winget install OpenJS.NodeJS.LTS
+winget install Git.Git</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">2</span>
+                    <span data-l="en">Enable pnpm (PowerShell as Administrator)</span>
+                    <span data-l="ar">فعّل pnpm (من PowerShell بصلاحيات المسؤول)</span>
+                  </p>
+                  <div class="code"><pre><code>corepack enable</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">3</span>
+                    <span data-l="en">Clone and start (a new terminal)</span>
+                    <span data-l="ar">انسخ المستودع وشغّله (في نافذة طرفية جديدة)</span>
+                  </p>
+                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
+cd OpenCanvas
+pnpm install
+pnpm dev</code></pre></div>
+                </div>
+                <p class="open-app">
+                  <svg class="i"><use href="#i-rocket" /></svg>
+                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
+                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                </p>
+              </div>
+
+              <!-- Docker -->
+              <div class="tabpanel" role="tabpanel" id="panel-docker" aria-labelledby="tab-docker" tabindex="0" hidden>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">1</span>
+                    <span data-l="en">Clone the repository</span><span data-l="ar">انسخ المستودع</span>
+                  </p>
+                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
+cd OpenCanvas</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">2</span>
+                    <span data-l="en">Build and start the container</span><span data-l="ar">ابنِ الحاوية وشغّلها</span>
+                  </p>
+                  <div class="code"><pre><code>docker compose up -d --build</code></pre></div>
+                  <p class="note" data-l="en">
+                    Another port? <code>PORT=8080 docker compose up -d --build</code>. Guides for Coolify and Hetzner are in
+                    <a href="https://github.com/Devehab/OpenCanvas/blob/main/docs/deployment.md" style="color: #c4b5fd">docs/deployment.md</a>.
+                  </p>
+                  <p class="note" data-l="ar">
+                    تريد منفذًا آخر؟ <code>PORT=8080 docker compose up -d --build</code>. وتجد أدلة النشر على Coolify وHetzner في
+                    <a href="https://github.com/Devehab/OpenCanvas/blob/main/docs/deployment.md" style="color: #c4b5fd">docs/deployment.md</a>.
+                  </p>
+                </div>
+                <p class="open-app">
+                  <svg class="i"><use href="#i-rocket" /></svg>
+                  <span data-l="en">Open <code>http://localhost:3000</code>, or your server's address.</span>
+                  <span data-l="ar">افتح <code>http://localhost:3000</code> أو عنوان خادمك.</span>
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Contribute ============ -->
+      <section class="section alt" id="contribute" aria-labelledby="contribute-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Contribute</span><span data-l="ar">ساهِم معنا</span></span>
+            <h2 id="contribute-title"><span data-l="en">Build it with us</span><span data-l="ar">ابنِه معنا</span></h2>
+            <p data-l="en">
+              OpenCanvas is built in the open. Whether you write code, design, translate or test, there is a place for you,
+              and AI tools make your first contribution easier than ever.
+            </p>
+            <p data-l="ar">
+              يُبنى OpenCanvas في العلن. وسواء كنت تكتب الشيفرة أو تصمّم أو تترجم أو تختبر، فهناك مكان لك، وأدوات الذكاء
+              الاصطناعي تجعل مساهمتك الأولى أسهل من أي وقت مضى.
+            </p>
+          </div>
+          <ol class="steps">
+            <li class="reveal">
+              <h3><span data-l="en">Fork and clone</span><span data-l="ar">انسخ المستودع إلى حسابك</span></h3>
+              <p data-l="en">Fork the repository on GitHub, then clone your fork.</p>
+              <p data-l="ar">أنشئ نسخة (Fork) من المستودع على GitHub، ثم انسخها إلى جهازك.</p>
+              <div class="code"><pre><code>git clone https://github.com/YOUR-NAME/OpenCanvas.git</code></pre></div>
+            </li>
+            <li class="reveal">
+              <h3><span data-l="en">Create a branch</span><span data-l="ar">أنشئ فرعًا</span></h3>
+              <p data-l="en">One branch per change keeps reviews focused.</p>
+              <p data-l="ar">فرعٌ لكل تعديل يُبقي المراجعة مركّزة.</p>
+              <div class="code"><pre><code>git checkout -b feat/my-idea</code></pre></div>
+            </li>
+            <li class="reveal">
+              <h3><span data-l="en">Run it locally</span><span data-l="ar">شغّله محليًا</span></h3>
+              <p data-l="en">The editor reloads as you change the code.</p>
+              <p data-l="ar">يُعاد تحميل المحرّر تلقائيًا كلما عدّلت الشيفرة.</p>
+              <div class="code"><pre><code>pnpm install &amp;&amp; pnpm dev</code></pre></div>
+            </li>
+            <li class="reveal">
+              <h3><span data-l="en">Run the checks</span><span data-l="ar">شغّل الفحوص</span></h3>
+              <p data-l="en">The same checks run automatically on every pull request.</p>
+              <p data-l="ar">الفحوص نفسها تعمل تلقائيًا على كل طلب دمج.</p>
+              <div class="code"><pre><code>pnpm lint &amp;&amp; pnpm typecheck &amp;&amp; pnpm test</code></pre></div>
+            </li>
+            <li class="reveal">
+              <h3><span data-l="en">Test end to end</span><span data-l="ar">اختبر التطبيق كاملًا</span></h3>
+              <p data-l="en">Playwright drives a real browser, with visual and accessibility checks.</p>
+              <p data-l="ar">يقود Playwright متصفحًا حقيقيًا، مع فحوص للمظهر ولسهولة الوصول.</p>
+              <div class="code"><pre><code>pnpm build &amp;&amp; pnpm test:e2e</code></pre></div>
+            </li>
+            <li class="reveal">
+              <h3><span data-l="en">Open a pull request</span><span data-l="ar">افتح طلب دمج</span></h3>
+              <p data-l="en">
+                Describe what changed and why, with a screenshot for UI changes. Read
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a> and the
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/docs/definition-of-done.md">Definition of Done</a>
+                first.
+              </p>
+              <p data-l="ar">
+                اشرح ما الذي تغيّر ولماذا، وأرفق لقطة شاشة لتعديلات الواجهة. واقرأ قبل ذلك
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/CONTRIBUTING.md">دليل المساهمة</a> و<a
+                  href="https://github.com/Devehab/OpenCanvas/blob/main/docs/definition-of-done.md"
+                  >تعريف الإنجاز</a
+                >.
+              </p>
+            </li>
+          </ol>
+
+          <div class="help-wanted">
+            <a class="reveal" href="https://github.com/Devehab/OpenCanvas/issues/new">
+              <svg class="i"><use href="#i-bug" /></svg>
+              <span data-l="en">Report a bug</span><span data-l="ar">أبلغ عن خطأ</span>
+            </a>
+            <a class="reveal" href="https://github.com/Devehab/OpenCanvas/issues">
+              <svg class="i"><use href="#i-sparkles" /></svg>
+              <span data-l="en">Suggest a feature</span><span data-l="ar">اقترح ميزة</span>
+            </a>
+            <a class="reveal" href="https://github.com/Devehab/OpenCanvas/tree/main/apps/web/src/i18n">
+              <svg class="i"><use href="#i-globe" /></svg>
+              <span data-l="en">Translate the interface</span><span data-l="ar">ترجم الواجهة</span>
+            </a>
+            <a class="reveal" href="https://github.com/Devehab/OpenCanvas/tree/main/docs">
+              <svg class="i"><use href="#i-book-open" /></svg>
+              <span data-l="en">Improve the docs</span><span data-l="ar">حسّن التوثيق</span>
+            </a>
+          </div>
+
+          <div class="contrib-cta">
+            <a class="btn btn-primary" href="https://github.com/Devehab/OpenCanvas/blob/main/CONTRIBUTING.md">
+              <svg class="i"><use href="#i-git-pull-request" /></svg>
+              <span data-l="en">Read the contributing guide</span><span data-l="ar">اقرأ دليل المساهمة</span>
+            </a>
+            <a class="btn btn-outline" href="https://github.com/Devehab/OpenCanvas/issues">
+              <svg class="i"><use href="#i-git-fork" /></svg>
+              <span data-l="en">Browse open issues</span><span data-l="ar">تصفّح المهام المفتوحة</span>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Architecture ============ -->
+      <section class="section" aria-labelledby="arch-title">
+        <div class="container">
+          <div class="arch">
+            <div class="arch-text reveal">
+              <span class="eyebrow"><span data-l="en">Under the hood</span><span data-l="ar">من الداخل</span></span>
+              <h2 class="h2" id="arch-title">
+                <span data-l="en">A real design engine, not a template viewer</span>
+                <span data-l="ar">محرّك تصميم حقيقي، لا عارض قوالب</span>
+              </h2>
+              <p data-l="en">
+                Designs are structured documents. Every change is a validated, undoable command, and one renderer draws the
+                editor, every export and the server-side tests. Collaboration and AI will build on the same foundation.
+              </p>
+              <p data-l="ar">
+                التصاميم مستندات منظَّمة، وكل تعديل أمرٌ موثّق يمكن التراجع عنه، ومحرّك رسم واحد يرسم المحرّر وكل عمليات التصدير
+                واختبارات الخادم. وعلى هذا الأساس نفسه سيُبنى التعاون والذكاء الاصطناعي.
+              </p>
+              <pre class="flow" role="img" aria-label="The UI dispatches commands, which become atomic transactions on the document store, which the renderer draws"><b>UI</b> <i>─▶</i> <b>Commands</b> <i>─▶</i> <b>Transactions</b> <i>─▶</i> <b>Store</b> <i>─▶</i> <b>Renderer</b>
+<i>React validated   atomic          records  Canvas2D</i></pre>
+              <ul class="stack" aria-label="Technology">
+                <li>TypeScript</li>
+                <li>Next.js 16</li>
+                <li>React 19</li>
+                <li>Canvas 2D</li>
+                <li>Skia (Node)</li>
+                <li>IndexedDB</li>
+                <li>Tailwind CSS 4</li>
+                <li>Vitest</li>
+                <li>Playwright</li>
+                <li>Docker</li>
+              </ul>
+            </div>
+            <ul class="packages reveal">
+              <li>
+                <code>core</code>
+                <b><span data-l="en">Document engine</span><span data-l="ar">محرّك المستندات</span></b>
+                <span data-l="en">Document model, schemas, commands, history and text layout</span>
+                <span data-l="ar">نموذج المستندات والمخطّطات والأوامر وسجلّ التعديلات وتخطيط النصوص</span>
+              </li>
+              <li>
+                <code>renderer</code>
+                <b><span data-l="en">Renderer</span><span data-l="ar">محرّك الرسم</span></b>
+                <span data-l="en">Canvas2D rendering in the browser and in Node</span>
+                <span data-l="ar">رسم Canvas2D في المتصفح وفي Node</span>
+              </li>
+              <li>
+                <code>export</code>
+                <b><span data-l="en">Export</span><span data-l="ar">التصدير</span></b>
+                <span data-l="en">PNG, JPEG, WebP, SVG, PDF and .opencanvas files</span>
+                <span data-l="ar">ملفات PNG وJPEG وWebP وSVG وPDF و<bdi>.opencanvas</bdi></span>
+              </li>
+              <li>
+                <code>editor</code>
+                <b><span data-l="en">Interaction</span><span data-l="ar">التفاعل</span></b>
+                <span data-l="en">Selection, tools, snapping, keyboard and text editing</span>
+                <span data-l="ar">التحديد والأدوات والمحاذاة ولوحة المفاتيح وتحرير النصوص</span>
+              </li>
+              <li>
+                <code>web</code>
+                <b><span data-l="en">The app</span><span data-l="ar">التطبيق</span></b>
+                <span data-l="en">Next.js dashboard and editor, local storage, English and Arabic</span>
+                <span data-l="ar">لوحة التحكم والمحرّر بـ Next.js، والتخزين المحلي، والعربية والإنجليزية</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Roadmap ============ -->
+      <section class="section alt" aria-labelledby="roadmap-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Roadmap</span><span data-l="ar">خارطة الطريق</span></span>
+            <h2 id="roadmap-title"><span data-l="en">Where we're going</span><span data-l="ar">إلى أين نتّجه</span></h2>
+          </div>
+          <ol class="roadmap">
+            <li class="done reveal">
+              <span class="phase"><span data-l="en">Phase 1 · Done</span><span data-l="ar">المرحلة 1 · مكتملة</span></span>
+              <h3><span data-l="en">Editor engine</span><span data-l="ar">محرّك التحرير</span></h3>
+              <p data-l="en">The full design editor you see on this page.</p>
+              <p data-l="ar">محرّر التصميم الكامل الذي تراه في هذه الصفحة.</p>
+            </li>
+            <li class="reveal">
+              <span class="phase"><span data-l="en">Phase 2</span><span data-l="ar">المرحلة 2</span></span>
+              <h3><span data-l="en">Design platform</span><span data-l="ar">منصّة التصميم</span></h3>
+              <p data-l="en">Optional accounts and sync, sharing, templates, font upload and vector PDF.</p>
+              <p data-l="ar">حسابات ومزامنة اختيارية، ومشاركة، وقوالب، ورفع الخطوط، وPDF متجهي.</p>
+            </li>
+            <li class="reveal">
+              <span class="phase"><span data-l="en">Phase 3</span><span data-l="ar">المرحلة 3</span></span>
+              <h3><span data-l="en">Video</span><span data-l="ar">الفيديو</span></h3>
+              <p data-l="en">Timeline, animations, captions and MP4 export.</p>
+              <p data-l="ar">خط زمني، ورسوم متحركة، وترجمات نصية، وتصدير MP4.</p>
+            </li>
+            <li class="reveal">
+              <span class="phase"><span data-l="en">Phase 4</span><span data-l="ar">المرحلة 4</span></span>
+              <h3><span data-l="en">Collaboration</span><span data-l="ar">التعاون</span></h3>
+              <p data-l="en">Real-time co-editing, live cursors, comments and version history.</p>
+              <p data-l="ar">تحرير مشترك لحظي، ومؤشرات حيّة، وتعليقات، وسجلّ للإصدارات.</p>
+            </li>
+            <li class="reveal">
+              <span class="phase"><span data-l="en">Phase 5</span><span data-l="ar">المرحلة 5</span></span>
+              <h3><span data-l="en">AI that edits</span><span data-l="ar">ذكاء اصطناعي يحرّر</span></h3>
+              <p data-l="en">An assistant that edits your real design, with any provider or a local model.</p>
+              <p data-l="ar">مساعد يعدّل تصميمك الحقيقي، مع أي مزوّد أو نموذج محلي.</p>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ============ FAQ ============ -->
+      <section class="section" id="faq" aria-labelledby="faq-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow">FAQ</span>
+            <h2 id="faq-title"><span data-l="en">Questions, answered</span><span data-l="ar">الأسئلة الشائعة</span></h2>
+          </div>
+          <div class="faq">
+            <details>
+              <summary><span data-l="en">Is OpenCanvas really free?</span><span data-l="ar">هل OpenCanvas مجاني فعلًا؟</span></summary>
+              <div>
+                <p data-l="en">
+                  Yes. It is open source under the MIT license, with no paid tier, no locked features, no watermark and no
+                  trial. You can use it for personal and commercial work.
+                </p>
+                <p data-l="ar">
+                  نعم. هو مشروع مفتوح المصدر برخصة MIT، بلا باقة مدفوعة ولا ميزات محجوبة ولا علامة مائية ولا فترة تجريبية،
+                  ويمكنك استخدامه في أعمالك الشخصية والتجارية.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary><span data-l="en">Where are my designs stored?</span><span data-l="ar">أين تُحفَظ تصاميمي؟</span></summary>
+              <div>
+                <p data-l="en">
+                  In your browser's storage (IndexedDB), on your own device. Designs are not sent to any server, not even when
+                  you export. To back up or move a design, save it as an <code>.opencanvas</code> file.
+                </p>
+                <p data-l="ar">
+                  في مساحة التخزين الخاصة بمتصفحك (IndexedDB) على جهازك. لا تُرسَل التصاميم إلى أي خادم، حتى عند التصدير.
+                  ولنسخ تصميم احتياطيًا أو نقله، احفظه ملفًا بصيغة <bdi><code>.opencanvas</code></bdi>.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span data-l="en">Do I need an account or an internet connection?</span>
+                <span data-l="ar">هل أحتاج إلى حساب أو اتصال بالإنترنت؟</span>
+              </summary>
+              <div>
+                <p data-l="en">
+                  No account at all. When you run OpenCanvas on your own machine, the editor, fonts and icons are all local,
+                  so it doesn't need the internet.
+                </p>
+                <p data-l="ar">
+                  لا حاجة إلى أي حساب. وعندما تشغّل OpenCanvas على جهازك، يكون المحرّر والخطوط والأيقونات كلها محلية، فلا
+                  يحتاج إلى الإنترنت.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span data-l="en">Can I host it for my team or company?</span>
+                <span data-l="ar">هل يمكنني استضافته لفريقي أو شركتي؟</span>
+              </summary>
+              <div>
+                <p data-l="en">
+                  Yes. Deploy it with Docker on any server; the docs include guides for Coolify and Hetzner. Each person's
+                  designs stay in their own browser. Shared accounts and sync are planned for Phase 2.
+                </p>
+                <p data-l="ar">
+                  نعم. انشره عبر Docker على أي خادم، وفي التوثيق أدلة للنشر على Coolify وHetzner. تبقى تصاميم كل شخص في متصفحه
+                  هو، أمّا الحسابات المشتركة والمزامنة فمخطّط لها في المرحلة الثانية.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span data-l="en">Can I use my designs commercially?</span>
+                <span data-l="ar">هل يمكنني استخدام تصاميمي تجاريًا؟</span>
+              </summary>
+              <div>
+                <p data-l="en">
+                  Yes. Your designs are yours. The bundled icons are ISC and MIT licensed and the bundled fonts use open
+                  licenses (SIL OFL or Apache) that allow commercial use.
+                </p>
+                <p data-l="ar">
+                  نعم، تصاميمك ملكك. الأيقونات المرفقة مرخّصة بـ ISC وMIT، والخطوط المرفقة برخص مفتوحة (SIL OFL أو Apache)
+                  تسمح بالاستخدام التجاري.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary>
+                <span data-l="en">How does it compare to online design platforms?</span>
+                <span data-l="ar">كيف يُقارَن بمنصات التصميم على الإنترنت؟</span>
+              </summary>
+              <div>
+                <p data-l="en">
+                  The editing experience is familiar: frames, crop, elements, brand kits, page views and a Download dialog that
+                  works the way you expect. The difference is that OpenCanvas is free, open and local. The comparison above
+                  lists what is still missing.
+                </p>
+                <p data-l="ar">
+                  تجربة التحرير مألوفة: إطارات وقصّ وعناصر وحزم هوية وأوضاع لعرض الصفحات ونافذة تنزيل تعمل كما تتوقّع. والفرق
+                  أن OpenCanvas مجاني ومفتوح ويعمل على جهازك. وتجد في المقارنة أعلاه ما لم نصل إليه بعد.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary><span data-l="en">Does it support Arabic?</span><span data-l="ar">هل يدعم العربية؟</span></summary>
+              <div>
+                <p data-l="en">
+                  Fully: a mirrored right-to-left interface, proper letter shaping and bidirectional text, Arabic
+                  justification, 14 Arabic font families and icon search in Arabic.
+                </p>
+                <p data-l="ar">
+                  يدعمها دعمًا كاملًا: واجهة من اليمين إلى اليسار، ووصل صحيح للحروف، ونصوص ثنائية الاتجاه، ومحاذاة كاملة
+                  للفقرات العربية، و14 عائلة خطوط عربية، وبحث عن الأيقونات بالعربية.
+                </p>
+              </div>
+            </details>
+            <details>
+              <summary><span data-l="en">How can I help?</span><span data-l="ar">كيف يمكنني المساعدة؟</span></summary>
+              <div>
+                <p data-l="en">
+                  Star the repository, share it with someone who pays for design tools, report bugs, translate, or pick an
+                  issue. The <a href="#contribute">Contribute</a> section shows how to start.
+                </p>
+                <p data-l="ar">
+                  امنح المستودع نجمة، وشاركه مع من يدفع اشتراكًا في أدوات التصميم، وأبلغ عن الأخطاء، وساعد في الترجمة، أو اختر
+                  مهمة مفتوحة. ويشرح قسم <a href="#contribute">المساهمة</a> كيف تبدأ.
+                </p>
+              </div>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Final CTA ============ -->
+      <section class="final" aria-labelledby="final-title">
+        <div class="container reveal">
+          <h2 id="final-title">
+            <span data-l="en">Stop renting your creativity.</span>
+            <span data-l="ar">توقّف عن استئجار إبداعك.</span>
+          </h2>
+          <p data-l="en">
+            Install OpenCanvas, keep your designs on your own device, and help build the free design platform everyone
+            deserves.
+          </p>
+          <p data-l="ar">ثبّت OpenCanvas، واحتفظ بتصاميمك على جهازك، وساعدنا في بناء منصة التصميم المجانية التي يستحقها الجميع.</p>
+          <div class="hero-cta">
+            <a class="btn btn-light" href="#install">
+              <svg class="i"><use href="#i-download" /></svg>
+              <span data-l="en">Get started</span><span data-l="ar">ابدأ الآن</span>
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/Devehab/OpenCanvas">
+              <svg class="i gh"><use href="#i-github" /></svg>
+              <span data-l="en">Star on GitHub</span><span data-l="ar">ادعمنا بنجمة على GitHub</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- ============ Footer ============ -->
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-grid">
+          <div>
+            <a class="brand" href="#top">
+              <img src="assets/img/logo.svg" alt="" width="28" height="28" />
+              OpenCanvas
+            </a>
+            <p>
+              <span data-l="en">Free, open-source design that keeps your work on your device.</span>
+              <span data-l="ar">تصميم مجاني ومفتوح المصدر يحفظ عملك على جهازك.</span>
+            </p>
+            <p style="margin-top: 8px">
+              <span data-l="en">Created by Ehab Kahwati and contributors.</span>
+              <span data-l="ar">أنشأه إيهاب قهواتي والمساهمون.</span>
+            </p>
+          </div>
+          <div>
+            <h2><span data-l="en">Project</span><span data-l="ar">المشروع</span></h2>
+            <ul>
+              <li><a href="https://github.com/Devehab/OpenCanvas">GitHub</a></li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/tree/main/docs"><span data-l="en">Documentation</span><span data-l="ar">التوثيق</span></a>
+              </li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/docs/roadmap.md"><span data-l="en">Roadmap</span><span data-l="ar">خارطة الطريق</span></a>
+              </li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/releases"><span data-l="en">Releases</span><span data-l="ar">الإصدارات</span></a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h2><span data-l="en">Community</span><span data-l="ar">المجتمع</span></h2>
+            <ul>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/CONTRIBUTING.md"><span data-l="en">Contributing</span><span data-l="ar">دليل المساهمة</span></a>
+              </li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/issues"><span data-l="en">Issues</span><span data-l="ar">المهام والأخطاء</span></a>
+              </li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/SECURITY.md"><span data-l="en">Security</span><span data-l="ar">الأمان</span></a>
+              </li>
+              <li>
+                <a href="https://github.com/Devehab/OpenCanvas/blob/main/LICENSE"><span data-l="en">MIT License</span><span data-l="ar">رخصة MIT</span></a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p class="fine" data-l="en">
+          MIT License. Icons from <a href="https://lucide.dev">Lucide</a> (ISC) and
+          <a href="https://tabler.io/icons">Tabler Icons</a> (MIT). Fonts: Inter and IBM Plex Sans Arabic (SIL OFL 1.1). This
+          page sets no cookies and makes no third-party requests: no analytics, no trackers. Its language comes from your device
+          settings and time zone, and your choice is remembered in this browser only.
+        </p>
+        <p class="fine" data-l="ar">
+          رخصة MIT. الأيقونات من <a href="https://lucide.dev">Lucide</a> ‏(ISC) و<a href="https://tabler.io/icons">Tabler Icons</a>
+          ‏(MIT). الخطوط: Inter وIBM Plex Sans Arabic ‏(SIL OFL 1.1). لا تضع هذه الصفحة ملفات تعريف ارتباط ولا ترسل أي طلبات
+          لأطراف خارجية: لا أدوات تحليل ولا تتبّع. وتُختار لغتها بناءً على إعدادات جهازك ومنطقته الزمنية، ويُحفَظ اختيارك في هذا
+          المتصفح فقط.
+        </p>
+      </div>
+    </footer>
+
+    <div class="sr-only" aria-live="polite" data-live></div>
+  </body>
+</html>
