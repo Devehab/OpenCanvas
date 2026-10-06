@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   canonicalStringify,
+  createAssetRecord,
+  createDocumentFromImages,
   createDocumentSnapshot,
   createSequentialIdGenerator,
   loadDocument,
@@ -112,5 +114,58 @@ describe('serialization', () => {
     );
     expect(migrated).toEqual({ format: 'opencanvas.document', schemaVersion: 2, records: [{ a: 1, b: 2 }] });
     expect(() => migrateSnapshot({ format: 'x', schemaVersion: 99, records: [] })).toThrow(/newer version/);
+  });
+});
+
+describe('createDocumentFromImages', () => {
+  const asset = (id: string, width: number, height: number) =>
+    createAssetRecord({
+      id,
+      hash: `sha256-${id.padEnd(64, '0').replace(/[^0-9a-f]/g, '0')}`,
+      mimeType: 'image/png',
+      width,
+      height,
+      size: 100,
+      name: `${id}.png`,
+    });
+
+  it('makes one page per image, sized to it, with the image filling the page', () => {
+    const snapshot = createDocumentFromImages(
+      [{ asset: asset('a', 1200, 630) }, { asset: asset('b', 400, 800) }],
+      {
+        title: 'Photos',
+      },
+    );
+    const { store } = loadDocument(snapshot);
+    expect(store.getDocument()?.title).toBe('Photos');
+    const pages = store.getPages();
+    expect(pages.map((p) => [p.width, p.height])).toEqual([
+      [1200, 630],
+      [400, 800],
+    ]);
+    const [image] = store.getChildren(pages[0]!.id);
+    expect(image).toMatchObject({
+      type: 'image',
+      x: 0,
+      y: 0,
+      width: 1200,
+      height: 630,
+      assetId: 'a',
+      locked: false,
+    });
+    expect(
+      store
+        .getAssets()
+        .map((a) => a.id)
+        .sort(),
+    ).toEqual(['a', 'b']);
+  });
+
+  it('keeps huge images within the page size limit and can lock them', () => {
+    const snapshot = createDocumentFromImages([{ asset: asset('big', 20_000, 5_000) }], { lockImages: true });
+    const { store } = loadDocument(snapshot);
+    const [page] = store.getPages();
+    expect([page!.width, page!.height]).toEqual([10_000, 2_500]);
+    expect(store.getChildren(page!.id)[0]).toMatchObject({ width: 10_000, height: 2_500, locked: true });
   });
 });

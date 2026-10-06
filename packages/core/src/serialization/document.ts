@@ -12,9 +12,10 @@
  */
 import { generateKeyBetween } from '../fractional-index';
 import { createRandomIdGenerator, type IdGenerator } from '../ids';
-import { createDocumentRecord, createPageRecord } from '../model/factory';
+import { createDocumentRecord, createNodeRecord, createPageRecord } from '../model/factory';
+import { LIMITS } from '../model/limits';
 import { parseRecord, ValidationError } from '../model/schema';
-import type { AnyRecord, Fill } from '../model/types';
+import type { AnyRecord, AssetRecord, Fill } from '../model/types';
 import { DocumentStore, type StoreOptions } from '../store/store';
 import { canonicalStringify } from './canonical';
 import { checkAndRepair, type IntegrityIssue } from './integrity';
@@ -143,6 +144,63 @@ export function createDocumentSnapshot(options: NewDocumentOptions): DocumentSna
   }
   const store = new DocumentStore(records, { freeze: false });
   return serializeDocument(store);
+}
+
+export interface ImagePage {
+  asset: AssetRecord;
+  /** Page size; defaults to the image's own size. Kept within the page size limit. */
+  width?: number;
+  height?: number;
+  /** Layer name of the image (defaults to the asset name). */
+  name?: string;
+  /** Lock this image (default: the `lockImages` option). */
+  locked?: boolean;
+}
+
+/**
+ * A new design with one page per image, each page the size of its image and
+ * the image filling it: a dropped photo, or the pages of an imported PDF.
+ * With `lockImages`, the images are locked so new elements can be placed on
+ * top without moving the page underneath.
+ */
+export function createDocumentFromImages(
+  images: readonly ImagePage[],
+  options: { title?: string; createId?: IdGenerator; lockImages?: boolean } = {},
+): DocumentSnapshot {
+  if (images.length === 0) throw new Error('createDocumentFromImages: no images');
+  const createId = options.createId ?? createRandomIdGenerator();
+  const records: AnyRecord[] = [
+    createDocumentRecord({ title: options.title ?? 'Untitled design', formatId: null }),
+  ];
+  const assets = new Map<string, AssetRecord>();
+  let index: string | null = null;
+  for (const image of images.slice(0, LIMITS.maxPages)) {
+    let width = image.width ?? image.asset.width;
+    let height = image.height ?? image.asset.height;
+    const scale = Math.min(1, LIMITS.maxPageDimension / Math.max(width, height));
+    width = Math.max(1, Math.round(width * scale));
+    height = Math.max(1, Math.round(height * scale));
+    index = generateKeyBetween(index, null);
+    const page = createPageRecord({ id: createId('page'), index, width, height });
+    records.push(page);
+    assets.set(image.asset.id, image.asset);
+    records.push(
+      createNodeRecord('image', {
+        id: createId('node'),
+        parentId: page.id,
+        index: generateKeyBetween(null, null),
+        name: (image.name ?? image.asset.name).slice(0, LIMITS.maxNameLength),
+        x: 0,
+        y: 0,
+        width,
+        height,
+        assetId: image.asset.id,
+        locked: image.locked ?? options.lockImages ?? false,
+      } as never),
+    );
+  }
+  records.push(...assets.values());
+  return serializeDocument(new DocumentStore(records, { freeze: false }));
 }
 
 export { CURRENT_SCHEMA_VERSION };

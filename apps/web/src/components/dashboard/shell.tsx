@@ -1,18 +1,46 @@
 'use client';
 
-import { FolderKanban, FolderOpen, House, Palette, Plus, Settings, Trash2 } from 'lucide-react';
+import { FileUp, FolderKanban, FolderOpen, House, Palette, Plus, Settings, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { type ReactNode, Suspense, useEffect, useRef, useState } from 'react';
+import { createContext, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { useI18n } from '@/i18n';
-import { broadcast, TAB_ID } from '@/lib/channel';
-import { importPackageFile } from '@/lib/package-io';
+import {
+  designFromFiles,
+  isPackageFile,
+  START_FILE_ACCEPT,
+  type StartProgress,
+} from '@/lib/start-from-files';
 import { cn, useMediaQuery } from '@/lib/utils';
 import { CreateDialog } from './create-dialog';
 import { LanguageSwitcher } from './language-switcher';
 import { Logo } from './logo';
+
+const UPLOAD_ERRORS = ['too-large', 'unsupported', 'too-many-pixels', 'corrupt', 'empty', 'decode'];
+const PDF_ERRORS = ['too-large', 'unreadable', 'encrypted'];
+
+/** Lets pages (the home hero) open the "start from a file" picker. */
+const StartFromFileContext = createContext<() => void>(() => {});
+export const useStartFromFile = () => useContext(StartFromFileContext);
+
+/** "Start from an image or PDF" (must be rendered inside DashboardShell). */
+export function StartFromFileButton() {
+  const { t } = useI18n();
+  const open = useStartFromFile();
+  return (
+    <button
+      type="button"
+      onClick={open}
+      className="mx-auto mt-4 inline-flex items-center gap-2 rounded-full bg-white/15 px-4 py-2 text-sm font-medium text-white ring-1 ring-white/30 hover:bg-white/25"
+      data-testid="start-from-file"
+    >
+      <FileUp className="size-4" />
+      {t('home.startFromFile')}
+    </button>
+  );
+}
 
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { t } = useI18n();
@@ -21,6 +49,37 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const toast = useToast();
   const fileInput = useRef<HTMLInputElement>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [opening, setOpening] = useState<StartProgress | null>(null);
+  const dragDepth = useRef(0);
+
+  const start = async (files: File[]) => {
+    if (files.length === 0 || opening) return;
+    setOpening({ name: files[0]!.name, done: 0, total: files.length });
+    try {
+      const { design, failures } = await designFromFiles(files, setOpening);
+      for (const f of failures) {
+        const pdf = /\.pdf$/i.test(f.name);
+        toast(
+          pdf && PDF_ERRORS.includes(f.reason)
+            ? t(`home.pdfErrors.${f.reason}`, { name: f.name })
+            : UPLOAD_ERRORS.includes(f.reason)
+              ? t(`editor.uploads.errors.${f.reason}`, { name: f.name })
+              : t('design.importFailed', { reason: f.reason }),
+          'error',
+        );
+      }
+      if (design) {
+        if (isPackageFile(files[0]!)) toast(t('design.imported'), 'success');
+        router.push(`/design/${design.id}`);
+      }
+    } catch (error) {
+      toast(t('design.importFailed', { reason: (error as Error).message }), 'error');
+    } finally {
+      setOpening(null);
+    }
+  };
+  const hasFiles = (e: React.DragEvent) => [...e.dataTransfer.types].includes('Files');
   // One language switcher, in the sidebar or (on phones, where it is hidden) in the header.
   const isDesktop = useMediaQuery('(min-width: 768px)', true);
 
@@ -86,24 +145,55 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <input
         ref={fileInput}
         type="file"
-        accept=".opencanvas,application/vnd.opencanvas+zip,application/zip"
+        accept={START_FILE_ACCEPT}
         className="hidden"
         data-testid="open-file-input"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
+        multiple
+        onChange={(e) => {
+          const files = [...(e.target.files ?? [])];
           e.target.value = '';
-          if (!file) return;
-          try {
-            const design = await importPackageFile(file);
-            broadcast({ type: 'designs-changed', tabId: TAB_ID });
-            toast(t('design.imported'), 'success');
-            router.push(`/design/${design.id}`);
-          } catch (error) {
-            toast(t('design.importFailed', { reason: (error as Error).message }), 'error');
-          }
+          void start(files);
         }}
       />
-      <main className="min-w-0 flex-1">
+      <main
+        className="relative min-w-0 flex-1"
+        onDragEnter={(e) => {
+          if (!hasFiles(e)) return;
+          dragDepth.current++;
+          setDragging(true);
+        }}
+        onDragOver={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+        }}
+        onDragLeave={() => {
+          dragDepth.current = Math.max(0, dragDepth.current - 1);
+          if (dragDepth.current === 0) setDragging(false);
+        }}
+        onDrop={(e) => {
+          if (!hasFiles(e)) return;
+          e.preventDefault();
+          dragDepth.current = 0;
+          setDragging(false);
+          void start([...e.dataTransfer.files]);
+        }}
+        data-testid="dashboard-drop-zone"
+      >
+        {dragging || opening ? (
+          <div
+            className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-brand-600/15 p-6 backdrop-blur-[2px] md:start-64"
+            data-testid="dashboard-drop-overlay"
+          >
+            <div className="max-w-md rounded-2xl border-2 border-dashed border-brand-400 bg-white px-8 py-10 text-center shadow-xl">
+              <FileUp className="mx-auto size-10 text-brand-600" />
+              <p className="mt-3 text-lg font-semibold text-slate-900" role="status">
+                {opening ? t('home.opening', { name: opening.name }) : t('home.dropTitle')}
+              </p>
+              {opening ? null : <p className="mt-2 text-sm text-slate-500">{t('home.dropHint')}</p>}
+            </div>
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <Logo />
           {isDesktop ? null : <LanguageSwitcher />}
@@ -112,7 +202,9 @@ export function DashboardShell({ children }: { children: ReactNode }) {
             {t('nav.create')}
           </Button>
         </div>
-        {children}
+        <StartFromFileContext.Provider value={() => fileInput.current?.click()}>
+          {children}
+        </StartFromFileContext.Provider>
       </main>
       <CreateDialog open={createOpen} onOpenChange={setCreateOpen} />
       <Suspense fallback={null}>

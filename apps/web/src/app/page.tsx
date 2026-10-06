@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { DesignGrid } from '@/components/dashboard/design-card';
 import { FEATURED_FORMATS, FormatGrid } from '@/components/dashboard/format-grid';
 import { SearchBox } from '@/components/dashboard/search-box';
-import { DashboardShell } from '@/components/dashboard/shell';
+import { DashboardShell, StartFromFileButton } from '@/components/dashboard/shell';
 import { useDesigns } from '@/hooks/use-designs';
 import { useI18n } from '@/i18n';
 import { matchesQuery } from '@/lib/search';
@@ -24,6 +24,7 @@ export default function HomePage() {
           <div className="mx-auto mt-6 flex max-w-xl justify-center text-start text-slate-900">
             <SearchBox value={query} onChange={setQuery} />
           </div>
+          <StartFromFileButton />
         </section>
         {query ? null : (
           <section aria-labelledby="create-heading" className="space-y-4">

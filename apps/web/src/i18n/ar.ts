@@ -58,6 +58,15 @@ export const ar: Dictionary = {
     customSize: 'حجم مخصّص',
     localNotice: 'تُحفَظ تصاميمك في هذا المتصفح.',
     noResults: 'لا توجد تصاميم تطابق «{query}».',
+    startFromFile: 'ابدأ من صورة أو ملف PDF',
+    dropTitle: 'أفلت الملف لبدء تصميم',
+    dropHint: 'تصبح كل صورة صفحةً بمقاسها، وكل صفحة PDF صفحةً يمكنك تعديلها وإعادة ترتيبها وتصديرها.',
+    opening: 'جارٍ فتح {name}…',
+    pdfErrors: {
+      'too-large': 'حجم «{name}» كبير جدًا (الحد الأقصى 200 ميغابايت).',
+      unreadable: 'تعذّرت قراءة «{name}» كملف PDF.',
+      encrypted: '«{name}» محمي بكلمة مرور.',
+    },
   },
   categories: {
     social: 'وسائل التواصل الاجتماعي',

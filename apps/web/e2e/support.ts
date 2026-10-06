@@ -210,3 +210,32 @@ export async function showInspector(page: Page): Promise<void> {
   if ((await toggle.isVisible()) && (await toggle.getAttribute('aria-pressed')) !== 'true')
     await toggle.click();
 }
+
+/**
+ * A minimal valid PDF: one page per size (in points), each filled with a
+ * colored rectangle, so imports can be checked without a fixture file.
+ */
+export function samplePdf(pages: { width: number; height: number; rgb: [number, number, number] }[]): Buffer {
+  const objects: string[] = [];
+  const kids = pages.map((_, i) => `${3 + i * 2} 0 R`).join(' ');
+  objects.push('<< /Type /Catalog /Pages 2 0 R >>');
+  objects.push(`<< /Type /Pages /Kids [${kids}] /Count ${pages.length} >>`);
+  for (const [i, p] of pages.entries()) {
+    const content = `${p.rgb.map((c) => (c / 255).toFixed(3)).join(' ')} rg 0 0 ${p.width} ${p.height} re f`;
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${p.width} ${p.height}] /Contents ${4 + i * 2} 0 R >>`,
+    );
+    objects.push(`<< /Length ${content.length} >>\nstream\n${content}\nendstream`);
+  }
+  let pdf = '%PDF-1.4\n';
+  const offsets: number[] = [];
+  for (const [i, body] of objects.entries()) {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${body}\nendobj\n`;
+  }
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const o of offsets) pdf += `${String(o).padStart(10, '0')} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}

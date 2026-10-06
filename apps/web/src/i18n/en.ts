@@ -56,6 +56,16 @@ export const en = {
     customSize: 'Custom size',
     localNotice: 'Your designs are saved in this browser.',
     noResults: 'No designs match “{query}”.',
+    startFromFile: 'Start from an image or PDF',
+    dropTitle: 'Drop to start a design',
+    dropHint:
+      'Images become pages of the same size. Each PDF page becomes a page you can edit, reorder and export.',
+    opening: 'Opening {name}…',
+    pdfErrors: {
+      'too-large': '“{name}” is too large (maximum 200 MB).',
+      unreadable: '“{name}” could not be read as a PDF.',
+      encrypted: '“{name}” is password-protected.',
+    },
   },
   categories: {
     social: 'Social media',
