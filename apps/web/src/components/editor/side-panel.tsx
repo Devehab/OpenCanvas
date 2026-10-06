@@ -1,10 +1,11 @@
 'use client';
 
-import { CloudUpload, Layers, Shapes, Type, X } from 'lucide-react';
+import { CloudUpload, Layers, Palette, Shapes, Type, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { type PanelId, useEditorContext } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { BrandPanel } from './panels/brand-panel';
 import { ElementsPanel } from './panels/elements-panel';
 import { LayersPanel } from './panels/layers-panel';
 import { TextPanel } from './panels/text-panel';
@@ -13,6 +14,7 @@ import { UploadsPanel } from './panels/uploads-panel';
 const TABS: { id: PanelId; icon: typeof Shapes }[] = [
   { id: 'elements', icon: Shapes },
   { id: 'text', icon: Type },
+  { id: 'brand', icon: Palette },
   { id: 'uploads', icon: CloudUpload },
   { id: 'layers', icon: Layers },
 ];
@@ -23,6 +25,7 @@ export function SidePanel() {
   const content: Record<PanelId, ReactNode> = {
     elements: <ElementsPanel />,
     text: <TextPanel />,
+    brand: <BrandPanel />,
     uploads: <UploadsPanel />,
     layers: <LayersPanel />,
   };

@@ -3,7 +3,7 @@
 import { normalizeColor, toCssColor } from '@opencanvas/core';
 import { Pipette } from 'lucide-react';
 import { Popover } from 'radix-ui';
-import { useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { HexAlphaColorPicker } from 'react-colorful';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
@@ -30,6 +30,9 @@ export const DEFAULT_SWATCHES = [
   '#ffbd59',
   '#ff914d',
 ];
+
+/** The active brand kit's colors, shown first in every color picker inside the editor. */
+export const BrandColorsContext = createContext<readonly string[]>([]);
 
 interface EyeDropperResult {
   sRGBHex: string;
@@ -67,6 +70,7 @@ export function ColorField({
   testId?: string;
 }) {
   const { t } = useI18n();
+  const brandColors = useContext(BrandColorsContext);
   const [hex, setHex] = useState(value);
   useEffect(() => setHex(value), [value]);
   const hasEyeDropper = typeof window !== 'undefined' && 'EyeDropper' in window;
@@ -137,9 +141,13 @@ export function ColorField({
               </button>
             ) : null}
           </div>
-          {[swatches, DEFAULT_SWATCHES].map((list, i) =>
+          {[brandColors, swatches, DEFAULT_SWATCHES].map((list, i) =>
             list.length ? (
-              <div key={i === 0 ? 'document' : 'defaults'} className="grid grid-cols-10 gap-1">
+              <div
+                key={['brand', 'document', 'defaults'][i]}
+                className="grid grid-cols-10 gap-1"
+                data-testid={i === 0 ? 'brand-swatches' : undefined}
+              >
                 {[...new Set(list)].slice(0, 20).map((c) => (
                   <button
                     key={c}

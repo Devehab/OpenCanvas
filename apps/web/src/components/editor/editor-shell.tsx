@@ -27,6 +27,7 @@ import { type LibraryImage, placeImage } from '@/lib/place-image';
 import { type EditorSession, openSession } from '@/lib/session';
 import { createDesignCopy } from '@/lib/storage/designs';
 import { prepareImage } from '@/lib/upload';
+import { BrandProvider } from './brand-context';
 import { CanvasArea } from './canvas-area';
 import { ExportDialog } from './dialogs/export-dialog';
 import { GuidesDialog } from './dialogs/guides-dialog';
@@ -199,27 +200,29 @@ function EditorLayout({ session }: { session: EditorSession }) {
 
   return (
     <EditorContext.Provider value={value}>
-      <div className="flex h-dvh flex-col overflow-hidden bg-workspace">
-        <TopBar />
-        <ConflictBanner />
-        <div className="flex min-h-0 flex-1">
-          <SidePanel />
-          <div className="relative flex min-w-0 flex-1 flex-col">
-            <CanvasArea />
-            <PagesBar />
+      <BrandProvider>
+        <div className="flex h-dvh flex-col overflow-hidden bg-workspace">
+          <TopBar />
+          <ConflictBanner />
+          <div className="flex min-h-0 flex-1">
+            <SidePanel />
+            <div className="relative flex min-w-0 flex-1 flex-col">
+              <CanvasArea />
+              <PagesBar />
+            </div>
+            <Inspector />
           </div>
-          <Inspector />
         </div>
-      </div>
-      <ErrorReporter />
-      <SelectionAnnouncer />
-      <ExportDialog open={dialog === 'export'} onOpenChange={(o) => setDialog(o ? 'export' : null)} />
-      <ResizeDialog open={dialog === 'resize'} onOpenChange={(o) => setDialog(o ? 'resize' : null)} />
-      <GuidesDialog open={dialog === 'guides'} onOpenChange={(o) => setDialog(o ? 'guides' : null)} />
-      <ShortcutsDialog
-        open={dialog === 'shortcuts'}
-        onOpenChange={(o) => setDialog(o ? 'shortcuts' : null)}
-      />
+        <ErrorReporter />
+        <SelectionAnnouncer />
+        <ExportDialog open={dialog === 'export'} onOpenChange={(o) => setDialog(o ? 'export' : null)} />
+        <ResizeDialog open={dialog === 'resize'} onOpenChange={(o) => setDialog(o ? 'resize' : null)} />
+        <GuidesDialog open={dialog === 'guides'} onOpenChange={(o) => setDialog(o ? 'guides' : null)} />
+        <ShortcutsDialog
+          open={dialog === 'shortcuts'}
+          onOpenChange={(o) => setDialog(o ? 'shortcuts' : null)}
+        />
+      </BrandProvider>
     </EditorContext.Provider>
   );
 }

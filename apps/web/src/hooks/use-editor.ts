@@ -8,7 +8,7 @@ import type { SaveStatus } from '@/lib/autosave';
 import type { LibraryImage } from '@/lib/place-image';
 import type { EditorSession } from '@/lib/session';
 
-export type PanelId = 'elements' | 'text' | 'uploads' | 'layers';
+export type PanelId = 'elements' | 'text' | 'brand' | 'uploads' | 'layers';
 export type DialogId = 'export' | 'resize' | 'shortcuts' | 'guides' | null;
 
 export interface EditorContextValue {
