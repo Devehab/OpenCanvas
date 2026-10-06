@@ -31,6 +31,8 @@ import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { FONT_FALLBACKS } from '@/lib/fonts';
 import { ASSET_DRAG_TYPE, parseAssetDrag, placeImage } from '@/lib/place-image';
 import { cn } from '@/lib/utils';
+import { PageGrid } from './page-grid';
+import { PageHeaders } from './page-headers';
 import { ELEMENT_DRAG_TYPE } from './side-panel';
 
 function ToolBar() {
@@ -50,7 +52,7 @@ function ToolBar() {
     <div
       role="toolbar"
       aria-label={t('editor.tools.label')}
-      className="absolute start-1/2 top-3 z-10 flex gap-0.5 rounded-xl border border-slate-200 bg-white p-1 shadow-md ltr:-translate-x-1/2 rtl:translate-x-1/2"
+      className="absolute bottom-3 start-1/2 z-10 flex gap-0.5 rounded-xl border border-slate-200 bg-white p-1 shadow-md ltr:-translate-x-1/2 rtl:translate-x-1/2"
     >
       {tools.map((item) => (
         <IconButton
@@ -85,6 +87,7 @@ export function CanvasArea() {
   const container = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const pageView = useEditorValue((e) => e.state.get().pageView);
   const selection = useEditorValue((e) => {
     const nodes = e.getSelectedNodes();
     return {
@@ -124,13 +127,14 @@ export function CanvasArea() {
     if (editor.state.get().dropTargetId) editor.state.set({ dropTargetId: null });
   };
 
-  const pagePoint = (clientX: number, clientY: number) => {
+  const screenPoint = (clientX: number, clientY: number) => {
     const rect = container.current!.getBoundingClientRect();
-    return editor.screenToPage({ x: clientX - rect.left, y: clientY - rect.top });
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
+  const pagePoint = (clientX: number, clientY: number) => editor.screenToPage(screenPoint(clientX, clientY));
 
   return (
-    <div className="relative min-h-0 flex-1">
+    <div className="relative min-h-0 flex-1 overflow-clip">
       <div
         ref={container}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: the canvas is a keyboard-operated application region
@@ -152,6 +156,8 @@ export function CanvasArea() {
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           setDragging(true);
+          // In the scroll view, the page under the pointer receives the drop.
+          editor.focusPageAt(screenPoint(e.clientX, e.clientY));
           // Photos dragged over a frame preview where they will land.
           const frame = image
             ? getFrameAtPoint(editor.store, editor.pageId, pagePoint(e.clientX, e.clientY))
@@ -166,6 +172,7 @@ export function CanvasArea() {
         onDrop={(e) => {
           e.preventDefault();
           endDrag();
+          editor.focusPageAt(screenPoint(e.clientX, e.clientY));
           const at = pagePoint(e.clientX, e.clientY);
           const element = e.dataTransfer.getData(ELEMENT_DRAG_TYPE);
           if (element) {
@@ -191,9 +198,10 @@ export function CanvasArea() {
       <p id="canvas-description" className="sr-only">
         {t('editor.a11y.canvasDescription')}
       </p>
-      <ToolBar />
+      <PageHeaders />
+      {pageView === 'grid' ? <PageGrid /> : <ToolBar />}
       {dragging ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-6 z-10 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center">
           <span className="rounded-full bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow-lg">
             {t('editor.uploads.dropOverlay')}
           </span>

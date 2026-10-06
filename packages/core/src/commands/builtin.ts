@@ -4,11 +4,13 @@
 import { z } from 'zod';
 import { getPageCenter } from '../geometry/transforms';
 import type { AnyNodeProps } from '../model/factory';
+import { LIMITS } from '../model/limits';
 import {
   AssetRecordSchema,
   FillSchema,
   IdSchema,
   NodeRecordSchema,
+  PageGuideSchema,
   TextContentSchema,
   TextStyleOverridesSchema,
 } from '../model/schema';
@@ -418,10 +420,16 @@ export const pageMove: CommandDefinition<{ id: string; position: number }> = {
   },
 };
 
-export const pageUpdate: CommandDefinition<{
-  id: string;
-  patch: { name?: string; background?: unknown; notes?: string };
-}> = {
+type PagePatch = {
+  name?: string;
+  background?: unknown;
+  notes?: string;
+  hidden?: boolean;
+  locked?: boolean;
+  guides?: { axis: 'x' | 'y'; position: number }[];
+};
+
+export const pageUpdate: CommandDefinition<{ id: string; patch: PagePatch }> = {
   id: 'page.update',
   label: 'Edit page',
   schema: z.object({
@@ -430,8 +438,11 @@ export const pageUpdate: CommandDefinition<{
       name: z.string().max(256).optional(),
       background: FillSchema.optional(),
       notes: z.string().optional(),
+      hidden: z.boolean().optional(),
+      locked: z.boolean().optional(),
+      guides: z.array(PageGuideSchema).max(LIMITS.maxGuidesPerPage).optional(),
     }),
-  }) as unknown as z.ZodType<{ id: string; patch: { name?: string; background?: unknown; notes?: string } }>,
+  }) as unknown as z.ZodType<{ id: string; patch: PagePatch }>,
   run({ tx }, p) {
     updatePage(tx, p.id, p.patch as never);
     return undefined;

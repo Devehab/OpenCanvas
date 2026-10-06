@@ -164,7 +164,18 @@ export interface PageRecord {
   background: Fill;
   /** Presenter / page notes. */
   notes: string;
+  /** Hidden pages stay in the design but are skipped when downloading all pages. */
+  hidden: boolean;
+  /** Elements on a locked page cannot be edited. */
+  locked: boolean;
+  /** Ruler guides (page units): `x` guides are vertical lines, `y` guides horizontal. */
+  guides: PageGuide[];
   meta: Record<string, JsonValue>;
+}
+
+export interface PageGuide {
+  axis: 'x' | 'y';
+  position: number;
 }
 
 export type AssetKind = 'image';

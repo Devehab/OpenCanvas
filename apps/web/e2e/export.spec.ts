@@ -194,7 +194,7 @@ test.describe('export', () => {
 
   test('several pages as PNG download as a zip', async ({ page }) => {
     await buildScene(page);
-    await page.getByTestId('duplicate-page').click();
+    await page.getByTestId('page-duplicate').click();
     const { name, bytes } = await exportDesign(page, 'png');
     expect(name).toBe('Instagram Post.zip');
     const files = unzipSync(new Uint8Array(bytes));

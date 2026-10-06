@@ -115,6 +115,11 @@ export const DocumentRecordSchema = z.object({
   meta: JsonMetaSchema,
 });
 
+export const PageGuideSchema = z.object({
+  axis: z.enum(['x', 'y']),
+  position: z.number().min(-LIMITS.maxCoordinate).max(LIMITS.maxCoordinate),
+});
+
 export const PageRecordSchema = z.object({
   typeName: z.literal('page'),
   id: IdSchema,
@@ -124,6 +129,9 @@ export const PageRecordSchema = z.object({
   height: z.number().min(LIMITS.minPageDimension).max(LIMITS.maxPageDimension).default(1080),
   background: FillSchema.default({ type: 'solid', color: '#ffffff' }),
   notes: z.string().max(LIMITS.maxNotesLength).default(''),
+  hidden: z.boolean().default(false),
+  locked: z.boolean().default(false),
+  guides: z.array(PageGuideSchema).max(LIMITS.maxGuidesPerPage).default([]),
   meta: JsonMetaSchema,
 });
 

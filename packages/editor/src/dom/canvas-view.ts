@@ -14,6 +14,7 @@ import type { Context2D, RenderPlatform, SceneRenderer } from '@opencanvas/rende
 import { cameraMatrix, visiblePageRect, zoomAt } from '../camera';
 import type { Editor } from '../editor';
 import { drawOverlay } from '../overlay';
+import { slotScreenRect } from '../page-layout';
 import { FontWatcher } from './fonts';
 import { toPointerInput } from './keys';
 import { TextEditorOverlay } from './text-editor';
@@ -132,7 +133,7 @@ export class CanvasView {
 
   private invalidate(): void {
     const s = this.editor.state.get();
-    const key = `${this.editor.store.version}|${s.pageId}|${s.camera.x},${s.camera.y},${s.camera.zoom}|${s.viewport.width}x${s.viewport.height}|${this.dpr}|${s.editingTextId ?? ''}`;
+    const key = `${this.editor.store.version}|${s.pageId}|${s.pageView}|${s.camera.x},${s.camera.y},${s.camera.zoom}|${s.viewport.width}x${s.viewport.height}|${this.dpr}|${s.editingTextId ?? ''}`;
     if (key !== this.sceneKey) {
       this.sceneKey = key;
       this.sceneDirty = true;
@@ -205,32 +206,48 @@ export class CanvasView {
   private renderScene(): void {
     const ctx = this.scene.getContext('2d') as Context2D;
     const s = this.editor.state.get();
-    const page = this.editor.store.getPage(s.pageId);
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.clearRect(0, 0, this.scene.width, this.scene.height);
-    if (!page) return;
+    if (s.pageView === 'grid') return; // the overview is drawn by the application
     const { camera } = s;
     const dpr = this.dpr;
-    // Page card with a soft shadow on the workspace.
-    ctx.save();
-    ctx.shadowColor = 'rgba(15, 23, 42, 0.16)';
-    ctx.shadowBlur = 24 * dpr;
-    ctx.shadowOffsetY = 4 * dpr;
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(
-      camera.x * dpr,
-      camera.y * dpr,
-      page.width * camera.zoom * dpr,
-      page.height * camera.zoom * dpr,
-    );
-    ctx.restore();
-    this.options.renderer.renderPage(ctx, this.editor.store, s.pageId, {
-      transform: cameraMatrix(camera, dpr),
-      viewport: visiblePageRect(camera, s.viewport),
-      hiddenIds: s.editingTextId ? new Set([s.editingTextId]) : undefined,
-      quality: 'interactive',
-      framePlaceholders: true,
-    });
+    for (const slot of this.editor.getPageSlots()) {
+      const rect = slotScreenRect(camera, slot);
+      // Pages outside the viewport cost nothing.
+      if (
+        rect.x > s.viewport.width ||
+        rect.y > s.viewport.height ||
+        rect.x + rect.width < 0 ||
+        rect.y + rect.height < 0
+      )
+        continue;
+      const page = this.editor.store.getPage(slot.pageId);
+      if (!page) continue;
+      const pageCamera = { zoom: camera.zoom, x: rect.x, y: rect.y };
+      // Page card with a soft shadow on the workspace.
+      ctx.save();
+      ctx.shadowColor = 'rgba(15, 23, 42, 0.16)';
+      ctx.shadowBlur = 24 * dpr;
+      ctx.shadowOffsetY = 4 * dpr;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rect.x * dpr, rect.y * dpr, rect.width * dpr, rect.height * dpr);
+      ctx.restore();
+      const current = slot.pageId === s.pageId;
+      this.options.renderer.renderPage(ctx, this.editor.store, slot.pageId, {
+        transform: cameraMatrix(pageCamera, dpr),
+        viewport: visiblePageRect(pageCamera, s.viewport),
+        hiddenIds: current && s.editingTextId ? new Set([s.editingTextId]) : undefined,
+        quality: 'interactive',
+        framePlaceholders: true,
+      });
+      if (page.hidden) {
+        // Hidden pages are shown faded.
+        ctx.save();
+        ctx.fillStyle = 'rgba(241, 245, 249, 0.6)';
+        ctx.fillRect(rect.x * dpr, rect.y * dpr, rect.width * dpr, rect.height * dpr);
+        ctx.restore();
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------

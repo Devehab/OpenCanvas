@@ -9,5 +9,6 @@ export * from './editor';
 export * from './handles';
 export * from './keyboard';
 export * from './overlay';
+export * from './page-layout';
 export * from './presets';
 export * from './types';

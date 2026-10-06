@@ -56,6 +56,8 @@ test.describe('editor', () => {
   test('moves a shape by dragging; undo and redo restore exact states', async ({ page }) => {
     const [id] = await insertNodes(page, [rect(100, 100)], { center: false });
     const before = await getRecords(page);
+    // Exact distances: no snapping to the page center or edges.
+    await page.evaluate(() => window.__opencanvas!.editor.state.set({ snapping: false }));
     const zoom = await page.evaluate(() => window.__opencanvas!.editor.state.get().camera.zoom);
     const from = await nodeCenter(page, id!);
     await dragMouse(page, from, { x: from.x + 100, y: from.y + 50 });
@@ -230,13 +232,13 @@ test.describe('editor', () => {
     expect(await getNodes(page)).toHaveLength(0);
 
     await page.getByTestId('page-thumb').first().click();
-    await page.getByTestId('duplicate-page').click();
+    await page.getByTestId('page-duplicate').click();
     expect(await pageCount()).toBe(3);
     // The duplicate is a deep copy with new ids.
     const copy = await getNodes(page);
     expect(copy).toHaveLength(1);
 
-    await page.getByTestId('delete-page').click();
+    await page.getByTestId('page-delete').click();
     expect(await pageCount()).toBe(2);
     await page.getByTestId('undo').click();
     expect(await pageCount()).toBe(3);

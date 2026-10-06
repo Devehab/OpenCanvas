@@ -16,14 +16,18 @@ import {
   FolderOpen,
   Group,
   Keyboard,
+  LayoutGrid,
   Loader2,
   Lock,
   Maximize,
+  PanelBottom,
   Redo2,
+  Rows3,
   Ruler,
   Save,
   Scissors,
   SendToBack,
+  Square,
   Trash2,
   Undo2,
   Ungroup,
@@ -34,13 +38,23 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { Logo } from '@/components/dashboard/logo';
 import { Button, IconButton } from '@/components/ui/button';
-import { Menu, MenuCheckItem, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
+import {
+  Menu,
+  MenuCheckItem,
+  MenuContent,
+  MenuItem,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+  SubMenu,
+} from '@/components/ui/menu';
 import { useToast } from '@/components/ui/toast';
 import { useEditorContext, useEditorValue, useSaveStatus } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { buildPackage, importPackageFile } from '@/lib/package-io';
+import { setPageView } from '@/lib/page-view';
 import { duplicateDesign } from '@/lib/storage/designs';
 import { downloadBytes } from '@/lib/utils';
 
@@ -206,6 +220,7 @@ export function TopBar() {
             <MenuItem icon={<Ruler className="size-4" />} onSelect={() => setDialog('resize')}>
               {t('editor.menu.resize')}
             </MenuItem>
+            <PageViewMenu />
             <MenuSeparator />
             <MenuItem icon={<ArrowDownToLine className="size-4" />} onSelect={() => setDialog('export')}>
               {t('editor.menu.download')}
@@ -449,5 +464,42 @@ export function TopBar() {
         }}
       />
     </header>
+  );
+}
+
+const PAGE_VIEWS = [
+  { id: 'single', icon: Square },
+  { id: 'thumbnails', icon: PanelBottom },
+  { id: 'scroll', icon: Rows3 },
+  { id: 'grid', icon: LayoutGrid },
+] as const;
+
+/** File → Page view: how pages are shown, with the current one checked. */
+function PageViewMenu() {
+  const { t } = useI18n();
+  const { editor } = useEditorContext();
+  const view = useEditorValue((e) => e.state.get().pageView);
+  return (
+    <SubMenu
+      icon={<Rows3 className="size-4" />}
+      label={
+        <span className="flex items-center justify-between gap-4">
+          {t('editor.pageView.label')}
+          <span className="text-xs text-slate-500">{t(`editor.pageView.${view}`)}</span>
+        </span>
+      }
+    >
+      {PAGE_VIEWS.map((v) => (
+        <MenuRadioItem
+          key={v.id}
+          checked={view === v.id}
+          icon={<v.icon className="size-4" />}
+          onSelect={() => setPageView(editor, v.id)}
+          testId={`page-view-${v.id}`}
+        >
+          {t(`editor.pageView.${v.id}`)}
+        </MenuRadioItem>
+      ))}
+    </SubMenu>
   );
 }

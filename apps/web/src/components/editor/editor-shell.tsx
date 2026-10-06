@@ -22,6 +22,7 @@ import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { readClipboard, recallClipboard, writeClipboard } from '@/lib/clipboard';
 import { nodeLabel } from '@/lib/node-label';
+import { restorePageView } from '@/lib/page-view';
 import { type LibraryImage, placeImage } from '@/lib/place-image';
 import { type EditorSession, openSession } from '@/lib/session';
 import { createDesignCopy } from '@/lib/storage/designs';
@@ -106,6 +107,9 @@ function EditorLayout({ session }: { session: EditorSession }) {
     },
     [editor, session.images, t, toast],
   );
+
+  // The page view chosen last time (single page, thumbnails or scroll).
+  useEffect(() => restorePageView(editor), [editor]);
 
   const value = useMemo<EditorContextValue>(
     () => ({ session, editor, viewRef, panel, setPanel, dialog, setDialog, uploadFiles }),
@@ -272,17 +276,27 @@ function ConflictBanner() {
   );
 }
 
+/** Engine messages with a translation (others are shown as they are). */
+const KNOWN_ERRORS: Record<string, string> = {
+  'This page is locked. Unlock it to add elements.': 'editor.errors.pageLocked',
+  'A design needs at least one page': 'editor.errors.lastPage',
+  'The frame is locked': 'editor.errors.frameLocked',
+  'The frame has no image': 'editor.errors.frameEmpty',
+};
+
 /** Shows editor errors (rejected commands) as toasts. */
 function ErrorReporter() {
+  const { t } = useI18n();
   const toast = useToast();
   const error = useEditorValue((e) => e.state.get().lastError);
   const last = useRef<number>(0);
   useEffect(() => {
     if (error && error.at !== last.current) {
       last.current = error.at;
-      toast(error.message, 'error');
+      const key = KNOWN_ERRORS[error.message];
+      toast(key ? t(key) : error.message, 'error');
     }
-  }, [error, toast]);
+  }, [error, toast, t]);
   return null;
 }
 

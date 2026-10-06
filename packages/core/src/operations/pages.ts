@@ -55,7 +55,14 @@ export function duplicatePage(tx: Transaction, pageId: Id, createId: IdGenerator
     height: page.height,
     background: page.background,
   });
-  tx.put({ ...copy, notes: page.notes, meta: page.meta });
+  tx.put({
+    ...copy,
+    notes: page.notes,
+    hidden: page.hidden,
+    locked: page.locked,
+    guides: page.guides,
+    meta: page.meta,
+  });
   const rootIds = store.getChildIds(pageId);
   if (rootIds.length > 0) {
     insertSubtrees(tx, snapshotSubtrees(store, rootIds), { createId, parentId: copy.id });

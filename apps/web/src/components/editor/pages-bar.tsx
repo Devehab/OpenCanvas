@@ -2,25 +2,40 @@
 
 import { type Id, isEmptyDiff } from '@opencanvas/core';
 import { rasterizePage } from '@opencanvas/renderer';
-import { ChevronDown, ChevronUp, Copy, Maximize, Minus, Plus, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  EyeOff,
+  Fullscreen,
+  LayoutGrid,
+  Lock,
+  Minimize,
+  PanelBottom,
+  Plus,
+} from 'lucide-react';
 import { memo, useEffect, useRef, useState } from 'react';
 import { IconButton } from '@/components/ui/button';
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
+import { setPageView, toggleGridView } from '@/lib/page-view';
 import { cn } from '@/lib/utils';
 
 /** Re-renders page thumbnails when that page's content changes (debounced). */
-function usePageVersions(): Record<Id, number> {
+export function usePageVersions(): Record<Id, number> {
   const { editor, session } = useEditorContext();
   const [versions, setVersions] = useState<Record<Id, number>>({});
   useEffect(() => {
     const pending = new Set<Id>();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const flush = () => {
+      // Copy first: React may call the updater more than once (StrictMode).
+      const ids = [...pending];
+      pending.clear();
       setVersions((v) => {
         const next = { ...v };
-        for (const id of pending) next[id] = (next[id] ?? 0) + 1;
-        pending.clear();
+        for (const id of ids) next[id] = (next[id] ?? 0) + 1;
         return next;
       });
     };
@@ -58,7 +73,15 @@ function usePageVersions(): Record<Id, number> {
   return versions;
 }
 
-const Thumbnail = memo(function Thumbnail({ pageId, version }: { pageId: Id; version: number }) {
+export const Thumbnail = memo(function Thumbnail({
+  pageId,
+  version,
+  height = 56,
+}: {
+  pageId: Id;
+  version: number;
+  height?: number;
+}) {
   const { editor, session } = useEditorContext();
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
@@ -66,7 +89,6 @@ const Thumbnail = memo(function Thumbnail({ pageId, version }: { pageId: Id; ver
     const canvas = ref.current;
     const page = editor.store.getPage(pageId);
     if (!canvas || !page) return;
-    const height = 56;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     const scale = (height / page.height) * dpr;
     const {
@@ -76,134 +98,258 @@ const Thumbnail = memo(function Thumbnail({ pageId, version }: { pageId: Id; ver
     } = rasterizePage(session.renderer, session.platform, editor.store, pageId, {
       scale,
       placeholders: true,
+      framePlaceholders: true,
     });
     canvas.width = width;
     canvas.height = h;
     canvas.style.width = `${width / dpr}px`;
     canvas.style.height = `${h / dpr}px`;
     canvas.getContext('2d')?.drawImage(raster as unknown as CanvasImageSource, 0, 0);
-  }, [editor, session, pageId, version]);
+  }, [editor, session, pageId, version, height]);
   return <canvas ref={ref} aria-hidden className="block rounded-sm bg-white" />;
 });
 
-export function PagesBar() {
+/** Drag and drop to reorder pages (thumbnail strip and grid view). */
+export function usePageReorder() {
+  const { editor } = useEditorContext();
+  const [dragging, setDragging] = useState<Id | null>(null);
+  const [over, setOver] = useState<number | null>(null);
+  const itemProps = (id: Id, index: number) => ({
+    draggable: true,
+    onDragStart: (e: React.DragEvent) => {
+      e.dataTransfer.setData('application/x-opencanvas-page', id);
+      e.dataTransfer.effectAllowed = 'move';
+      setDragging(id);
+    },
+    onDragOver: (e: React.DragEvent) => {
+      if (!dragging) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      setOver(index);
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (!dragging) return;
+      e.preventDefault();
+      const from = editor.store.getPageIds().indexOf(dragging);
+      if (from !== index && from >= 0) editor.execute('page.move', { id: dragging, position: index });
+      setDragging(null);
+      setOver(null);
+    },
+    onDragEnd: () => {
+      setDragging(null);
+      setOver(null);
+    },
+  });
+  return { itemProps, dragging, over };
+}
+
+const ZOOM_PRESETS = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3];
+const MIN_SLIDER_ZOOM = 0.1;
+const MAX_SLIDER_ZOOM = 5;
+// Logarithmic slider: equal steps feel equal at every zoom level.
+const zoomToSlider = (z: number) =>
+  Math.round(
+    (Math.log(Math.min(MAX_SLIDER_ZOOM, Math.max(MIN_SLIDER_ZOOM, z)) / MIN_SLIDER_ZOOM) /
+      Math.log(MAX_SLIDER_ZOOM / MIN_SLIDER_ZOOM)) *
+      1000,
+  );
+const sliderToZoom = (v: number) => MIN_SLIDER_ZOOM * (MAX_SLIDER_ZOOM / MIN_SLIDER_ZOOM) ** (v / 1000);
+
+function useFullscreen() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const sync = () => setOn(document.fullscreenElement !== null);
+    document.addEventListener('fullscreenchange', sync);
+    return () => document.removeEventListener('fullscreenchange', sync);
+  }, []);
+  const toggle = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
+  };
+  return { on, toggle };
+}
+
+function ThumbnailStrip() {
   const { t, formatNumber } = useI18n();
   const { editor } = useEditorContext();
   const versions = usePageVersions();
   const pages = useEditorValue((e) => e.store.getPageIds());
   const current = useEditorValue((e) => e.pageId);
-  const zoom = useEditorValue((e) => e.state.get().camera.zoom);
-  const index = pages.indexOf(current);
+  const flags = useEditorValue(
+    (e) =>
+      pages.map((id) => `${e.store.getPage(id)?.hidden ? 'h' : ''}${e.store.getPage(id)?.locked ? 'l' : ''}`),
+    [pages],
+  );
+  const { itemProps, over } = usePageReorder();
   return (
-    <section
-      className="flex h-[92px] shrink-0 items-center gap-3 border-t border-slate-200 bg-white px-3"
+    <ol
+      className="flex min-w-0 items-center gap-2 overflow-x-auto border-t border-slate-200 bg-white px-3 py-2"
+      data-testid="pages-list"
       aria-label={t('editor.pages.label')}
     >
-      <ol className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto py-2" data-testid="pages-list">
-        {pages.map((id, i) => (
-          <li key={id} className="group relative shrink-0">
-            <button
-              type="button"
-              onClick={() => editor.setCurrentPage(id)}
-              aria-current={id === current ? 'page' : undefined}
-              aria-label={t('editor.pages.page', { n: i + 1 })}
-              data-testid="page-thumb"
-              className={cn(
-                'block rounded-md border-2 p-0.5 transition',
-                id === current ? 'border-brand-500' : 'border-transparent hover:border-slate-300',
-              )}
-            >
-              <Thumbnail pageId={id} version={versions[id] ?? 0} />
-            </button>
-            <span className="pointer-events-none absolute -bottom-0.5 start-1 rounded bg-white/90 px-1 text-[10px] font-medium text-slate-600">
-              {i + 1}
-            </span>
-          </li>
-        ))}
-        <li className="shrink-0">
+      {pages.map((id, i) => (
+        <li
+          key={id}
+          className={cn('group relative shrink-0', over === i && 'ring-2 ring-brand-400 rounded-md')}
+          {...itemProps(id, i)}
+        >
           <button
             type="button"
-            onClick={() => editor.addPage()}
-            aria-label={t('editor.pages.add')}
-            title={t('editor.pages.add')}
-            data-testid="add-page"
-            className="flex h-[60px] w-12 items-center justify-center rounded-md border-2 border-dashed border-slate-300 text-slate-500 hover:border-brand-400 hover:text-brand-600"
+            onClick={() => editor.setCurrentPage(id)}
+            aria-current={id === current ? 'page' : undefined}
+            aria-label={t('editor.pages.page', { n: formatNumber(i + 1) })}
+            data-testid="page-thumb"
+            className={cn(
+              'block rounded-md border-2 p-0.5 transition',
+              id === current ? 'border-brand-500' : 'border-transparent hover:border-slate-300',
+              flags[i]?.includes('h') && 'opacity-50',
+            )}
           >
-            <Plus className="size-5" />
+            <Thumbnail pageId={id} version={versions[id] ?? 0} />
           </button>
+          <span className="pointer-events-none absolute -bottom-0.5 start-1 flex items-center gap-0.5 rounded bg-white/90 px-1 text-[10px] font-medium text-slate-600">
+            {formatNumber(i + 1)}
+            {flags[i]?.includes('h') ? (
+              <EyeOff className="size-2.5" aria-label={t('editor.pages.hidden')} />
+            ) : null}
+            {flags[i]?.includes('l') ? (
+              <Lock className="size-2.5" aria-label={t('editor.pages.locked')} />
+            ) : null}
+          </span>
         </li>
-      </ol>
-      <div className="flex items-center gap-0.5 border-s border-slate-200 ps-2">
-        <span className="me-1 text-xs tabular-nums text-slate-500" data-testid="page-position">
-          {t('editor.pages.position', { current: index + 1, total: pages.length })}
-        </span>
+      ))}
+      <li className="shrink-0">
+        <button
+          type="button"
+          onClick={() => editor.addPage(editor.store.getPageIds().at(-1))}
+          aria-label={t('editor.pages.add')}
+          title={t('editor.pages.add')}
+          data-testid="add-page"
+          className="flex h-[60px] w-12 items-center justify-center rounded-md border-2 border-dashed border-slate-300 text-slate-500 hover:border-brand-400 hover:text-brand-600"
+        >
+          <Plus className="size-5" />
+        </button>
+      </li>
+    </ol>
+  );
+}
+
+export function PagesBar() {
+  const { t, formatNumber } = useI18n();
+  const { editor } = useEditorContext();
+  const pages = useEditorValue((e) => e.store.getPageIds());
+  const current = useEditorValue((e) => e.pageId);
+  const zoom = useEditorValue((e) => e.state.get().camera.zoom);
+  const view = useEditorValue((e) => e.state.get().pageView);
+  const fullscreen = useFullscreen();
+  const index = pages.indexOf(current);
+  const percent = `${formatNumber(Math.round(zoom * 100))}%`;
+  return (
+    <section className="shrink-0" aria-label={t('editor.pages.footer')}>
+      {view === 'thumbnails' ? <ThumbnailStrip /> : null}
+      <div className="flex h-11 items-center justify-end gap-1 border-t border-slate-200 bg-white px-3">
+        <button
+          type="button"
+          aria-pressed={view === 'thumbnails'}
+          onClick={() => setPageView(editor, view === 'thumbnails' ? 'single' : 'thumbnails')}
+          className={cn(
+            'me-auto flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100',
+            view === 'thumbnails' && 'bg-slate-100',
+          )}
+          data-testid="toggle-thumbnails"
+        >
+          <PanelBottom className="size-4" />
+          {t('editor.pages.label')}
+          <ChevronDown
+            className={cn('size-3.5 transition-transform', view !== 'thumbnails' && 'rotate-180')}
+          />
+        </button>
+        <div className="flex items-center gap-2 max-md:hidden">
+          <input
+            type="range"
+            min={0}
+            max={1000}
+            value={zoomToSlider(zoom)}
+            onChange={(e) => editor.zoomTo(sliderToZoom(Number(e.target.value)))}
+            aria-label={t('editor.zoom.label')}
+            aria-valuetext={percent}
+            className="h-1 w-28 cursor-pointer accent-brand-500"
+            data-testid="zoom-slider"
+          />
+        </div>
+        <Menu>
+          <MenuTrigger asChild>
+            <button
+              type="button"
+              className="w-14 rounded-md py-1 text-center text-xs font-medium tabular-nums text-slate-700 hover:bg-slate-100"
+              data-testid="zoom-level"
+              aria-label={`${t('editor.zoom.label')}: ${percent}`}
+              dir="ltr"
+            >
+              {percent}
+            </button>
+          </MenuTrigger>
+          <MenuContent align="end" className="min-w-36">
+            {[...ZOOM_PRESETS].reverse().map((z) => (
+              <MenuItem key={z} onSelect={() => editor.zoomTo(z)}>
+                <span dir="ltr">{formatNumber(Math.round(z * 100))}%</span>
+              </MenuItem>
+            ))}
+            <MenuSeparator />
+            <MenuItem onSelect={() => editor.zoomToFit()}>{t('editor.zoom.fit')}</MenuItem>
+          </MenuContent>
+        </Menu>
+        <div className="mx-1 h-5 w-px bg-slate-200" />
         <IconButton
-          label={t('editor.pages.moveUp')}
           size="sm"
+          label={t('editor.pages.previous')}
           disabled={index <= 0}
-          onClick={() => editor.execute('page.move', { id: current, position: index - 1 })}
+          onClick={() => editor.goToPage(-1)}
           tooltipSide="top"
         >
-          <ChevronUp className="size-4 -rotate-90 rtl:rotate-90" />
-        </IconButton>
-        <IconButton
-          label={t('editor.pages.moveDown')}
-          size="sm"
-          disabled={index >= pages.length - 1}
-          onClick={() => editor.execute('page.move', { id: current, position: index + 1 })}
-          tooltipSide="top"
-        >
-          <ChevronDown className="size-4 -rotate-90 rtl:rotate-90" />
-        </IconButton>
-        <IconButton
-          label={t('editor.pages.duplicate')}
-          size="sm"
-          onClick={() => editor.duplicatePage()}
-          tooltipSide="top"
-          data-testid="duplicate-page"
-        >
-          <Copy className="size-4" />
-        </IconButton>
-        <IconButton
-          label={t('editor.pages.delete')}
-          size="sm"
-          disabled={pages.length <= 1}
-          onClick={() => editor.deletePage()}
-          tooltipSide="top"
-          data-testid="delete-page"
-        >
-          <Trash2 className="size-4" />
-        </IconButton>
-      </div>
-      <fieldset
-        className="flex items-center gap-0.5 border-s border-slate-200 ps-2"
-        aria-label={t('editor.zoom.label')}
-      >
-        <IconButton label={t('editor.zoom.out')} size="sm" onClick={() => editor.zoomOut()} tooltipSide="top">
-          <Minus className="size-4" />
+          <ChevronLeft className="size-4 rtl:rotate-180" />
         </IconButton>
         <button
           type="button"
-          onClick={() => editor.zoomTo(1)}
-          className="w-12 rounded-md py-1 text-center text-xs font-medium tabular-nums text-slate-700 hover:bg-slate-100"
-          data-testid="zoom-level"
-          title="100%"
-          dir="ltr"
+          onClick={() => toggleGridView(editor)}
+          className="min-w-12 rounded-md px-1.5 py-1 text-center text-xs font-medium tabular-nums text-slate-700 hover:bg-slate-100"
+          data-testid="page-position"
+          aria-label={t('editor.pages.position', {
+            current: formatNumber(index + 1),
+            total: formatNumber(pages.length),
+          })}
+          title={t('editor.pages.gridView')}
         >
-          {formatNumber(Math.round(zoom * 100))}%
+          {formatNumber(index + 1)} / {formatNumber(pages.length)}
         </button>
-        <IconButton label={t('editor.zoom.in')} size="sm" onClick={() => editor.zoomIn()} tooltipSide="top">
-          <Plus className="size-4" />
-        </IconButton>
         <IconButton
-          label={t('editor.zoom.fit')}
           size="sm"
-          onClick={() => editor.zoomToFit()}
+          label={t('editor.pages.next')}
+          disabled={index >= pages.length - 1}
+          onClick={() => editor.goToPage(1)}
           tooltipSide="top"
         >
-          <Maximize className="size-4" />
+          <ChevronRight className="size-4 rtl:rotate-180" />
         </IconButton>
-      </fieldset>
+        <IconButton
+          size="sm"
+          label={t('editor.pages.gridView')}
+          active={view === 'grid'}
+          onClick={() => toggleGridView(editor)}
+          tooltipSide="top"
+          data-testid="grid-view"
+        >
+          <LayoutGrid className="size-4" />
+        </IconButton>
+        <IconButton
+          size="sm"
+          label={fullscreen.on ? t('editor.pages.exitFullscreen') : t('editor.pages.fullscreen')}
+          onClick={fullscreen.toggle}
+          tooltipSide="top"
+        >
+          {fullscreen.on ? <Minimize className="size-4" /> : <Fullscreen className="size-4" />}
+        </IconButton>
+      </div>
     </section>
   );
 }

@@ -52,12 +52,14 @@ import {
 } from './camera';
 import { computeSelectionFrame, type SelectionFrame } from './handles';
 import { handleKeyDown } from './keyboard';
+import { PAGE_GAP_PX, type PageSlot, scrollLayout, slotAtScreenPoint, slotScreenRect } from './page-layout';
 import { CreateTool } from './tools/create';
 import { HandTool } from './tools/hand';
 import { SelectTool } from './tools/select';
 import type {
   EditorUIState,
   KeyInput,
+  PageView,
   PointerInput,
   SelectionState,
   Tool,
@@ -120,6 +122,9 @@ export class Editor {
       camera: { x: 0, y: 0, zoom: 1 },
       viewport: { width: 0, height: 0 },
       snapping: true,
+      pageView: 'thumbnails',
+      rulers: false,
+      showGuides: true,
       guides: [],
       marquee: null,
       interaction: null,
@@ -203,6 +208,7 @@ export class Editor {
 
   private restoreSelection(s: SelectionState): void {
     const pageId = this.store.getPage(s.pageId) ? s.pageId : (this.store.getPageIds()[0] ?? s.pageId);
+    const pageChanged = pageId !== this.pageId;
     this.state.set({
       pageId,
       selectedIds: s.selectedIds.filter(
@@ -212,6 +218,7 @@ export class Editor {
       focusedGroupId: null,
     });
     this.textSession = null;
+    if (pageChanged && this.pageView === 'scroll') this.revealPage();
   }
 
   // ---------------------------------------------------------------------------
@@ -242,7 +249,14 @@ export class Editor {
 
   isEditable(id: Id): boolean {
     const node = this.store.getNode(id);
-    return !!node && !node.locked && !this.store.getAncestors(id).some((a) => a.locked);
+    if (!node || node.locked || this.store.getAncestors(id).some((a) => a.locked)) return false;
+    const pageId = this.store.getPageIdOf(id);
+    return !(pageId && this.store.getPage(pageId)?.locked);
+  }
+
+  /** True when the current page is locked (nothing can be added or changed on it). */
+  get pageLocked(): boolean {
+    return this.store.getPage(this.pageId)?.locked === true;
   }
 
   getSelectionFrame(): SelectionFrame | null {
@@ -301,6 +315,7 @@ export class Editor {
           }
           if (result.select) patch.selectedIds = result.select.filter((id) => this.store.getNode(id));
           if (Object.keys(patch).length) this.state.set(patch);
+          if (patch.pageId && this.pageView === 'scroll') this.revealPage();
           return result;
         },
         { label, coalesceKey: options.coalesceKey },
@@ -408,7 +423,104 @@ export class Editor {
     this.cancelInteraction();
     this.state.set({ pageId, selectedIds: [], hoveredId: null, focusedGroupId: null });
     this.history.markStateChanged();
-    if (options.fit !== false) this.zoomToFit();
+    if (options.fit !== false) this.revealPage();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Page views
+  // ---------------------------------------------------------------------------
+
+  get pageView(): PageView {
+    return this.state.get().pageView;
+  }
+
+  setPageView(pageView: PageView): void {
+    const previous = this.pageView;
+    if (previous === pageView) return;
+    if (pageView === 'grid') {
+      this.cancelInteraction();
+      if (this.textSession) this.stopEditingText();
+    }
+    this.state.set({ pageView, hoveredId: null });
+    // Leaving the overview, or the scroll layout, shows the current page in full.
+    if (previous === 'grid' || previous === 'scroll' || pageView === 'scroll') this.revealPage();
+  }
+
+  /**
+   * Where pages are drawn, relative to the current page (one slot except in
+   * the scroll view).
+   */
+  getPageSlots(): PageSlot[] {
+    const s = this.state.get();
+    if (s.pageView === 'scroll') return scrollLayout(this.store, s.pageId, s.camera.zoom);
+    const page = this.store.getPage(s.pageId);
+    return page ? [{ pageId: page.id, x: 0, y: 0, width: page.width, height: page.height }] : [];
+  }
+
+  /**
+   * In the scroll view, makes the page under a screen point current without
+   * moving anything on screen. Returns true if the current page changed.
+   */
+  focusPageAt(point: Vec): boolean {
+    if (this.pageView !== 'scroll') return false;
+    const camera = this.state.get().camera;
+    const slot = slotAtScreenPoint(camera, this.getPageSlots(), point);
+    if (!slot || slot.pageId === this.pageId) return false;
+    this.switchPageInPlace(slot);
+    return true;
+  }
+
+  private switchPageInPlace(slot: PageSlot): void {
+    const camera = this.state.get().camera;
+    this.setCurrentPage(slot.pageId, { fit: false });
+    this.setCamera({
+      zoom: camera.zoom,
+      x: camera.x + slot.x * camera.zoom,
+      y: camera.y + slot.y * camera.zoom,
+    });
+  }
+
+  /** In the scroll view, the page in the middle of the viewport becomes current. */
+  private syncScrollPage(): void {
+    if (this.pageView !== 'scroll' || this.state.get().interaction) return;
+    const s = this.state.get();
+    const center = { x: s.viewport.width / 2, y: s.viewport.height / 2 };
+    const slots = this.getPageSlots();
+    let best: PageSlot | null = slotAtScreenPoint(s.camera, slots, center);
+    if (!best) {
+      // Past the first or last page: the nearest one.
+      let distance = Number.POSITIVE_INFINITY;
+      for (const slot of slots) {
+        const r = slotScreenRect(s.camera, slot);
+        const d = Math.min(Math.abs(center.y - r.y), Math.abs(center.y - (r.y + r.height)));
+        if (d < distance) {
+          distance = d;
+          best = slot;
+        }
+      }
+    }
+    if (best && best.pageId !== s.pageId) this.switchPageInPlace(best);
+  }
+
+  /**
+   * Shows the current page: fitted in the single-page views; scrolled to (at
+   * the same zoom) in the scroll view.
+   */
+  revealPage(): void {
+    const s = this.state.get();
+    const page = this.store.getPage(s.pageId);
+    if (!page || s.viewport.width === 0) return;
+    if (s.pageView !== 'scroll') {
+      this.zoomToFit();
+      return;
+    }
+    const zoom = s.camera.zoom;
+    const fitsHeight = page.height * zoom <= s.viewport.height - PAGE_GAP_PX - 24;
+    this.setCamera({
+      zoom,
+      x: (s.viewport.width - page.width * zoom) / 2,
+      y: fitsHeight ? (s.viewport.height - page.height * zoom) / 2 + PAGE_GAP_PX / 4 : PAGE_GAP_PX,
+    });
   }
 
   goToPage(offset: 1 | -1): void {
@@ -457,7 +569,17 @@ export class Editor {
     const s = this.state.get();
     const page = this.store.getPage(s.pageId);
     if (!page || s.viewport.width === 0) return;
-    this.setCamera(fitBox({ x: 0, y: 0, width: page.width, height: page.height }, s.viewport, 40, 2));
+    // Leave room above the page for its header (title and page actions) and
+    // below it for the floating tool bar.
+    const top = 36;
+    const bottom = 36;
+    const camera = fitBox(
+      { x: 0, y: 0, width: page.width, height: page.height },
+      { width: s.viewport.width, height: Math.max(1, s.viewport.height - top - bottom) },
+      40,
+      2,
+    );
+    this.setCamera({ ...camera, y: camera.y + top });
   }
 
   zoomToSelection(): void {
@@ -495,6 +617,8 @@ export class Editor {
   }
 
   pointerDown(p: PointerInput): void {
+    // In the scroll view, clicking another page works on that page.
+    if (p.button === 0 && !this.state.get().interaction) this.focusPageAt(p.point);
     if (p.button === 1) {
       // Middle mouse button always pans.
       this.spacePanning = true;
@@ -516,16 +640,19 @@ export class Editor {
   }
 
   wheel(w: WheelInput): void {
-    const s = this.state.get();
     if (w.ctrlKey || w.metaKey) {
-      // Pinch-zoom (trackpads report ctrl+wheel) and ctrl+wheel zoom at the cursor.
+      // Pinch-zoom (trackpads report ctrl+wheel) and ctrl+wheel zoom at the cursor,
+      // anchored on the page under the cursor.
+      this.focusPageAt(w.point);
+      const camera = this.state.get().camera;
       const factor = Math.exp(-w.deltaY * 0.01);
-      this.setCamera(zoomAt(s.camera, w.point, s.camera.zoom * factor));
+      this.setCamera(zoomAt(camera, w.point, camera.zoom * factor));
       return;
     }
     const dx = w.shiftKey && w.deltaX === 0 ? w.deltaY : w.deltaX;
     const dy = w.shiftKey && w.deltaX === 0 ? 0 : w.deltaY;
     this.panBy(-dx, -dy);
+    this.syncScrollPage();
   }
 
   /** Returns true if the key was handled (the caller should preventDefault). */
@@ -557,6 +684,10 @@ export class Editor {
    */
   insertNodes(props: AnyNodeProps[], options: { at?: Vec; center?: boolean } = {}): Id[] {
     if (props.length === 0) return [];
+    if (this.pageLocked) {
+      this.reportError('This page is locked. Unlock it to add elements.');
+      return [];
+    }
     const page = this.store.getPage(this.pageId)!;
     const scope = this.getScopeId();
     const bounds = boxUnion(
@@ -656,19 +787,32 @@ export class Editor {
     this.execute('node.translate', { ids, dx, dy }, { coalesceKey: `nudge:${ids.join(',')}` });
   }
 
-  addPage(): void {
-    this.execute('page.create', { afterId: this.pageId });
-    this.zoomToFit();
+  addPage(afterId: Id = this.pageId): void {
+    this.execute('page.create', { afterId });
+    this.revealPage();
   }
 
   duplicatePage(id: Id = this.pageId): void {
     this.execute('page.duplicate', { id });
-    this.zoomToFit();
+    this.revealPage();
   }
 
   deletePage(id: Id = this.pageId): void {
+    const wasCurrent = id === this.pageId;
     this.execute('page.delete', { id });
-    this.zoomToFit();
+    if (wasCurrent) this.revealPage();
+  }
+
+  /** Moves a page up or down by one position. */
+  movePage(id: Id, direction: -1 | 1): void {
+    const ids = this.store.getPageIds();
+    const position = ids.indexOf(id) + direction;
+    if (position < 0 || position >= ids.length) return;
+    this.execute('page.move', { id, position });
+  }
+
+  updatePage(id: Id, patch: Record<string, unknown>, label?: string): void {
+    this.execute('page.update', { id, patch }, label ? { label } : {});
   }
 
   // ---------------------------------------------------------------------------
@@ -768,6 +912,10 @@ export class Editor {
    */
   paste(data: ClipboardData): Id[] {
     if (data?.format !== 'opencanvas/clipboard') return [];
+    if (this.pageLocked) {
+      this.reportError('This page is locked. Unlock it to add elements.');
+      return [];
+    }
     const key = `${data.sourcePageId}:${data.snapshot.rootIds.join(',')}`;
     if (key !== this.lastPasteKey) {
       this.lastPasteKey = key;

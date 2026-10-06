@@ -9,6 +9,7 @@ export const LIMITS = {
   minPageDimension: 1,
   maxPageDimension: 10_000,
   maxPages: 500,
+  maxGuidesPerPage: 200,
   maxNodes: 50_000,
   maxAssets: 5_000,
   maxNestingDepth: 32,

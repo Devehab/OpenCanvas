@@ -1,6 +1,12 @@
 import type { Box, Id, SnapGuide, Vec } from '@opencanvas/core';
 import type { Camera } from './camera';
 
+/**
+ * How pages are shown: one page (`single`), one page with the thumbnail strip
+ * (`thumbnails`), all pages stacked (`scroll`) or an overview (`grid`).
+ */
+export type PageView = 'single' | 'thumbnails' | 'scroll' | 'grid';
+
 export type ToolId = 'select' | 'hand' | 'text' | 'rect' | 'ellipse' | 'triangle' | 'star' | 'line' | 'frame';
 
 export type InteractionKind =
@@ -31,6 +37,11 @@ export interface EditorUIState {
   camera: Camera;
   viewport: { width: number; height: number };
   snapping: boolean;
+  pageView: PageView;
+  /** Rulers along the top and left edges (and draggable page guides). */
+  rulers: boolean;
+  /** Show the current page's ruler guides. */
+  showGuides: boolean;
   guides: SnapGuide[];
   marquee: Box | null;
   interaction: InteractionKind | null;

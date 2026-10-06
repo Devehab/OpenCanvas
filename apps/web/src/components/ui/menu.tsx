@@ -88,6 +88,39 @@ export function MenuCheckItem({
   );
 }
 
+/** Menu item showing a check when it is the current choice (radio-like). */
+export function MenuRadioItem({
+  children,
+  checked,
+  icon,
+  onSelect,
+  testId,
+}: {
+  children: ReactNode;
+  checked: boolean;
+  icon?: ReactNode;
+  onSelect: () => void;
+  testId?: string;
+}) {
+  return (
+    <DropdownMenu.CheckboxItem
+      className={itemClass}
+      checked={checked}
+      onSelect={onSelect}
+      data-testid={testId}
+      role="menuitemradio"
+    >
+      <span className="flex size-4 items-center justify-center text-slate-500">{icon}</span>
+      <span className="flex-1">{children}</span>
+      <span className="flex size-4 items-center justify-center text-brand-600">
+        <DropdownMenu.ItemIndicator>
+          <Check className="size-4" />
+        </DropdownMenu.ItemIndicator>
+      </span>
+    </DropdownMenu.CheckboxItem>
+  );
+}
+
 export function MenuSeparator() {
   return <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />;
 }
