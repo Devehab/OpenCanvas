@@ -668,9 +668,10 @@ export class Editor {
     const page = this.store.getPage(s.pageId);
     if (!page || s.viewport.width === 0) return;
     // Leave room above the page for its header (title and page actions) and
-    // below it for the floating tool bar.
+    // below it for the floating tool bar (and the "Add page" button in the
+    // single page view).
     const top = 36;
-    const bottom = 36;
+    const bottom = s.pageView === 'single' ? 96 : 36;
     const camera = fitBox(
       { x: 0, y: 0, width: page.width, height: page.height },
       { width: s.viewport.width, height: Math.max(1, s.viewport.height - top - bottom) },

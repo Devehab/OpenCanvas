@@ -73,14 +73,17 @@ export function usePageVersions(): Record<Id, number> {
   return versions;
 }
 
+/** A page preview that fits inside `maxWidth` × `height`, keeping the page's proportions. */
 export const Thumbnail = memo(function Thumbnail({
   pageId,
   version,
   height = 56,
+  maxWidth = 112,
 }: {
   pageId: Id;
   version: number;
   height?: number;
+  maxWidth?: number;
 }) {
   const { editor, session } = useEditorContext();
   const ref = useRef<HTMLCanvasElement>(null);
@@ -90,7 +93,8 @@ export const Thumbnail = memo(function Thumbnail({
     const page = editor.store.getPage(pageId);
     if (!canvas || !page) return;
     const dpr = Math.min(2, window.devicePixelRatio || 1);
-    const scale = (height / page.height) * dpr;
+    // Wide formats (covers, banners) are limited by width, tall ones by height.
+    const scale = Math.min(height / page.height, maxWidth / page.width) * dpr;
     const {
       canvas: raster,
       width,
@@ -102,11 +106,12 @@ export const Thumbnail = memo(function Thumbnail({
     });
     canvas.width = width;
     canvas.height = h;
+    // Only the width is set: the height follows the canvas's own aspect ratio,
+    // so a narrower container shrinks the preview instead of overflowing.
     canvas.style.width = `${width / dpr}px`;
-    canvas.style.height = `${h / dpr}px`;
     canvas.getContext('2d')?.drawImage(raster as unknown as CanvasImageSource, 0, 0);
-  }, [editor, session, pageId, version, height]);
-  return <canvas ref={ref} aria-hidden className="block rounded-sm bg-white" />;
+  }, [editor, session, pageId, version, height, maxWidth]);
+  return <canvas ref={ref} aria-hidden className="block h-auto max-w-full rounded-sm bg-white" />;
 });
 
 /** Drag and drop to reorder pages (thumbnail strip and grid view). */
@@ -251,7 +256,8 @@ export function PagesBar() {
         <button
           type="button"
           aria-pressed={view === 'thumbnails'}
-          onClick={() => setPageView(editor, view === 'thumbnails' ? 'single' : 'thumbnails')}
+          // Like Canva: closing the strip shows every page in one scrolling column.
+          onClick={() => setPageView(editor, view === 'thumbnails' ? 'scroll' : 'thumbnails')}
           className={cn(
             'me-auto flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium text-slate-700 hover:bg-slate-100',
             view === 'thumbnails' && 'bg-slate-100',

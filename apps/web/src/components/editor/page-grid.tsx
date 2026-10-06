@@ -32,12 +32,12 @@ function GridItem({ id, index, total, version }: { id: Id; index: number; total:
         aria-label={`${t('editor.pages.page', { n: formatNumber(index + 1) })}${page.name ? ` – ${page.name}` : ''}`}
         data-testid="grid-page"
         className={cn(
-          'flex h-[180px] w-full items-center justify-center rounded-xl border-2 bg-slate-100 p-3 transition',
+          'flex h-[180px] w-full items-center justify-center overflow-hidden rounded-xl border-2 bg-slate-100 p-3 transition',
           current ? 'border-brand-500' : 'border-transparent hover:border-slate-300',
           page.hidden && 'opacity-50',
         )}
       >
-        <Thumbnail pageId={id} version={version} height={150} />
+        <Thumbnail pageId={id} version={version} height={150} maxWidth={360} />
       </button>
       <div className="flex w-full items-center gap-1 px-1 text-sm">
         <span className="font-medium text-slate-700">{formatNumber(index + 1)}</span>

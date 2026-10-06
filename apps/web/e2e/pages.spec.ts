@@ -81,12 +81,52 @@ test.describe('page views', () => {
     await expect(page.getByTestId('page-position')).toHaveText('1 / 3');
   });
 
-  test('single page view hides the thumbnails and remembers the choice', async ({ page }) => {
+  test('closing the thumbnails shows every page in a scroll, and the choice is remembered', async ({
+    page,
+  }) => {
     await page.getByTestId('toggle-thumbnails').click();
     await expect(page.getByTestId('pages-list')).toHaveCount(0);
+    expect(await page.evaluate(() => window.__opencanvas!.editor.pageView)).toBe('scroll');
     await page.reload();
     await page.waitForFunction(() => !!window.__opencanvas?.editor);
     await expect(page.getByTestId('pages-list')).toHaveCount(0);
     await expect(page.getByTestId('toggle-thumbnails')).toHaveAttribute('aria-pressed', 'false');
   });
+
+  test('"Add page" under the last page adds a page at the end', async ({ page }) => {
+    await page.evaluate(() => window.__opencanvas!.editor.setPageView('single'));
+    const before = await pageIds(page);
+    // Single page view: the button sits under the current page and adds after the last one.
+    await page.getByTestId('canvas-add-page').click();
+    const after = await pageIds(page);
+    expect(after).toHaveLength(before.length + 1);
+    expect(after.slice(0, -1)).toEqual(before);
+  });
+});
+
+test('grid view keeps wide pages inside their own tiles', async ({ page }) => {
+  await createDesign(page);
+  // LinkedIn banner proportions (1584 × 396) on three pages.
+  await page.evaluate(() => {
+    const { editor } = window.__opencanvas!;
+    const [square] = editor.store.getPageIds();
+    for (let i = 0; i < 3; i++) {
+      editor.execute('page.create', { afterId: editor.store.getPageIds().at(-1)!, width: 1584, height: 396 });
+    }
+    editor.deletePage(square!);
+  });
+  await page.getByTestId('grid-view').click();
+  await expect(page.getByTestId('grid-page')).toHaveCount(3);
+  const boxes = await page.getByTestId('grid-page').evaluateAll((tiles) =>
+    tiles.map((tile) => {
+      const t = tile.getBoundingClientRect();
+      const c = tile.querySelector('canvas')!.getBoundingClientRect();
+      return { tile: [t.left, t.right], preview: [c.left, c.right], width: c.width };
+    }),
+  );
+  for (const { tile, preview, width } of boxes) {
+    expect(width).toBeGreaterThan(50);
+    expect(preview[0]!).toBeGreaterThanOrEqual(tile[0]!);
+    expect(preview[1]!).toBeLessThanOrEqual(tile[1]!);
+  }
 });

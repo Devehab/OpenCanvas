@@ -7,7 +7,18 @@
  */
 import type { Id } from '@opencanvas/core';
 import { PAGE_GAP_PX, slotScreenRect } from '@opencanvas/editor';
-import { ChevronDown, ChevronUp, Copy, Eye, EyeOff, FilePlus2, Lock, LockOpen, Trash2 } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Eye,
+  EyeOff,
+  FilePlus2,
+  Lock,
+  LockOpen,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { IconButton } from '@/components/ui/button';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
@@ -164,6 +175,45 @@ function PageHeader({
 
 const sameLayout = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
 
+const ADD_PAGE_HEIGHT = 40;
+
+/** "Add page" under the last page (scroll view) or under the page (single page view). */
+function AddPageButton() {
+  const { t } = useI18n();
+  const { editor } = useEditorContext();
+  const place = useEditorValue(
+    (e) => {
+      const s = e.state.get();
+      if (s.pageView !== 'scroll' && s.pageView !== 'single') return null;
+      const last = e.getPageSlots().at(-1);
+      if (!last) return null;
+      const r = slotScreenRect(s.camera, last);
+      const top = Math.round(r.y + r.height + 16);
+      if (top > s.viewport.height || top + ADD_PAGE_HEIGHT < 0) return null;
+      const width = Math.max(Math.round(r.width), 220);
+      return { top, left: Math.round(r.x + r.width / 2 - width / 2), width };
+    },
+    [],
+    sameLayout,
+  );
+  if (!place) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        const last = editor.store.getPageIds().at(-1);
+        if (last) editor.addPage(last);
+      }}
+      className="absolute z-[4] flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white/90 text-sm font-medium text-slate-700 shadow-sm transition hover:border-brand-300 hover:text-brand-700"
+      style={{ top: place.top, left: place.left, width: place.width, height: ADD_PAGE_HEIGHT }}
+      data-testid="canvas-add-page"
+    >
+      <Plus className="size-4" />
+      {t('editor.pages.add')}
+    </button>
+  );
+}
+
 export function PageHeaders() {
   // Recompute when the camera, view or pages change.
   const layout = useEditorValue(
@@ -194,6 +244,7 @@ export function PageHeaders() {
         .map((h) => (
           <PageHeader key={h.pageId} {...h} />
         ))}
+      <AddPageButton />
     </>
   );
 }
