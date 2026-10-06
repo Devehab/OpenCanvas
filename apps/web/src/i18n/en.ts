@@ -363,6 +363,7 @@ export const en = {
       title: 'Plugins',
       empty: 'No plugins are turned on.',
       manage: 'Manage plugins',
+      docs: 'How to build a plugin',
       running: 'Running {name}…',
       failed: '{name}: {message}',
       needsImage: 'Select an image first',

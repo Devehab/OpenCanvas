@@ -1,0 +1,31 @@
+{
+  "manifestVersion": 1,
+  "id": "org.opencanvas.starter-tools",
+  "name": "Starter tools",
+  "version": "1.0.0",
+  "description": "Four tiny commands to try plugins: add a title, give the page a random background, count the elements on the page and recolor the selected shapes.",
+  "author": "OpenCanvas",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "permissions": ["design:read", "design:write"],
+  "contributes": {
+    "commands": [
+      { "id": "add-title", "title": "Add a title", "titleAr": "إضافة عنوان" },
+      {
+        "id": "random-background",
+        "title": "Random background",
+        "titleAr": "خلفية عشوائية",
+        "context": "page"
+      },
+      { "id": "count-elements", "title": "Count elements", "titleAr": "عدّ العناصر", "context": "page" },
+      { "id": "recolor-shapes", "title": "Recolor shapes", "titleAr": "تلوين الأشكال" }
+    ]
+  },
+  "locales": {
+    "ar": {
+      "name": "أدوات البداية",
+      "description": "أربعة أوامر صغيرة لتجربة الإضافات: إضافة عنوان، وخلفية عشوائية للصفحة، وعدّ عناصر الصفحة، وتلوين الأشكال المحدّدة."
+    }
+  }
+}

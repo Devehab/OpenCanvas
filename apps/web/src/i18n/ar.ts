@@ -364,6 +364,7 @@ export const ar: Dictionary = {
       title: 'الإضافات',
       empty: 'لا توجد إضافات مفعّلة.',
       manage: 'إدارة الإضافات',
+      docs: 'كيف تطوّر إضافة',
       running: 'جارٍ تشغيل {name}…',
       failed: '{name}: {message}',
       needsImage: 'حدّد صورة أولًا',

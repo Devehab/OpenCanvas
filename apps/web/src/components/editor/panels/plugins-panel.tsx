@@ -4,7 +4,7 @@
  * Plugins panel: the commands of every enabled plugin, and the interface of
  * plugins that have one (their sandboxed frame, shown over this panel).
  */
-import { ExternalLink, Loader2, Play, Puzzle, X } from 'lucide-react';
+import { BookOpen, ExternalLink, Loader2, Play, Puzzle, X } from 'lucide-react';
 import { useLayoutEffect, useRef, useState } from 'react';
 import { BlobImage } from '@/components/ui/blob-image';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/toast';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { usePluginHostVersion, usePluginIcon } from '@/hooks/use-plugins';
 import { useI18n } from '@/i18n';
+import { pluginDocsUrl } from '@/lib/plugins/docs';
 import type { PluginHost } from '@/lib/plugins/host';
 import { localizedManifest } from '@/lib/plugins/manifest';
 import type { InstalledPlugin } from '@/lib/storage/plugins';
@@ -153,7 +154,7 @@ function PluginCard({ plugin }: { plugin: InstalledPlugin }) {
 }
 
 export function PluginsPanel() {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const { pluginHost } = useEditorContext();
   usePluginHostVersion(pluginHost);
   const plugins = pluginHost?.enabledPlugins ?? [];
@@ -176,6 +177,16 @@ export function PluginsPanel() {
       >
         <ExternalLink className="size-4" />
         {t('editor.plugins.manage')}
+      </a>
+      <a
+        href={pluginDocsUrl(locale)}
+        target="_blank"
+        rel="noreferrer noopener"
+        className="flex items-center gap-1.5 px-1 text-sm font-medium text-brand-600 hover:underline"
+        data-testid="plugin-docs-link"
+      >
+        <BookOpen className="size-4" />
+        {t('editor.plugins.docs')}
       </a>
     </div>
   );

@@ -3,7 +3,15 @@ import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page, test } from '@playwright/test';
 import { strToU8, zipSync } from 'fflate';
-import { createDesign, getNodes, nodeCenter, openPanel, samplePng, waitForCanvasIdle } from './support';
+import {
+  createDesign,
+  getNodes,
+  insertNodes,
+  nodeCenter,
+  openPanel,
+  samplePng,
+  waitForCanvasIdle,
+} from './support';
 
 const EXAMPLES = fileURLToPath(new URL('../../../plugins/examples/', import.meta.url));
 
@@ -136,6 +144,62 @@ test('an image plugin command changes the photo as one undo step', async ({ page
   await expect
     .poll(async () => ((await getNodes(page))[0] as { assetId: string }).assetId)
     .not.toBe(before!.assetId);
+});
+
+test('the starter plugin adds a title, changes the background, counts elements and recolors shapes', async ({
+  page,
+}) => {
+  await install(page, 'starter.ocplugin', packExample('starter-tools'));
+  await createDesign(page);
+  await openPanel(page, 'plugins');
+  await expect(page.getByTestId('plugin-docs-link')).toHaveAttribute('href', /docs\/plugins\.md$/);
+
+  await page.getByTestId('plugin-command-add-title').click();
+  await expect.poll(async () => (await getNodes(page)).filter((n) => n.type === 'text').length).toBe(1);
+  await page.getByTestId('plugin-command-count-elements').click();
+  await expect(page.getByTestId('toast').filter({ hasText: 'This page has 1 element.' })).toBeVisible();
+
+  const background = () =>
+    page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      return JSON.stringify(editor.store.getPage(editor.pageId)!.background);
+    });
+  const before = await background();
+  await page.getByTestId('plugin-command-random-background').click();
+  await expect.poll(background).not.toBe(before);
+
+  // Recoloring needs a selected shape.
+  await page.evaluate(() => window.__opencanvas!.editor.select([]));
+  await page.getByTestId('plugin-command-recolor-shapes').click();
+  await expect(
+    page.getByTestId('toast').filter({ hasText: 'Select one or more shapes first.' }),
+  ).toBeVisible();
+  const [shapeId] = await insertNodes(
+    page,
+    [
+      {
+        type: 'shape',
+        shape: 'rect',
+        x: 100,
+        y: 100,
+        width: 200,
+        height: 200,
+        fill: { type: 'solid', color: '#000000' },
+      },
+    ],
+    { center: false },
+  );
+  await page.evaluate((id) => window.__opencanvas!.editor.select([id]), shapeId!);
+  await page.getByTestId('plugin-command-recolor-shapes').click();
+  await expect
+    .poll(async () => JSON.stringify((await getNodes(page)).find((n) => n.id === shapeId)))
+    .not.toContain('#000000');
+
+  // Each command is one undo step.
+  await page.getByTestId('undo').click();
+  await expect
+    .poll(async () => JSON.stringify((await getNodes(page)).find((n) => n.id === shapeId)))
+    .toContain('#000000');
 });
 
 test('a plugin with a panel builds a whole design; icon packs show in Elements', async ({ page }) => {

@@ -12,6 +12,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/toast';
 import { usePluginIcon, usePlugins } from '@/hooks/use-plugins';
 import { useI18n } from '@/i18n';
+import { pluginDocsUrl } from '@/lib/plugins/docs';
 import { localizedManifest, PluginError, type PluginManifest } from '@/lib/plugins/manifest';
 import { PLUGIN_ACCEPT } from '@/lib/plugins/package';
 import {
@@ -23,8 +24,6 @@ import {
   uninstallPlugin,
 } from '@/lib/storage/plugins';
 import { cn } from '@/lib/utils';
-
-export const PLUGIN_DOCS_URL = 'https://github.com/Devehab/OpenCanvas/blob/main/docs/plugins.md';
 
 function Permissions({ manifest }: { manifest: PluginManifest }) {
   const { t } = useI18n();
@@ -207,7 +206,7 @@ export function PluginsSettings() {
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-slate-500">{t('settings.plugins.hint')}</p>
           <a
-            href={PLUGIN_DOCS_URL}
+            href={pluginDocsUrl(locale)}
             target="_blank"
             rel="noreferrer noopener"
             className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:underline"

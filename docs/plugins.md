@@ -2,7 +2,7 @@
 
 Plugins add features to OpenCanvas: image effects, background removal, design generators, icon packs, fonts, or a whole panel with its own interface. This guide covers everything a developer needs: the package format, the manifest, permissions, the JavaScript API, the sandbox, and how to test and share a plugin.
 
-[ملخص بالعربية ↓](#بالعربية)
+**[الدليل الكامل بالعربية ←](plugins.ar.md)**
 
 - [Quick start](#quick-start)
 - [How plugins run](#how-plugins-run)
@@ -19,6 +19,8 @@ Plugins add features to OpenCanvas: image effects, background removal, design ge
 - [Examples](#examples)
 
 ## Quick start
+
+The fastest start is to copy [`starter-tools`](../plugins/examples/starter-tools), the smallest useful plugin (four commands of a few lines each), and change it. Or start from scratch:
 
 1. Create a folder with two files:
 
@@ -283,6 +285,7 @@ All in [`plugins/examples`](../plugins/examples), MIT licensed:
 
 | Plugin | Shows |
 | --- | --- |
+| [starter-tools](../plugins/examples/starter-tools) | The basics: add a title, random page background, count elements, recolor shapes |
 | [image-effects](../plugins/examples/image-effects) | Image commands: read pixels, change them, replace the image |
 | [remove-background](../plugins/examples/remove-background) | Making a plain background transparent, offline |
 | [quick-layouts](../plugins/examples/quick-layouts) | A panel with a form that generates a complete design |
@@ -309,6 +312,8 @@ All in [`plugins/examples`](../plugins/examples), MIT licensed:
 3. ثبّته من **الإعدادات ← الإضافات ← تثبيت إضافة**، وراجع ما تطلبه ثم وافق.
 4. شغّله من لوحة **الإضافات** في المحرّر، أو من قائمة الصورة أو قائمة الصفحة حسب سياق الأمر.
 
-ويمكنك إيقاف أي إضافة مؤقتًا أو إزالتها نهائيًا من الإعدادات. والأمثلة الكاملة في مجلد [`plugins/examples`](../plugins/examples).
+ويمكنك إيقاف أي إضافة مؤقتًا أو إزالتها نهائيًا من الإعدادات. والأمثلة الكاملة في مجلد [`plugins/examples`](../plugins/examples)، وأبسطها [`starter-tools`](../plugins/examples/starter-tools).
+
+**الدليل الكامل بالعربية، بما فيه القواعد الإلزامية وواجهة البرمجة كاملة: [plugins.ar.md](plugins.ar.md).**
 
 </div>
