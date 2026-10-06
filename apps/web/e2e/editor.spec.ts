@@ -8,9 +8,9 @@ import {
   insertNodes,
   nodeCenter,
   openPanel,
+  showInspector,
   toScreen,
   waitForCanvasIdle,
-  showInspector,
   waitForSaved,
 } from './support';
 

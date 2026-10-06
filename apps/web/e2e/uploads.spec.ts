@@ -7,9 +7,9 @@ import {
   nodeCenter,
   openPanel,
   samplePng,
+  showInspector,
   waitForCanvasIdle,
   waitForEditor,
-  showInspector,
   waitForSaved,
 } from './support';
 
