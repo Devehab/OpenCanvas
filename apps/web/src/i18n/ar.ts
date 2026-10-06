@@ -375,6 +375,11 @@ export const ar: Dictionary = {
       exitFullscreen: 'الخروج من ملء الشاشة',
       footer: 'الصفحات والتكبير',
       actions: 'إجراءات الصفحة {n}',
+      copy: 'نسخ الصفحة',
+      paste: 'لصق',
+      rename: 'إعادة تسمية الصفحة',
+      download: 'تنزيل الصفحة',
+      more: 'مزيد من إجراءات الصفحة',
     },
     zoom: {
       label: 'التكبير',

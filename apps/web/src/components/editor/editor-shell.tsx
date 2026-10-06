@@ -231,7 +231,11 @@ function EditorLayout({ session }: { session: EditorSession }) {
         </div>
         <ErrorReporter />
         <SelectionAnnouncer />
-        <ExportDialog open={dialog === 'export'} onOpenChange={(o) => setDialog(o ? 'export' : null)} />
+        <ExportDialog
+          open={dialog === 'export' || dialog === 'exportPage'}
+          initialPages={dialog === 'exportPage' ? 'current' : 'all'}
+          onOpenChange={(o) => setDialog(o ? (dialog ?? 'export') : null)}
+        />
         <ResizeDialog open={dialog === 'resize'} onOpenChange={(o) => setDialog(o ? 'resize' : null)} />
         <GuidesDialog open={dialog === 'guides'} onOpenChange={(o) => setDialog(o ? 'guides' : null)} />
         <ShortcutsDialog

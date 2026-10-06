@@ -373,6 +373,11 @@ export const en = {
       exitFullscreen: 'Exit full screen',
       footer: 'Pages and zoom',
       actions: 'Actions for page {n}',
+      copy: 'Copy page',
+      paste: 'Paste',
+      rename: 'Rename page',
+      download: 'Download page',
+      more: 'More page actions',
     },
     zoom: {
       label: 'Zoom',

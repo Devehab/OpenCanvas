@@ -103,3 +103,35 @@ describe('page state', () => {
     expect(t.store.getPageIds()).toHaveLength(2);
   });
 });
+
+describe('copy and paste a page', () => {
+  it('pastes a new page with the same size, background and content, as one undo step', () => {
+    const t = createTestEditor({ width: 400, height: 300, pages: 2 });
+    const [first, second] = t.store.getPageIds();
+    t.editor.execute('page.update', {
+      id: first!,
+      patch: { name: 'Cover', background: { type: 'solid', color: '#ff0000' } },
+    });
+    t.add({ type: 'shape', shape: 'rect', x: 10, y: 20, width: 50, height: 40 });
+    t.add({ type: 'text', x: 100, y: 100, width: 200, height: 40, text: 'Hello' } as never);
+    const data = t.editor.copyPage(first!)!;
+    expect(data.page).toMatchObject({ width: 400, height: 300, name: 'Cover' });
+
+    t.editor.setCurrentPage(second!);
+    t.editor.paste(data); // a page on the clipboard pastes as a new page after the current one
+    const ids = t.store.getPageIds();
+    expect(ids).toHaveLength(3);
+    const pasted = ids[2]!;
+    expect(t.editor.pageId).toBe(pasted);
+    const page = t.store.getPage(pasted)!;
+    expect(page.background).toEqual({ type: 'solid', color: '#ff0000' });
+    expect(page.name).toBe('Cover');
+    const children = t.store.getChildren(pasted);
+    expect(children.map((n) => n.type)).toEqual(t.store.getChildren(first!).map((n) => n.type));
+    // New ids: the original page is untouched.
+    expect(children.map((n) => n.id)).not.toEqual(t.store.getChildIds(first!));
+
+    t.editor.undo();
+    expect(t.store.getPageIds()).toEqual([first, second]);
+  });
+});

@@ -23,6 +23,7 @@ import {
   createTextAutosizeFinalizer,
   type DocumentStore,
   executeCommand,
+  type Fill,
   getNodesPageBounds,
   getPageBounds,
   History,
@@ -87,6 +88,8 @@ export interface ClipboardData {
   snapshot: SubtreeSnapshot;
   /** Plain text of copied text elements (for pasting into other apps). */
   text: string;
+  /** Set when a whole page was copied: pasting then adds a new page. */
+  page?: { width: number; height: number; name: string; background: Fill; notes: string };
 }
 
 export class Editor {
@@ -1020,6 +1023,35 @@ export class Editor {
     return { format: 'opencanvas/clipboard', version: 1, sourcePageId: this.pageId, snapshot, text };
   }
 
+  /** Copies a whole page: its size, background, notes and every element on it. */
+  copyPage(id: Id = this.pageId): ClipboardData | null {
+    const page = this.store.getPage(id);
+    if (!page) return null;
+    const snapshot = snapshotSubtrees(this.store, this.store.getChildIds(id));
+    return {
+      format: 'opencanvas/clipboard',
+      version: 1,
+      sourcePageId: id,
+      snapshot,
+      text: '',
+      page: {
+        width: page.width,
+        height: page.height,
+        name: page.name,
+        background: page.background,
+        notes: page.notes,
+      },
+    };
+  }
+
+  /** Pastes a copied page as a new page after `afterId` (the current page by default). */
+  pastePage(data: ClipboardData, afterId: Id = this.pageId): Id | null {
+    if (!data.page) return null;
+    const result = this.execute('page.paste', { afterId, page: data.page, snapshot: data.snapshot });
+    this.revealPage();
+    return result?.pageId ?? null;
+  }
+
   cut(): ClipboardData | null {
     const data = this.copy();
     if (data) this.deleteSelected();
@@ -1032,6 +1064,10 @@ export class Editor {
    */
   paste(data: ClipboardData): Id[] {
     if (data?.format !== 'opencanvas/clipboard') return [];
+    if (data.page) {
+      this.pastePage(data);
+      return [];
+    }
     if (this.pageLocked) {
       this.reportError('This page is locked. Unlock it to add elements.');
       return [];

@@ -24,6 +24,7 @@ import { IconButton } from '@/components/ui/button';
 import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
+import { PageMenuButton } from './page-menu';
 
 const HEADER_HEIGHT = 32;
 
@@ -169,6 +170,7 @@ function PageHeader({
           <FilePlus2 className="size-4" />
         </IconButton>
       </div>
+      <PageMenuButton pageId={pageId} index={index} />
     </div>
   );
 }

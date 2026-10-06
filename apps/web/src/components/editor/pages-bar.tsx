@@ -21,6 +21,7 @@ import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { setPageView, toggleGridView } from '@/lib/page-view';
 import { cn } from '@/lib/utils';
+import { PageContextMenu } from './page-menu';
 
 /** Re-renders page thumbnails when that page's content changes (debounced). */
 export function usePageVersions(): Record<Id, number> {
@@ -198,20 +199,22 @@ function ThumbnailStrip() {
           className={cn('group relative shrink-0', over === i && 'ring-2 ring-brand-400 rounded-md')}
           {...itemProps(id, i)}
         >
-          <button
-            type="button"
-            onClick={() => editor.setCurrentPage(id)}
-            aria-current={id === current ? 'page' : undefined}
-            aria-label={t('editor.pages.page', { n: formatNumber(i + 1) })}
-            data-testid="page-thumb"
-            className={cn(
-              'block rounded-md border-2 p-0.5 transition',
-              id === current ? 'border-brand-500' : 'border-transparent hover:border-slate-300',
-              flags[i]?.includes('h') && 'opacity-50',
-            )}
-          >
-            <Thumbnail pageId={id} version={versions[id] ?? 0} />
-          </button>
+          <PageContextMenu pageId={id}>
+            <button
+              type="button"
+              onClick={() => editor.setCurrentPage(id)}
+              aria-current={id === current ? 'page' : undefined}
+              aria-label={t('editor.pages.page', { n: formatNumber(i + 1) })}
+              data-testid="page-thumb"
+              className={cn(
+                'block rounded-md border-2 p-0.5 transition',
+                id === current ? 'border-brand-500' : 'border-transparent hover:border-slate-300',
+                flags[i]?.includes('h') && 'opacity-50',
+              )}
+            >
+              <Thumbnail pageId={id} version={versions[id] ?? 0} />
+            </button>
+          </PageContextMenu>
           <span className="pointer-events-none absolute -bottom-0.5 start-1 flex items-center gap-0.5 rounded bg-white/90 px-1 text-[10px] font-medium text-slate-600">
             {formatNumber(i + 1)}
             {flags[i]?.includes('h') ? (

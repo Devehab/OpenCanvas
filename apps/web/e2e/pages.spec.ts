@@ -130,3 +130,56 @@ test('grid view keeps wide pages inside their own tiles', async ({ page }) => {
     expect(preview[1]!).toBeLessThanOrEqual(tile[1]!);
   }
 });
+
+test.describe('page menu', () => {
+  test.beforeEach(async ({ page }) => {
+    await createDesign(page);
+    await page.getByTestId('element-shape-circle').click();
+    await page.getByTestId('add-page').click();
+    expect(await pageIds(page)).toHaveLength(2);
+  });
+
+  test('right-click a thumbnail: copy the page, then paste it as a new page', async ({ page }) => {
+    const [first] = await pageIds(page);
+    await page.getByTestId('page-thumb').first().click({ button: 'right' });
+    await page.getByTestId('page-menu-copy').click();
+    await page.getByTestId('page-thumb').nth(1).click({ button: 'right' });
+    await page.getByTestId('page-menu-paste').click();
+    const ids = await pageIds(page);
+    expect(ids).toHaveLength(3);
+    const types = (id: string) =>
+      page.evaluate((p) => window.__opencanvas!.editor.store.getChildren(p).map((n) => n.type), id);
+    expect(await types(ids[2]!)).toEqual(await types(first!));
+    expect(await types(ids[2]!)).toEqual(['shape']);
+  });
+
+  test('right-click a grid tile to hide a page and move it', async ({ page }) => {
+    await page.getByTestId('grid-view').click();
+    const [first, second] = await pageIds(page);
+    await page.getByTestId('grid-page').first().click({ button: 'right' });
+    await expect(page.getByTestId('page-menu')).toBeVisible();
+    await expect(page.getByTestId('page-menu-move-up')).toBeDisabled();
+    await page.getByTestId('page-menu-move-down').click();
+    expect(await pageIds(page)).toEqual([second, first]);
+    await page.getByTestId('grid-page').nth(1).click({ button: 'right' });
+    await page.getByTestId('page-menu-hide').click();
+    expect(await page.evaluate((id) => window.__opencanvas!.editor.store.getPage(id)?.hidden, first!)).toBe(
+      true,
+    );
+  });
+
+  test('the header menu downloads just that page and renames it', async ({ page }) => {
+    await page.getByTestId('page-menu-button').first().click();
+    await page.getByTestId('page-menu-download').click();
+    await expect(page.getByRole('radio', { name: /This page/ })).toHaveAttribute('aria-checked', 'true');
+    await page.keyboard.press('Escape');
+
+    await page.getByTestId('page-menu-button').first().click();
+    await page.getByTestId('page-menu-rename').click();
+    await expect(page.getByTestId('page-title').first()).toBeFocused();
+    await page.keyboard.type('Intro');
+    await page.keyboard.press('Enter');
+    const id = await currentPage(page);
+    expect(await page.evaluate((p) => window.__opencanvas!.editor.store.getPage(p)?.name, id)).toBe('Intro');
+  });
+});

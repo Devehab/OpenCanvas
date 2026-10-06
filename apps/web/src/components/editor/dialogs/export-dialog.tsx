@@ -108,9 +108,12 @@ function Section({ label, children, htmlFor }: { label: string; children: ReactN
 export function ExportDialog({
   open,
   onOpenChange,
+  initialPages = 'all',
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** "Download page" from a page menu opens with just that page chosen. */
+  initialPages?: 'all' | 'current';
 }) {
   const { t, formatNumber } = useI18n();
   const toast = useToast();
@@ -134,9 +137,9 @@ export function ExportDialog({
     const saved = loadSettings(designId);
     setRemember(saved !== null);
     setSettings(saved ?? { type: suggested, ...DEFAULTS });
-    setPagesMode('all');
+    setPagesMode(initialPages);
     setCustom(new Set([editor.pageId]));
-  }, [open, designId, suggested, editor]);
+  }, [open, designId, suggested, editor, initialPages]);
 
   const { type, scale, qualityMode, quality, limitKb, transparent } = settings;
   const update = (patch: Partial<Settings>) => setSettings((s) => ({ ...s, ...patch }));

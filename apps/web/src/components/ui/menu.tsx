@@ -1,12 +1,46 @@
 'use client';
 
 import { Check, ChevronRight } from 'lucide-react';
-import { DropdownMenu } from 'radix-ui';
-import type { ReactNode } from 'react';
+import { ContextMenu as ContextMenuPrimitive, DropdownMenu } from 'radix-ui';
+import { createContext, type ReactNode, useContext } from 'react';
 import { cn, shortcut as formatShortcut } from '@/lib/utils';
 
 export const Menu = DropdownMenu.Root;
 export const MenuTrigger = DropdownMenu.Trigger;
+
+/**
+ * Items work in both dropdown menus and right-click menus: the content
+ * component says which kind it is, and items render the matching primitive.
+ */
+const ContextKind = createContext(false);
+
+export const ContextMenu = ContextMenuPrimitive.Root;
+export const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
+
+export function ContextMenuContent({
+  children,
+  className,
+  testId,
+  onCloseAutoFocus,
+}: {
+  children: ReactNode;
+  className?: string;
+  testId?: string;
+  /** Call `preventDefault()` to keep focus where an item put it. */
+  onCloseAutoFocus?: (event: Event) => void;
+}) {
+  return (
+    <ContextMenuPrimitive.Portal>
+      <ContextMenuPrimitive.Content
+        className={cn(contentClass, className)}
+        data-testid={testId}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
+        <ContextKind.Provider value={true}>{children}</ContextKind.Provider>
+      </ContextMenuPrimitive.Content>
+    </ContextMenuPrimitive.Portal>
+  );
+}
 
 const contentClass =
   'z-50 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-sm text-slate-800 shadow-xl data-[state=open]:animate-in';
@@ -15,14 +49,22 @@ export function MenuContent({
   children,
   align = 'start',
   className,
+  onCloseAutoFocus,
 }: {
   children: ReactNode;
   align?: 'start' | 'end' | 'center';
   className?: string;
+  /** Call `preventDefault()` to keep focus where an item put it. */
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <DropdownMenu.Portal>
-      <DropdownMenu.Content align={align} sideOffset={6} className={cn(contentClass, className)}>
+      <DropdownMenu.Content
+        align={align}
+        sideOffset={6}
+        className={cn(contentClass, className)}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         {children}
       </DropdownMenu.Content>
     </DropdownMenu.Portal>
@@ -49,8 +91,9 @@ export function MenuItem({
   danger?: boolean;
   testId?: string;
 }) {
+  const Item = useContext(ContextKind) ? ContextMenuPrimitive.Item : DropdownMenu.Item;
   return (
-    <DropdownMenu.Item
+    <Item
       className={cn(itemClass, danger && 'text-red-600')}
       onSelect={onSelect}
       disabled={disabled}
@@ -63,7 +106,7 @@ export function MenuItem({
           {formatShortcut(shortcut)}
         </span>
       ) : null}
-    </DropdownMenu.Item>
+    </Item>
   );
 }
 
@@ -122,7 +165,8 @@ export function MenuRadioItem({
 }
 
 export function MenuSeparator() {
-  return <DropdownMenu.Separator className="my-1 h-px bg-slate-100" />;
+  const Separator = useContext(ContextKind) ? ContextMenuPrimitive.Separator : DropdownMenu.Separator;
+  return <Separator className="my-1 h-px bg-slate-100" />;
 }
 
 export function MenuLabel({ children }: { children: ReactNode }) {

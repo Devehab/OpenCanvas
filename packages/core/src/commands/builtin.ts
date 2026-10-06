@@ -17,6 +17,7 @@ import {
 import type {
   AssetRecord,
   DocumentRecord,
+  Fill,
   NodePatch,
   NodeRecord,
   TextContent,
@@ -506,6 +507,56 @@ export const clipboardPaste: CommandDefinition<{
   },
 };
 
+/** Pastes a copied page (its size, background and content) as a new page. */
+export const pagePaste: CommandDefinition<{
+  afterId?: string | null;
+  page: { width: number; height: number; name?: string; background?: unknown; notes?: string };
+  snapshot: SubtreeSnapshot;
+}> = {
+  id: 'page.paste',
+  label: 'Paste page',
+  schema: z.object({
+    afterId: IdSchema.nullable().optional(),
+    page: z.object({
+      width: z.number().min(1).max(10_000),
+      height: z.number().min(1).max(10_000),
+      name: z.string().max(256).optional(),
+      background: FillSchema.optional(),
+      notes: z.string().max(100_000).optional(),
+    }),
+    snapshot: z.object({
+      rootIds: z.array(IdSchema).max(10_000),
+      nodes: z.array(z.unknown()).max(50_000),
+      assets: z.array(z.unknown()).max(5_000),
+    }),
+  }) as unknown as z.ZodType<{
+    afterId?: string | null;
+    page: { width: number; height: number; name?: string; background?: Fill; notes?: string };
+    snapshot: SubtreeSnapshot;
+  }>,
+  run({ tx, createId }, p) {
+    // Clipboard content is untrusted: validate every record.
+    const nodes = p.snapshot.nodes.map((n) => NodeRecordSchema.parse(n) as NodeRecord);
+    const assets = p.snapshot.assets.map((a) => AssetRecordSchema.parse(a) as AssetRecord);
+    const known = new Set(nodes.map((n) => n.id));
+    if (!p.snapshot.rootIds.every((id) => known.has(id)))
+      throw new CommandError('Clipboard roots are missing', 'page.paste');
+    const page = createPage(tx, {
+      createId,
+      afterId: p.afterId ?? null,
+      name: p.page.name,
+      width: p.page.width,
+      height: p.page.height,
+      background: p.page.background as Fill | undefined,
+    });
+    if (p.page.notes) tx.put({ ...page, notes: p.page.notes });
+    if (p.snapshot.rootIds.length > 0) {
+      insertSubtrees(tx, { rootIds: p.snapshot.rootIds, nodes, assets }, { createId, parentId: page.id });
+    }
+    return { pageId: page.id, select: [] };
+  },
+};
+
 export const BUILTIN_COMMANDS = [
   nodeCreate,
   nodeUpdate,
@@ -530,6 +581,7 @@ export const BUILTIN_COMMANDS = [
   assetAdd,
   pageCreate,
   pageDuplicate,
+  pagePaste,
   pageDelete,
   pageMove,
   pageUpdate,
