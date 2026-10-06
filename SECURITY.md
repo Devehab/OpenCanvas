@@ -19,6 +19,9 @@ OpenCanvas processes untrusted files (designs, packages, images, SVGs, clipboard
 - uploads are identified by their bytes, size- and pixel-limited before decoding;
 - SVG uploads are sanitized (no scripts, event handlers, `foreignObject` or external references) and only drawn as images;
 - pasted text enters the document as plain text;
+- uploaded fonts are checked by signature and loaded by the browser before they are stored; plugin packages are size-, path- and type-checked and their manifest validated before installation;
+- plugins run in `sandbox="allow-scripts"` frames (opaque origin: no access to the app's pages or storage) under their own CSP with no network access unless approved; every plugin API call is checked against the permissions the person approved, and changes go through the validated command layer;
+- PDFs are rendered with pdf.js with XFA and scripts disabled;
 - the web app sends a nonce-based Content Security Policy and other security headers, and the container runs as a non-root user on a read-only filesystem.
 
 Bypasses of any of these are in scope, as are XSS, CSP bypasses, denial of service through crafted files, and data exposure between designs or tabs.

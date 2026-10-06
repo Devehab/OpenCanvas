@@ -1,0 +1,19 @@
+{
+  "manifestVersion": 1,
+  "id": "org.opencanvas.hand-drawn-arrows",
+  "name": "Hand-drawn arrows",
+  "version": "1.0.0",
+  "description": "Eight sketchy arrows and marks for annotations. An icon pack: no code, no permissions.",
+  "author": "OpenCanvas",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "contributes": {
+    "iconPacks": [{ "id": "arrows", "name": "Hand-drawn arrows", "path": "icons" }]
+  },
+  "locales": {
+    "ar": {
+      "name": "أسهم مرسومة باليد",
+      "description": "ثمانية أسهم وعلامات بأسلوب الرسم اليدوي للتعليقات التوضيحية. حزمة أيقونات بلا شيفرة ولا صلاحيات."
+    }
+  }
+}

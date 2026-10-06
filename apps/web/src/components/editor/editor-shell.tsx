@@ -19,6 +19,7 @@ import {
   useEditorValue,
   useSaveStatus,
 } from '@/hooks/use-editor';
+import { usePlugins } from '@/hooks/use-plugins';
 import { useI18n } from '@/i18n';
 import { broadcast, TAB_ID } from '@/lib/channel';
 import { readClipboard, recallClipboard, writeClipboard } from '@/lib/clipboard';
@@ -26,6 +27,7 @@ import { CUSTOM_FONTS_EVENT, startCustomFonts } from '@/lib/custom-fonts';
 import { nodeLabel } from '@/lib/node-label';
 import { restorePageView } from '@/lib/page-view';
 import { type LibraryImage, placeImage } from '@/lib/place-image';
+import { PluginHost } from '@/lib/plugins/host';
 import { type EditorSession, openSession } from '@/lib/session';
 import { createDesignCopy } from '@/lib/storage/designs';
 import { prepareImage } from '@/lib/upload';
@@ -95,6 +97,9 @@ function EditorLayout({ session }: { session: EditorSession }) {
   );
   const [dialog, setDialog] = useState<DialogId>(null);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+  const { locale, dir } = useI18n();
+  const installedPlugins = usePlugins();
+  const [pluginHost, setPluginHost] = useState<PluginHost | null>(null);
 
   const uploadFiles = useCallback(
     async (files: File[], options: UploadOptions = {}) => {
@@ -126,9 +131,22 @@ function EditorLayout({ session }: { session: EditorSession }) {
     return () => window.removeEventListener(CUSTOM_FONTS_EVENT, changed);
   }, []);
 
+  // Plugins run in sandboxed frames managed by one host per editor.
+  useEffect(() => {
+    const host = new PluginHost({ editor, session, locale, dir, toast });
+    setPluginHost(host);
+    return () => {
+      host.destroy();
+      setPluginHost(null);
+    };
+  }, [editor, session, locale, dir, toast]);
+  useEffect(() => {
+    if (pluginHost && installedPlugins) pluginHost.setPlugins(installedPlugins);
+  }, [pluginHost, installedPlugins]);
+
   const value = useMemo<EditorContextValue>(
-    () => ({ session, editor, viewRef, panel, setPanel, dialog, setDialog, uploadFiles }),
-    [session, editor, panel, dialog, uploadFiles],
+    () => ({ session, editor, viewRef, panel, setPanel, dialog, setDialog, uploadFiles, pluginHost }),
+    [session, editor, panel, dialog, uploadFiles, pluginHost],
   );
 
   // Keyboard shortcuts (the in-place text editor stops propagation itself).

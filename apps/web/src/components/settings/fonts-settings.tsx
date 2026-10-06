@@ -25,7 +25,8 @@ const WEIGHTS = [100, 200, 300, 400, 500, 600, 700, 800, 900];
 function useCustomFonts() {
   const [fonts, setFonts] = useState<CustomFontRecord[] | null>(null);
   useEffect(() => {
-    const refresh = () => void listCustomFonts().then(setFonts);
+    // Fonts that plugins add are managed with the plugin.
+    const refresh = () => void listCustomFonts().then((all) => setFonts(all.filter((f) => !f.pluginId)));
     refresh();
     return onChannelMessage((m) => {
       if (m.type === 'fonts-changed') refresh();

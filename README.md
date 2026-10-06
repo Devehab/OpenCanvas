@@ -18,12 +18,14 @@ OpenCanvas is not a template viewer or a UI prototype. Designs are structured do
 
 - **Structured documents, never flattened.** Pages, layers, groups and frames are records in a document model with schemas, limits and canonical serialization ([format](docs/document-format.md)).
 - **Command-based editing.** 27 validated commands drive the UI, undo/redo (with gesture batching) and autosave — and can be exported as tool definitions for AI agents.
-- **Real Arabic support.** Contextual shaping, Unicode bidi for mixed Arabic/Latin/number text, correct line breaking, Arabic lists and justification, 14 Arabic font families, and a fully mirrored right-to-left interface.
+- **Real Arabic support.** Contextual shaping, Unicode bidi for mixed Arabic/Latin/number text, correct line breaking, Arabic lists and justification, 30 Arabic font families, and a fully mirrored right-to-left interface.
 - **Professional editor.** 33 shapes plus polygons, stars and badges, 12 line styles, about 2,900 open-source icons (Lucide and Tabler, searchable in English and Arabic), photo frames you drag photos into (shapes, Polaroids, film strips, collage grids, device mockups), Canva-style crop mode, gradients, strokes, shadows, blur, 16 blend modes, image adjustments, rulers and guides, snapping, alignment, layers, and pages in single, thumbnail, scroll and grid views.
 - **Brand kits and projects.** Several brand kits (logos, palettes, fonts, voice, photos, graphics, icons, templates) usable from the editor, and folders for designs and uploads.
+- **Your fonts, icons and plugins.** 71 bundled font families (30 Arabic), and you can upload your own fonts (TTF, OTF, WOFF, WOFF2) and SVG icons. Plugins add commands, panels, icon packs and fonts; they run in a sandbox with the permissions you approve ([build a plugin](docs/plugins.md)).
+- **Start from any file.** Drop an image or a PDF on the dashboard: images become pages of their size, PDF pages become editable pages you can reorder and export again.
 - **Local-first and safe.** Designs save to the browser instantly, work offline, survive closing the tab mid-edit, and two tabs can never overwrite each other.
 - **Export.** PNG, JPEG and WebP (any scale or DPI, transparent backgrounds, compressed palette PNGs, or a maximum file size), SVG with embedded fonts, PDF and print PDF, any set of pages (hidden pages skipped), multi-page ZIPs, and the editable `.opencanvas` format.
-- **Tested like a product.** 405 unit, property and golden-image tests; 76 Playwright tests including visual regression, WCAG 2.1 AA scans, keyboard-only use and frame-rate budgets.
+- **Tested like a product.** 439 unit, property and golden-image tests; 96 Playwright tests (including a plugin that tries to escape its sandbox) including visual regression, WCAG 2.1 AA scans, keyboard-only use and frame-rate budgets.
 
 ## Quick start
 
@@ -95,12 +97,12 @@ Contributions are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md) and 
 
 - **تصاميم منظَّمة:** الصفحات والطبقات والمجموعات سجلّاتٌ في نموذج مستندات له مخطّطات وحدود وتسلسل ثابت، لا صور.
 - **تحرير قائم على الأوامر:** يمرّ كل تعديل عبر أمر موثّق ومتحقَّق منه، فيعمل التراجع والإعادة والحفظ التلقائي — ولاحقًا التعاون والذكاء الاصطناعي — عبر المسار نفسه.
-- **دعم حقيقي للعربية:** وصل الحروف وأشكالها السياقية، والنصوص ثنائية الاتجاه التي تجمع العربية والإنجليزية والأرقام في السطر نفسه، وكسر الأسطر الصحيح، والقوائم والمحاذاة الكاملة للفقرات العربية، وأربع عشرة عائلةَ خطوط عربية، وواجهة كاملة من اليمين إلى اليسار.
+- **دعم حقيقي للعربية:** وصل الحروف وأشكالها السياقية، والنصوص ثنائية الاتجاه التي تجمع العربية والإنجليزية والأرقام في السطر نفسه، وكسر الأسطر الصحيح، والقوائم والمحاذاة الكاملة للفقرات العربية، وثلاثون عائلةَ خطوط عربية، وواجهة كاملة من اليمين إلى اليسار.
 - **حفظ محلي أولًا:** تُحفَظ التصاميم في المتصفح فورًا، وتعمل دون اتصال، ولا تضيع التعديلات عند إغلاق التبويب، ولا يكتب أي تبويب فوق تعديلات تبويب آخر.
 - **تصدير متكامل:** ‏PNG وJPEG وWebP بأي دقة ومع خلفية شفافة عند الحاجة، وSVG مع تضمين الخطوط، وPDF وPDF للطباعة، إضافةً إلى ملف ‎.opencanvas‎ الذي يحفظ التصميم كاملًا قابلًا للتعديل.
 - **أدوات احترافية:** إطارات صور تسحب إليها الصورة فتأخذ شكلها، وقصّ الصور بنقرة مزدوجة، ومساطر وأدلة، وعرض الصفحات بأربعة أوضاع، ونحو 2900 أيقونة مفتوحة المصدر يمكن البحث فيها بالعربية.
 - **الهوية والمشاريع:** حزم هوية متعددة (شعارات وألوان وخطوط وأسلوب وصور وقوالب)، ومجلدات لتنظيم التصاميم والصور.
-- **اختبارات صارمة:** أكثر من 400 اختبار للوحدات، و76 اختبارًا شاملًا في المتصفح تغطي المقارنة البصرية وإمكانية الوصول والأداء.
+- **اختبارات صارمة:** أكثر من 430 اختبارًا للوحدات، و96 اختبارًا شاملًا في المتصفح تغطي المقارنة البصرية وإمكانية الوصول والأداء.
 
 ### التشغيل
 

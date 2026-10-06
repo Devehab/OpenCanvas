@@ -46,7 +46,7 @@ export async function waitForCanvasIdle(page: Page): Promise<void> {
 /** Opens a side panel tab (clicking the active tab would collapse the panel). */
 export async function openPanel(
   page: Page,
-  id: 'elements' | 'text' | 'brand' | 'uploads' | 'layers',
+  id: 'elements' | 'text' | 'brand' | 'uploads' | 'layers' | 'plugins',
 ): Promise<void> {
   const tab = page.getByTestId(`panel-tab-${id}`);
   if ((await tab.getAttribute('aria-selected')) !== 'true') await tab.click();

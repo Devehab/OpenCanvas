@@ -1,0 +1,26 @@
+{
+  "manifestVersion": 1,
+  "id": "org.opencanvas.image-effects",
+  "name": "Image effects",
+  "version": "1.0.0",
+  "description": "Grayscale, sepia, invert and warm filters for the selected photo. Each effect is one undo step.",
+  "author": "OpenCanvas",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "permissions": ["images:read", "images:write"],
+  "contributes": {
+    "commands": [
+      { "id": "grayscale", "title": "Grayscale", "titleAr": "تدرّج رمادي", "context": "image" },
+      { "id": "sepia", "title": "Sepia", "titleAr": "بني عتيق", "context": "image" },
+      { "id": "invert", "title": "Invert colors", "titleAr": "عكس الألوان", "context": "image" },
+      { "id": "warm", "title": "Warm tone", "titleAr": "دفء الألوان", "context": "image" }
+    ]
+  },
+  "locales": {
+    "ar": {
+      "name": "تأثيرات الصور",
+      "description": "مرشّحات التدرّج الرمادي والبني العتيق وعكس الألوان والدفء للصورة المحدّدة. كل تأثير خطوة تراجع واحدة."
+    }
+  }
+}

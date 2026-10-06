@@ -37,6 +37,7 @@ import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { leaveGridView } from '@/lib/page-view';
+import { PluginCommandItems } from './panels/plugins-panel';
 
 /** Focuses the title field in a page's header (after the page is shown). */
 function focusPageTitle(pageId: Id) {
@@ -189,6 +190,7 @@ function PageMenuItems({ pageId }: { pageId: Id }) {
       >
         {t('editor.pages.download')}
       </MenuItem>
+      <PluginCommandItems context="page" before={show} />
     </>
   );
 }

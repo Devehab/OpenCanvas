@@ -1,6 +1,6 @@
 'use client';
 
-import { CloudUpload, Layers, Palette, Shapes, Type, X } from 'lucide-react';
+import { CloudUpload, Layers, Palette, Puzzle, Shapes, Type, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { type PanelId, useEditorContext } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { BrandPanel } from './panels/brand-panel';
 import { ElementsPanel } from './panels/elements-panel';
 import { LayersPanel } from './panels/layers-panel';
+import { PluginsPanel } from './panels/plugins-panel';
 import { TextPanel } from './panels/text-panel';
 import { UploadsPanel } from './panels/uploads-panel';
 
@@ -17,6 +18,7 @@ const TABS: { id: PanelId; icon: typeof Shapes }[] = [
   { id: 'brand', icon: Palette },
   { id: 'uploads', icon: CloudUpload },
   { id: 'layers', icon: Layers },
+  { id: 'plugins', icon: Puzzle },
 ];
 
 export function SidePanel() {
@@ -28,6 +30,7 @@ export function SidePanel() {
     brand: <BrandPanel />,
     uploads: <UploadsPanel />,
     layers: <LayersPanel />,
+    plugins: <PluginsPanel />,
   };
   return (
     <aside

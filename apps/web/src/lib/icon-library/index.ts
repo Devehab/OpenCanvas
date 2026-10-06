@@ -4,6 +4,7 @@
  * The data is code-split and loaded on first use.
  */
 import type { AnyNodeProps } from '@opencanvas/core';
+import type { CustomIcon } from '../storage/db';
 import { englishFor, hasArabic, normalizeArabic } from './arabic';
 
 export const ICON_CATEGORIES = [
@@ -207,4 +208,34 @@ export function iconProps(
       icon.style === 'outline' ? { color, width: 2, style: 'solid', cap: 'round', join: 'round' } : null,
     semantic: { role: 'icon', description: icon.name, slot: null },
   } as AnyNodeProps;
+}
+
+/** Node props for an uploaded or plugin icon (its own view box and stroke width). */
+export function customIconProps(icon: CustomIcon, color = '#111827'): AnyNodeProps {
+  const { x, y, width, height } = icon.viewBox;
+  const scale = 160 / Math.max(width, height);
+  return {
+    type: 'path',
+    name: icon.name,
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+    path: icon.path,
+    viewBox: { x, y, width, height },
+    fill: icon.style === 'filled' ? { type: 'solid', color } : null,
+    stroke:
+      icon.style === 'outline'
+        ? { color, width: icon.strokeWidth || 2, style: 'solid', cap: 'round', join: 'round' }
+        : null,
+    semantic: { role: 'icon', description: icon.name, slot: null },
+  } as AnyNodeProps;
+}
+
+/** Custom icons matching every word of a query (name or keywords). */
+export function searchCustomIcons(icons: readonly CustomIcon[], query: string): CustomIcon[] {
+  const terms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [...icons];
+  return icons.filter((i) => {
+    const haystack = ` ${i.name.toLowerCase()} ${i.keywords.join(' ')} `;
+    return terms.every((term) => haystack.includes(term));
+  });
 }

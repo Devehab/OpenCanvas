@@ -1,0 +1,22 @@
+{
+  "manifestVersion": 1,
+  "id": "org.opencanvas.quick-layouts",
+  "name": "Quick layouts",
+  "version": "1.0.0",
+  "description": "Generates a complete, editable design on the current page: a poster, a quote card or a sale banner, from your own words.",
+  "author": "OpenCanvas",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "panel": { "height": 360 },
+  "permissions": ["design:read", "design:write"],
+  "contributes": {
+    "commands": [{ "id": "poster", "title": "Make a poster", "titleAr": "اصنع ملصقًا", "context": "page" }]
+  },
+  "locales": {
+    "ar": {
+      "name": "تخطيطات سريعة",
+      "description": "تولّد تصميمًا كاملًا قابلًا للتعديل في الصفحة الحالية: ملصقًا أو بطاقة اقتباس أو لافتة تخفيضات، بكلماتك أنت."
+    }
+  }
+}

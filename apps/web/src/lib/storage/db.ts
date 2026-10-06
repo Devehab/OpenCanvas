@@ -111,18 +111,22 @@ export interface CustomFontRecord {
   size: number;
   data: Blob;
   createdAt: number;
+  /** Set when a plugin installed the font (removed with the plugin). */
+  pluginId?: string;
 }
 
-/** An icon added by the person or by a plugin, drawn from SVG path data. */
+/** An icon added by the person or by a plugin: one SVG path, like the built-in library. */
 export interface CustomIcon {
   id: string;
   name: string;
+  /** Lower-case search words (English or Arabic). */
   keywords: string[];
-  /** viewBox of the source SVG. */
-  viewBox: [number, number, number, number];
-  /** Sanitized SVG path data. */
-  paths: { d: string; fill: boolean; stroke: boolean; fillRule?: 'evenodd' | 'nonzero' }[];
-  strokeWidth?: number;
+  /** Path data of all shapes in the icon. */
+  path: string;
+  viewBox: { x: number; y: number; width: number; height: number };
+  /** Outline icons are stroked, filled icons are filled. */
+  style: 'outline' | 'filled';
+  strokeWidth: number;
 }
 
 export interface IconPackRecord {

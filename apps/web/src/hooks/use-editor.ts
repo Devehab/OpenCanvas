@@ -6,9 +6,10 @@ import type { CanvasView } from '@opencanvas/editor/dom';
 import { createContext, type RefObject, useContext, useRef, useSyncExternalStore } from 'react';
 import type { SaveStatus } from '@/lib/autosave';
 import type { LibraryImage } from '@/lib/place-image';
+import type { PluginHost } from '@/lib/plugins/host';
 import type { EditorSession } from '@/lib/session';
 
-export type PanelId = 'elements' | 'text' | 'brand' | 'uploads' | 'layers';
+export type PanelId = 'elements' | 'text' | 'brand' | 'uploads' | 'layers' | 'plugins';
 /** `exportPage` is the Download dialog preset to the current page only. */
 export type DialogId = 'export' | 'exportPage' | 'resize' | 'shortcuts' | 'guides' | null;
 
@@ -22,6 +23,8 @@ export interface EditorContextValue {
   setDialog: (dialog: DialogId) => void;
   /** Uploads images to the library and (unless `insert: false`) places them in the design. */
   uploadFiles: (files: File[], options?: UploadOptions) => Promise<LibraryImage[]>;
+  /** Runs the person's plugins (null until the editor has mounted). */
+  pluginHost: PluginHost | null;
 }
 
 export interface UploadOptions {

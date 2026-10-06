@@ -1,0 +1,23 @@
+{
+  "manifestVersion": 1,
+  "id": "org.opencanvas.remove-background",
+  "name": "Remove plain background",
+  "version": "1.0.0",
+  "description": "Makes a plain, evenly colored background transparent (product photos, logos on white). Works fully offline; photos with busy backgrounds need an AI plugin.",
+  "author": "OpenCanvas",
+  "license": "MIT",
+  "icon": "icon.svg",
+  "main": "main.js",
+  "permissions": ["images:read", "images:write"],
+  "contributes": {
+    "commands": [
+      { "id": "remove", "title": "Remove background", "titleAr": "إزالة الخلفية", "context": "image" }
+    ]
+  },
+  "locales": {
+    "ar": {
+      "name": "إزالة الخلفية السادة",
+      "description": "تجعل الخلفية ذات اللون الواحد شفافة (صور المنتجات والشعارات على خلفية بيضاء). تعمل دون اتصال بالإنترنت؛ أما الصور ذات الخلفيات المعقّدة فتحتاج إلى إضافة تعمل بالذكاء الاصطناعي."
+    }
+  }
+}

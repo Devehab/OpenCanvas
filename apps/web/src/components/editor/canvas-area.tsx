@@ -35,6 +35,7 @@ import { ASSET_DRAG_TYPE, parseAssetDrag, placeImage } from '@/lib/place-image';
 import { cn } from '@/lib/utils';
 import { PageGrid } from './page-grid';
 import { PageHeaders } from './page-headers';
+import { PluginCommandItems } from './panels/plugins-panel';
 import { Rulers } from './rulers';
 import { ELEMENT_DRAG_TYPE } from './side-panel';
 
@@ -312,6 +313,7 @@ export function CanvasArea() {
                 {t('editor.menu.detachImage')}
               </MenuItem>
             ) : null}
+            {selection.image || selection.filledFrame ? <PluginCommandItems context="image" /> : null}
             <MenuSeparator />
             <MenuItem
               icon={<Group className="size-4" />}

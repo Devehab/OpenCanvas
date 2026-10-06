@@ -7,10 +7,16 @@ import { useSearchParams } from 'next/navigation';
 import { type ReactNode, Suspense } from 'react';
 import { DashboardShell } from '@/components/dashboard/shell';
 import { FontsSettings } from '@/components/settings/fonts-settings';
+import { IconsSettings } from '@/components/settings/icons-settings';
+import { PluginsSettings } from '@/components/settings/plugins-settings';
 import { useI18n } from '@/i18n';
 import { cn } from '@/lib/utils';
 
-const TABS: { id: string; render: () => ReactNode }[] = [{ id: 'fonts', render: () => <FontsSettings /> }];
+const TABS: { id: string; render: () => ReactNode }[] = [
+  { id: 'fonts', render: () => <FontsSettings /> },
+  { id: 'icons', render: () => <IconsSettings /> },
+  { id: 'plugins', render: () => <PluginsSettings /> },
+];
 
 function Settings() {
   const { t } = useI18n();

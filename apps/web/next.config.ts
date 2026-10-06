@@ -22,7 +22,11 @@ const config: NextConfig = {
   // Contributor guidance lives in the repository docs; don't generate per-app agent files.
   agentRules: false,
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // The plugin sandbox is framed by the editor (and only by it: see its CSP).
+      { source: '/plugin-sandbox', headers: [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }] },
+    ];
   },
 };
 

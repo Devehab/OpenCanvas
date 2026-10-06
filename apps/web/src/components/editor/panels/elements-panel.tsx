@@ -3,8 +3,10 @@
 import type { AnyNodeProps } from '@opencanvas/core';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CustomIconPreview } from '@/components/ui/custom-icon';
 import { Segmented } from '@/components/ui/fields';
 import { useEditorContext } from '@/hooks/use-editor';
+import { useIconPacks } from '@/hooks/use-icon-packs';
 import { useI18n } from '@/i18n';
 import {
   ALL_ELEMENTS,
@@ -20,15 +22,18 @@ import {
   SHAPE_SECTIONS,
 } from '@/lib/element-library';
 import {
+  customIconProps,
   ICON_CATEGORIES,
   type IconCategory,
   iconProps,
   type LibraryIcon,
   loadIconLibrary,
   POPULAR_ICONS,
+  searchCustomIcons,
   searchIcons,
 } from '@/lib/icon-library';
 import { type RecentElement, useRecentElements } from '@/lib/recent-elements';
+import type { CustomIcon } from '@/lib/storage/db';
 import { cn } from '@/lib/utils';
 import { ELEMENT_DRAG_TYPE } from '../side-panel';
 import { ElementPreview } from './element-preview';
@@ -248,6 +253,7 @@ export function ElementsPanel() {
         <p className="px-4 pb-2 text-xs text-slate-500">{t('editor.elements.framesHint')}</p>
         {grid(BASIC_FRAMES.slice(0, 8), 4)}
         <div className="mt-2">{grid([PHOTO_FRAMES[0]!, GRID_FRAMES[2]!, DEVICE_FRAMES[0]!], 3)}</div>
+        <CustomIcons onRemember={remember} limit={10} />
         <IconsPreview onSeeAll={(category) => open({ kind: 'icons', category })} onRemember={remember} />
       </>
     );
@@ -330,6 +336,60 @@ function IconTile({ icon, onRemember }: { icon: LibraryIcon; onRemember: (r: Rec
         <path d={icon.path} />
       </svg>
     </Tile>
+  );
+}
+
+function CustomIconTile({ icon, onRemember }: { icon: CustomIcon; onRemember: (r: RecentElement) => void }) {
+  const props = useMemo(() => customIconProps(icon), [icon]);
+  return (
+    <Tile
+      props={props}
+      label={icon.name}
+      testId={`custom-icon-${icon.id.replace(/[^a-z0-9-]/gi, '-')}`}
+      onInsert={() =>
+        onRemember({
+          id: `custom-icon:${icon.id}`,
+          label: { en: icon.name, ar: icon.name },
+          props,
+          kind: 'icon',
+        })
+      }
+    >
+      <CustomIconPreview icon={icon} className="size-6" />
+    </Tile>
+  );
+}
+
+/** "Your icons": uploaded icons and those of enabled plugins. */
+function CustomIcons({
+  query = '',
+  onRemember,
+  limit,
+}: {
+  query?: string;
+  onRemember: (r: RecentElement) => void;
+  limit?: number;
+}) {
+  const { t } = useI18n();
+  const packs = useIconPacks({ usable: true });
+  const icons = useMemo(
+    () =>
+      searchCustomIcons(
+        (packs ?? []).flatMap((p) => p.icons),
+        query,
+      ),
+    [packs, query],
+  );
+  if (icons.length === 0) return null;
+  return (
+    <div data-testid="custom-icons">
+      <SectionHeader title={t('settings.icons.title')} />
+      <div className="grid grid-cols-5 gap-2 px-4">
+        {icons.slice(0, limit ?? 200).map((icon) => (
+          <CustomIconTile key={icon.id} icon={icon} onRemember={onRemember} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -538,6 +598,7 @@ function SearchResults({ query, onRemember }: { query: string; onRemember: (r: R
           <div className="grid grid-cols-4 gap-2 px-4">{frames.map(tile)}</div>
         </>
       ) : null}
+      <CustomIcons query={query} onRemember={onRemember} />
       {iconHits === null || iconHits.length ? (
         <>
           <div className="mb-2 mt-5 flex items-center justify-between px-4">

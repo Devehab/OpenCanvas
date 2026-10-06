@@ -7,6 +7,7 @@
 import { onChannelMessage } from './channel';
 import { type FontFamilyInfo, setCustomFontFamilies } from './fonts';
 import { type CustomFontRecord, listCustomFonts } from './storage/fonts';
+import { disabledPluginIds } from './storage/plugins';
 
 export const CUSTOM_FONTS_EVENT = 'opencanvas:custom-fonts';
 
@@ -36,7 +37,9 @@ function toFamilies(fonts: CustomFontRecord[]): FontFamilyInfo[] {
 }
 
 async function sync(): Promise<void> {
-  const fonts = await listCustomFonts();
+  // Fonts of plugins that are turned off are not offered.
+  const disabled = await disabledPluginIds();
+  const fonts = (await listCustomFonts()).filter((f) => !f.pluginId || !disabled.has(f.pluginId));
   const keep = new Set(fonts.map((f) => f.id));
   for (const [id, url] of objectUrls)
     if (!keep.has(id)) {
@@ -75,7 +78,7 @@ export function startCustomFonts(): Promise<void> {
   if (!started) {
     started = true;
     onChannelMessage((m) => {
-      if (m.type === 'fonts-changed') void syncCustomFonts();
+      if (m.type === 'fonts-changed' || m.type === 'plugins-changed') void syncCustomFonts();
     });
     return syncCustomFonts();
   }
