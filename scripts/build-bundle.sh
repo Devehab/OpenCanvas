@@ -40,6 +40,7 @@ rm -rf "$APP/node_modules/sharp" "$APP/node_modules/@img"
 mkdir -p "$APP/bin"
 cp "$ROOT/packaging/opencanvas" "$APP/bin/opencanvas"
 cp "$ROOT/packaging/opencanvas.ps1" "$APP/bin/opencanvas.ps1"
+cp "$ROOT/packaging/cloud-setup.mjs" "$APP/bin/cloud-setup.mjs"
 chmod +x "$APP/bin/opencanvas"
 printf '%s\n' "$VERSION" > "$APP/VERSION"
 

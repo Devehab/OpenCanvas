@@ -6,6 +6,8 @@
  *   thumbnails  { designId, blob, updatedAt, revision }   dashboard previews
  *   folders     { id, name, … }                           projects: folders of designs and uploads
  *   brands      { id, name, colors, fonts, … }            brand kits
+ *   fonts, iconPacks, plugins                             the person's fonts, icons and plugins
+ *   syncState, syncBlobs                                  cloud sync bookkeeping
  */
 import type { DocumentSnapshot } from '@opencanvas/core';
 import { type DBSchema, type IDBPDatabase, openDB } from 'idb';
@@ -149,6 +151,15 @@ export interface PluginRecord {
   updatedAt: number;
 }
 
+/** Cloud sync bookkeeping (see lib/cloud/engine.ts). */
+export interface SyncStateRecord {
+  id: string;
+  store: string;
+  key: string;
+  localFp: string | null;
+  remoteEtag: string | null;
+}
+
 interface OpenCanvasDB extends DBSchema {
   designs: { key: string; value: DesignRecord; indexes: { updatedAt: number } };
   assets: { key: string; value: AssetBlobRecord; indexes: { createdAt: number } };
@@ -158,10 +169,12 @@ interface OpenCanvasDB extends DBSchema {
   fonts: { key: string; value: CustomFontRecord };
   iconPacks: { key: string; value: IconPackRecord };
   plugins: { key: string; value: PluginRecord };
+  syncState: { key: string; value: SyncStateRecord };
+  syncBlobs: { key: string; value: { hash: string; at: number } };
 }
 
 const DB_NAME = 'opencanvas';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 let dbPromise: Promise<IDBPDatabase<OpenCanvasDB>> | null = null;
 
@@ -184,6 +197,10 @@ export function getDB(): Promise<IDBPDatabase<OpenCanvasDB>> {
         db.createObjectStore('fonts', { keyPath: 'id' });
         db.createObjectStore('iconPacks', { keyPath: 'id' });
         db.createObjectStore('plugins', { keyPath: 'id' });
+      }
+      if (oldVersion < 4) {
+        db.createObjectStore('syncState', { keyPath: 'id' });
+        db.createObjectStore('syncBlobs', { keyPath: 'hash' });
       }
     },
     blocking() {

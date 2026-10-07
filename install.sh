@@ -15,6 +15,9 @@
 #   OPENCANVAS_VERSION   release tag to install, e.g. v0.1.0 (default: latest)
 #   OPENCANVAS_NO_OPEN   set to 1 to not open the browser at the end
 #   OPENCANVAS_BUNDLE    path or URL of an opencanvas.tar.gz to install instead of a release
+#   OPENCANVAS_STORAGE   local | r2 | s3 | custom: answer the storage question without asking
+#                        (with OPENCANVAS_S3_ACCOUNT_ID, _REGION, _ENDPOINT, _BUCKET,
+#                        _ACCESS_KEY_ID, _SECRET_ACCESS_KEY)
 
 set -euo pipefail
 
@@ -247,6 +250,15 @@ main() {
   step "Starting OpenCanvas on port $PORT"
   OPENCANVAS_HOME="$OC_HOME" "$OC_HOME/app/bin/opencanvas" start
 
+  # Where to keep the work: asked once (the answer is kept on updates).
+  if [ -n "${OPENCANVAS_STORAGE:-}" ] || [ ! -f "$OC_HOME/cloud.json" ]; then
+    step "Where to keep your work"
+    OPENCANVAS_HOME="$OC_HOME" "$OC_HOME/app/bin/opencanvas" cloud setup ||
+      printf '  Cloud storage was not set up. You can do it later with: opencanvas cloud\n'
+  else
+    OPENCANVAS_HOME="$OC_HOME" "$OC_HOME/app/bin/opencanvas" cloud status || true
+  fi
+
   local url="http://localhost:$PORT"
   if [ "${OPENCANVAS_NO_OPEN:-0}" != 1 ]; then
     if [ "$os" = darwin ]; then
@@ -264,6 +276,7 @@ main() {
   opencanvas start       start it again
   opencanvas status      is it running?
   opencanvas update      install the latest version
+  opencanvas cloud       keep your work in your cloud too (R2 / S3)
   opencanvas uninstall   remove it
 EOF
   if [ "$PATH_CHANGED" = 1 ]; then

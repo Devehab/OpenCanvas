@@ -4,6 +4,7 @@ import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Star, 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { LocalOnlyBadge } from '@/components/cloud/cloud-sync';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
@@ -67,6 +68,7 @@ export function DesignCard({
             aria-label={`${t('common.open')} ${design.title}`}
           />
         )}
+        {trashed ? null : <LocalOnlyBadge designId={design.id} className="absolute end-2 top-2 z-20" />}
         {design.starred && !trashed ? (
           <Star
             className="absolute start-2 top-2 z-20 size-4 fill-amber-400 text-amber-500"

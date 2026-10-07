@@ -11,7 +11,8 @@ export type ChannelMessage =
   | { type: 'brands-changed'; tabId: string }
   | { type: 'fonts-changed'; tabId: string }
   | { type: 'icons-changed'; tabId: string }
-  | { type: 'plugins-changed'; tabId: string };
+  | { type: 'plugins-changed'; tabId: string }
+  | { type: 'cloud-synced'; tabId: string };
 
 export const TAB_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());

@@ -60,6 +60,7 @@ function Write-Launcher {
   $server = & $q $ServerJs
   $log = & $q $Log
   $app = & $q $App
+  $installDir = & $q $OcHome
   $vbs = @"
 ' Starts OpenCanvas without a window. Written by: opencanvas start
 Set shell = CreateObject("WScript.Shell")
@@ -68,6 +69,7 @@ env("PORT") = "$Port"
 env("HOSTNAME") = "127.0.0.1"
 env("NODE_ENV") = "production"
 env("NEXT_TELEMETRY_DISABLED") = "1"
+env("OPENCANVAS_HOME") = "$installDir"
 shell.CurrentDirectory = "$app"
 shell.Run "cmd /c """"$node"" ""$server"" >> ""$log"" 2>&1""", 0, False
 "@
@@ -134,6 +136,7 @@ function Invoke-Uninstall {
     $answer = Read-Host 'Remove OpenCanvas from this computer? Designs stay in your browser. [y/N]'
     if ($answer -notmatch '^(y|yes)$') { Say 'Nothing removed.'; return $false }
   }
+  $inCloud = (Test-Path (Join-Path $OcHome 'cloud.json')) -and ((Get-Content (Join-Path $OcHome 'cloud.json') -Raw) -match '"enabled":\s*true')
   $script:Quiet = $true
   Invoke-Stop | Out-Null
   $bin = Join-Path $OcHome 'bin'
@@ -146,7 +149,23 @@ function Invoke-Uninstall {
   Start-Process -FilePath 'cmd.exe' -ArgumentList "/c ping -n 3 127.0.0.1 >nul & rmdir /s /q `"$OcHome`"" -WindowStyle Hidden
   Write-Host 'OK  OpenCanvas was removed.' -ForegroundColor Green
   Write-Host "    Your designs are still saved in your browser (at $Url) if you install it again."
+  if ($inCloud) { Write-Host '    They are also in your cloud bucket: install again and choose the same bucket to get everything back.' }
   return $true
+}
+
+# Where work is kept: this computer only, or also your cloud storage (R2 / S3).
+function Invoke-Cloud($sub) {
+  if (-not $sub) { $sub = 'setup' }
+  if ($sub -notin 'setup', 'status', 'off') { Say "Unknown: opencanvas cloud $sub" Red; return $false }
+  # The server checks the bucket and keeps the keys, so it must be running.
+  if (-not (Test-Healthy)) {
+    $script:Quiet = $true
+    $started = Invoke-Start
+    $script:Quiet = $false
+    if (-not $started) { Say 'OpenCanvas could not start. See: opencanvas logs' Red; return $false }
+  }
+  & $Config.node (Join-Path $App 'bin\cloud-setup.mjs') $sub --home $OcHome --port $Port
+  return $LASTEXITCODE -eq 0
 }
 
 function Show-Help {
@@ -160,6 +179,9 @@ OpenCanvas $(Get-Version), running at $Url
   opencanvas open        Open it in the browser
   opencanvas logs        Show the last lines of the log
   opencanvas update      Install the latest version
+  opencanvas cloud       Choose where your work is kept: this computer, or also
+                         your cloud storage (Cloudflare R2, Amazon S3)
+  opencanvas cloud status | off
   opencanvas uninstall   Remove it from this computer (-y: don't ask)
 "@
 }
@@ -181,6 +203,7 @@ switch ($Command.ToLower()) {
     $installer = Invoke-RestMethod "https://raw.githubusercontent.com/$($Config.repo)/HEAD/install.ps1"
     Invoke-Expression $installer
   }
+  'cloud' { $ok = Invoke-Cloud $(if ($Flags.Count -gt 0) { [string]$Flags[0] } else { 'setup' }) }
   { $_ -in 'uninstall', 'remove' } { $ok = Invoke-Uninstall }
   { $_ -in 'version', '--version', '-v' } { Write-Host (Get-Version) }
   { $_ -in 'help', '--help', '-h' } { Show-Help }

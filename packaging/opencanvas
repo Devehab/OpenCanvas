@@ -104,6 +104,7 @@ launchd_start() {
     <key>HOSTNAME</key><string>127.0.0.1</string>
     <key>NODE_ENV</key><string>production</string>
     <key>NEXT_TELEMETRY_DISABLED</key><string>1</string>
+    <key>OPENCANVAS_HOME</key><string>$(xml "$OC_HOME")</string>
   </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
@@ -135,6 +136,7 @@ After=network.target
 
 [Service]
 Environment=PORT=$PORT HOSTNAME=127.0.0.1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+Environment="OPENCANVAS_HOME=$OC_HOME"
 WorkingDirectory=$APP
 ExecStart="$NODE_BIN" "$APP/apps/web/server.js"
 Restart=on-failure
@@ -176,7 +178,7 @@ background_start() {
     command -v setsid >/dev/null 2>&1 && runner="setsid nohup"
     (
       cd "$APP" || exit 1
-      PORT="$PORT" HOSTNAME=127.0.0.1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+      PORT="$PORT" HOSTNAME=127.0.0.1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 OPENCANVAS_HOME="$OC_HOME" \
         $runner "$NODE_BIN" "$APP/apps/web/server.js" >>"$LOG" 2>&1 </dev/null &
       echo $! > "$PID_FILE"
     )
@@ -240,18 +242,40 @@ cmd_start() {
     background_start
   fi
   save_config
-  if wait_until up 60; then
+  # Wait for the server; in background mode, stop waiting if it exits.
+  local up=0 i=0
+  while [ "$i" -lt 60 ]; do
+    if healthy; then
+      up=1
+      break
+    fi
+    if [ "$SERVICE" = background ] && [ -z "$(background_pid)" ]; then break; fi
+    sleep 1
+    i=$((i + 1))
+  done
+  # Something else may answer while our own server could not start.
+  if [ "$up" = 1 ] && [ "$SERVICE" = background ]; then
+    sleep 1
+    [ -n "$(background_pid)" ] || up=0
+  fi
+  if [ "$up" = 1 ]; then
     say "$(green "✓ OpenCanvas is running: $URL")"
     if [ "$AUTOSTART_OK" = 1 ]; then
       say "  It starts by itself when you turn on your computer. Stop it with: opencanvas stop"
     else
       say "  This system has no way to start it with the computer: after a restart, run: opencanvas start"
     fi
+    return 0
+  fi
+  if tail -n 30 "$LOG" 2>/dev/null | grep -q EADDRINUSE; then
+    red "Another program is using port $PORT, so OpenCanvas cannot start."
+    say "  Close that program, or reinstall on another port:"
+    say "  curl -fsSL https://raw.githubusercontent.com/$REPO/HEAD/install.sh | OPENCANVAS_PORT=4800 bash"
   else
     red "OpenCanvas did not start. The last lines of $LOG:"
     tail -n 20 "$LOG" 2>/dev/null
-    return 1
   fi
+  return 1
 }
 
 cmd_stop() {
@@ -308,6 +332,8 @@ cmd_uninstall() {
     read -r answer </dev/tty 2>/dev/null || true
     case "$answer" in y | Y | yes | YES) ;; *) say "Nothing removed."; return 1 ;; esac
   fi
+  local in_cloud=0
+  grep -q '"enabled": true' "$OC_HOME/cloud.json" 2>/dev/null && in_cloud=1
   QUIET=1 cmd_stop >/dev/null 2>&1 || true
   if [ -n "$BIN_LINK" ] && grep -q OPENCANVAS_HOME "$BIN_LINK" 2>/dev/null; then rm -f "$BIN_LINK"; fi
   for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile" "$HOME/.zprofile" "$HOME/.bash_profile"; do
@@ -319,6 +345,29 @@ cmd_uninstall() {
   rm -rf "$OC_HOME"
   green "✓ OpenCanvas was removed."
   say "  Your designs are still saved in your browser (at $URL) if you install it again."
+  if [ "$in_cloud" = 1 ]; then
+    say "  They are also in your cloud bucket: install again and choose the same bucket to get everything back."
+  fi
+}
+
+# Where work is kept: this computer only, or also your cloud storage (R2 / S3).
+cmd_cloud() {
+  local sub="${1:-setup}"
+  case "$sub" in setup | status | off) ;; *) red "Unknown: opencanvas cloud $sub"; return 1 ;; esac
+  # The server checks the bucket and keeps the keys, so it must be running.
+  healthy || QUIET=1 cmd_start >/dev/null || {
+    red "OpenCanvas could not start. See: opencanvas logs"
+    return 1
+  }
+  if [ "$sub" = setup ] && [ -z "${OPENCANVAS_STORAGE:-}" ] && ! [ -t 0 ]; then
+    if (: </dev/tty) 2>/dev/null; then
+      "$NODE_BIN" "$APP/bin/cloud-setup.mjs" setup --home "$OC_HOME" --port "$PORT" </dev/tty
+      return
+    fi
+    OPENCANVAS_STORAGE=local "$NODE_BIN" "$APP/bin/cloud-setup.mjs" setup --home "$OC_HOME" --port "$PORT"
+    return
+  fi
+  "$NODE_BIN" "$APP/bin/cloud-setup.mjs" "$sub" --home "$OC_HOME" --port "$PORT"
 }
 
 cmd_help() {
@@ -332,6 +381,9 @@ OpenCanvas $(cat "$APP/VERSION" 2>/dev/null || true), running at $URL
   opencanvas open        Open it in the browser
   opencanvas logs        Show the last lines of the log
   opencanvas update      Install the latest version
+  opencanvas cloud       Choose where your work is kept: this computer, or also
+                         your cloud storage (Cloudflare R2, Amazon S3)
+  opencanvas cloud status | off
   opencanvas uninstall   Remove it from this computer (-y: don't ask)
 EOF
 }
@@ -353,6 +405,7 @@ main() {
     open) cmd_open ;;
     logs | log) tail -n 100 "$LOG" 2>/dev/null || say "No log yet." ;;
     update | upgrade) cmd_update ;;
+    cloud) cmd_cloud "$@" ;;
     uninstall | remove) cmd_uninstall ;;
     version | --version | -v) cat "$APP/VERSION" 2>/dev/null ;;
     help | --help | -h) cmd_help ;;

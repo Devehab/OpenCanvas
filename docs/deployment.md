@@ -17,6 +17,7 @@ How it works:
 - **The installer** downloads the official Node.js 22 build for the computer from nodejs.org (checking its SHA-256; on Alpine it uses the system's Node.js), then the bundle from the latest GitHub release (also checked), into `~/.opencanvas` (`%LOCALAPPDATA%\OpenCanvas` on Windows). It never needs administrator rights.
 - **The port** is 4790, or the next free one; it is saved, and updates keep it, because the browser saves designs per address. The server listens on 127.0.0.1 only.
 - **Starting with the computer:** a LaunchAgent on macOS (restarted if it stops), a systemd user service on Linux (with lingering, so it starts at boot), an entry in the user's Run key on Windows (a hidden window), or, without systemd, a background process restarted at login (XDG autostart) and boot (cron).
+- **Where work is kept:** the installer asks once: this computer only, or also the person's own Cloudflare R2 / Amazon S3 bucket (see [cloud sync](cloud-sync.md)). The answer is kept on updates; `opencanvas cloud` changes it.
 - **`opencanvas stop`** stops the server and removes the autostart; `opencanvas start` puts both back. `opencanvas uninstall` removes everything except the designs in the browser.
 
 The [install test](../.github/workflows/install-test.yml) workflow runs the installer on fresh GitHub machines (macOS, Ubuntu, Windows) and bare Debian, Ubuntu, Fedora and Alpine images, then checks start, stop, status, restart, reinstalling and uninstalling.

@@ -96,6 +96,7 @@
         <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></symbol>
         <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
         <symbol id="i-terminal" viewBox="0 0 24 24"><path d="M12 19h8"/><path d="m4 17 6-6-6-6"/></symbol>
+        <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></symbol>
         <symbol id="i-hard-drive" viewBox="0 0 24 24"><path d="M10 16h.01"/><path d="M2.212 11.577a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><path d="M21.946 12.013H2.054"/><path d="M6 16h.01"/></symbol>
         <symbol id="i-shield-check" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
         <symbol id="i-badge-dollar-sign" viewBox="0 0 24 24"><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 18V6"/></symbol>
@@ -158,6 +159,7 @@
         <ul class="nav-links" id="nav-links">
           <li><a href="#features"><span data-l="en">Features</span><span data-l="ar">الميزات</span></a></li>
           <li><a href="#why"><span data-l="en">Why free</span><span data-l="ar">لماذا مجاني؟</span></a></li>
+          <li><a href="#cloud"><span data-l="en">Cloud</span><span data-l="ar">السحابة</span></a></li>
           <li><a href="#install"><span data-l="en">Install</span><span data-l="ar">التثبيت</span></a></li>
           <li><a href="#contribute"><span data-l="en">Contribute</span><span data-l="ar">المساهمة</span></a></li>
           <li><a href="#faq"><span data-l="en">FAQ</span><span data-l="ar">الأسئلة الشائعة</span></a></li>
@@ -344,19 +346,20 @@
               <span class="icon-badge"><svg class="i"><use href="#i-server" /></svg></span>
               <h3><span data-l="en">Host it yourself</span><span data-l="ar">استضِفه بنفسك</span></h3>
               <p data-l="en">
-                Run it on your laptop with two commands, or on your own server with Docker for your team, school or company.
+                Install it on your laptop with one line, or on your own server with Docker for your team, school or company.
               </p>
-              <p data-l="ar">شغّله على حاسوبك بأمرين، أو على خادمك الخاص عبر Docker لفريقك أو مدرستك أو شركتك.</p>
+              <p data-l="ar">ثبّته على حاسوبك بسطر واحد، أو على خادمك الخاص عبر Docker لفريقك أو مدرستك أو شركتك.</p>
             </article>
             <article class="card reveal">
               <span class="icon-badge"><svg class="i"><use href="#i-shield-check" /></svg></span>
               <h3><span data-l="en">Your designs stay with you</span><span data-l="ar">تصاميمك تبقى عندك</span></h3>
               <p data-l="en">
-                Designs and uploads are saved in your browser, on your own device. No account, no upload to anyone's cloud,
-                no one looking at your work.
+                Designs and uploads are saved on your own computer. No account, and no one looking at your work. Want a
+                backup? Connect your own R2 or S3 bucket, never ours.
               </p>
               <p data-l="ar">
-                تُحفَظ التصاميم والصور المرفوعة في متصفحك على جهازك. لا حساب، ولا رفع إلى سحابة أحد، ولا أحد يطّلع على أعمالك.
+                تُحفَظ التصاميم والصور المرفوعة على جهازك أنت. لا حساب، ولا أحد يطّلع على أعمالك. تريد نسخة احتياطية؟ اربط حاوية R2
+                أو S3 الخاصة بك، لا حاويتنا.
               </p>
             </article>
             <article class="card reveal">
@@ -1176,6 +1179,91 @@
       </section>
 
       <!-- ============ Install ============ -->
+      <section class="section alt" id="cloud" aria-labelledby="cloud-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Your computer, your cloud</span><span data-l="ar">جهازك وسحابتك</span></span>
+            <h2 id="cloud-title">
+              <span data-l="en">Works offline. Syncs to your own R2 or S3 when you are online.</span>
+              <span data-l="ar">يعمل دون إنترنت، ويُزامَن مع R2 أو S3 الخاص بك عند الاتصال.</span>
+            </h2>
+            <p data-l="en">
+              When you install, OpenCanvas asks one question: keep your work on this computer only, or also in your own cloud
+              storage (Cloudflare R2 or Amazon S3). Choose the cloud and you get a backup that follows you, without giving
+              your designs to anyone.
+            </p>
+            <p data-l="ar">
+              عند التثبيت يسألك OpenCanvas سؤالًا واحدًا: هل تحفظ عملك على هذا الجهاز فقط، أم في تخزينك السحابي الخاص أيضًا
+              (Cloudflare R2 أو Amazon S3)؟ اختر السحابة فتحصل على نسخة احتياطية ترافقك أينما ذهبت، دون أن تسلّم تصاميمك لأحد.
+            </p>
+          </div>
+          <div class="pillars">
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-hard-drive" /></svg></span>
+              <h3><span data-l="en">Saved on your computer first</span><span data-l="ar">يُحفَظ على جهازك أولًا</span></h3>
+              <p data-l="en">Every change is saved at once on your computer, so you never wait for the internet.</p>
+              <p data-l="ar">يُحفَظ كل تعديل فورًا على جهازك، فلا تنتظر الإنترنت أبدًا.</p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-cloud" /></svg></span>
+              <h3><span data-l="en">Synced to your bucket</span><span data-l="ar">يُزامَن مع حاويتك</span></h3>
+              <p data-l="en">
+                Designs, photos, PDFs, brand kits, fonts and plugins go to your own bucket. The keys stay on your computer.
+              </p>
+              <p data-l="ar">
+                تُرفع التصاميم والصور وملفات PDF وحزم الهوية والخطوط والإضافات إلى حاويتك أنت، وتبقى المفاتيح على جهازك.
+              </p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-wifi-off" /></svg></span>
+              <h3><span data-l="en">No internet? Keep working</span><span data-l="ar">انقطع الإنترنت؟ تابع عملك</span></h3>
+              <p data-l="en">
+                What is not uploaded yet is marked “This computer only”, and goes up by itself when the connection is back.
+              </p>
+              <p data-l="ar">يظهر ما لم يُرفع بعد بعلامة «على هذا الجهاز فقط»، ويُرفع تلقائيًا حين يعود الاتصال.</p>
+            </article>
+            <article class="card reveal">
+              <span class="icon-badge"><svg class="i"><use href="#i-undo-2" /></svg></span>
+              <h3><span data-l="en">Reinstall, get it all back</span><span data-l="ar">أعد التثبيت واسترجع كل شيء</span></h3>
+              <p data-l="en">
+                On a new computer, or after removing OpenCanvas, choose the same bucket and your whole library comes back.
+              </p>
+              <p data-l="ar">على جهاز جديد أو بعد إزالة OpenCanvas، اختر الحاوية نفسها فتعود مكتبتك كاملة.</p>
+            </article>
+          </div>
+          <div class="cloud-demo reveal">
+            <div class="code" dir="ltr"><pre><code><span class="c">==&gt; Where to keep your work</span>
+
+Where should OpenCanvas keep your work?
+
+  1) On this computer only
+  2) On this computer, and synced to your own cloud storage
+     (Cloudflare R2 or Amazon S3)
+
+Choose 1-2: 2
+<span class="c">Checking the connection… connected.</span>
+<span class="c">✓ Found your OpenCanvas library from before (12 designs, 40 files).</span></code></pre></div>
+            <ul class="cloud-notes">
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">Wrong key or bucket? It says what is wrong and asks again, or you skip and add it later with <code>opencanvas cloud</code>.</span>
+                <span data-l="ar">مفتاح أو حاوية غير صحيحة؟ يوضّح الخطأ ويسألك من جديد، أو تتخطى الخطوة وتضيفها لاحقًا بالأمر <code>opencanvas cloud</code>.</span>
+              </li>
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">Edited the same design on two computers? Both versions are kept: nothing is overwritten.</span>
+                <span data-l="ar">عدّلت التصميم نفسه على جهازين؟ تُحفَظ النسختان معًا، ولا يُكتب فوق شيء.</span>
+              </li>
+              <li>
+                <svg class="i"><use href="#i-check" /></svg>
+                <span data-l="en">Prefer this computer only? That is the default, and nothing ever leaves it.</span>
+                <span data-l="ar">تفضّل جهازك فقط؟ هذا هو الخيار الافتراضي، ولا يغادره شيء أبدًا.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
       <section class="section" id="install" aria-labelledby="install-title">
         <div class="container">
           <div class="install-grid">
@@ -1211,6 +1299,16 @@
                     <small>
                       <span data-l="en">Always ready in the browser, on port 4790 (3000 stays free)</span>
                       <span data-l="ar">جاهز دائمًا في المتصفح على المنفذ 4790، ويبقى المنفذ 3000 متاحًا لبرامجك</span>
+                    </small>
+                  </span>
+                </li>
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-cloud" /></svg></span>
+                  <span>
+                    <b><span data-l="en">Your computer, or your cloud too</span><span data-l="ar">جهازك، أو سحابتك أيضًا</span></b>
+                    <small>
+                      <span data-l="en">It asks once: this computer only, or also your R2 / S3 (<a href="#cloud">how</a>)</span>
+                      <span data-l="ar">يسألك مرة واحدة: جهازك فقط، أم R2 / S3 الخاص بك أيضًا (<a href="#cloud">كيف</a>)</span>
                     </small>
                   </span>
                 </li>

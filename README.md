@@ -52,7 +52,10 @@ Then use the `opencanvas` command:
 | `opencanvas status` | Is it running, and where |
 | `opencanvas open` | Opens it in the browser |
 | `opencanvas update` | Installs the latest version (keeps the port, so your designs stay) |
-| `opencanvas uninstall` | Removes it (designs stay in the browser) |
+| `opencanvas cloud` | Keep your work in your own R2 / S3 bucket too (or change it) |
+| `opencanvas uninstall` | Removes it (designs stay in the browser and in your bucket) |
+
+**Your computer, or your cloud too.** The installer asks once where to keep your work: on this computer only, or also in your own **Cloudflare R2** or **Amazon S3** bucket. With the cloud, everything is saved on the computer first and synced when online; without internet it keeps working, marks what is "This computer only", and uploads it when the connection is back. Reinstalling (or a new computer) with the same bucket brings everything back. The keys stay on your computer. Change it any time with `opencanvas cloud` ([how it works](docs/cloud-sync.md)).
 
 Options: `OPENCANVAS_PORT=5000` picks another port on the first install, `OPENCANVAS_VERSION=v0.1.0` a specific release. The installers are tested on fresh macOS, Windows, Ubuntu, Debian, Fedora and Alpine machines by the [install test](.github/workflows/install-test.yml) workflow. New versions are published by the [Release](.github/workflows/release.yml) workflow (Actions → Release → Run workflow).
 
@@ -167,7 +170,10 @@ irm https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.ps1 | iex
 | `opencanvas status` | هل يعمل؟ وعلى أي عنوان؟ |
 | `opencanvas open` | يفتحه في المتصفح |
 | `opencanvas update` | يثبّت أحدث إصدار ويحافظ على المنفذ، فتبقى تصاميمك |
-| `opencanvas uninstall` | يزيله من الجهاز، وتبقى التصاميم في المتصفح |
+| `opencanvas cloud` | يحفظ عملك في حاوية R2 أو S3 الخاصة بك أيضًا (أو يغيّرها) |
+| `opencanvas uninstall` | يزيله من الجهاز، وتبقى التصاميم في المتصفح وفي حاويتك |
+
+**جهازك، أو سحابتك أيضًا:** يسألك المثبّت مرة واحدة: هل تحفظ عملك على هذا الجهاز فقط، أم في حاوية **Cloudflare R2** أو **Amazon S3** الخاصة بك أيضًا؟ مع السحابة يُحفَظ كل شيء على الجهاز أولًا ثم يُزامَن عند الاتصال. ودون إنترنت تتابع عملك، ويظهر ما لم يُرفع بعلامة «على هذا الجهاز فقط»، ثم يُرفع حين يعود الاتصال. وإذا أعدت التثبيت أو انتقلت إلى جهاز جديد واخترت الحاوية نفسها، تعود مكتبتك كاملة. ([التفاصيل](docs/cloud-sync.md#بالعربية))
 
 ### للمطوّرين
 

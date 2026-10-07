@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { CloudStatusButton } from '@/components/cloud/cloud-sync';
 import { Logo } from '@/components/dashboard/logo';
 import { Button, IconButton } from '@/components/ui/button';
 import {
@@ -454,8 +455,9 @@ export function TopBar() {
         >
           <Redo2 className="size-[18px]" />
         </IconButton>
-        <div className="ms-2">
+        <div className="ms-2 flex items-center gap-1">
           <SaveIndicator />
+          <CloudStatusButton tone="dark" />
         </div>
       </div>
       <div className="flex flex-1 justify-center" dir="auto">

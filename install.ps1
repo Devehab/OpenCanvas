@@ -160,6 +160,17 @@ function Install-OpenCanvas {
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli start
     if ($LASTEXITCODE -ne 0) { throw "OpenCanvas did not start. See $(Join-Path $ocHome 'logs\server.log')" }
 
+    # Where to keep the work: asked once (the answer is kept on updates).
+    $setup = Join-Path $app 'bin\cloud-setup.mjs'
+    $storage = Get-Setting 'OPENCANVAS_STORAGE' ''
+    if ($storage -or -not (Test-Path (Join-Path $ocHome 'cloud.json'))) {
+      Step 'Where to keep your work'
+      & $nodeExe $setup setup --home $ocHome --port $port
+      if ($LASTEXITCODE -ne 0) { Write-Host '  Cloud storage was not set up. You can do it later with: opencanvas cloud' -ForegroundColor Yellow }
+    } else {
+      & $nodeExe $setup status --home $ocHome --port $port
+    }
+
     $url = "http://localhost:$port"
     if ((Get-Setting 'OPENCANVAS_NO_OPEN' '0') -ne '1') { Start-Process $url }
 
@@ -171,6 +182,7 @@ function Install-OpenCanvas {
   opencanvas start       start it again
   opencanvas status      is it running?
   opencanvas update      install the latest version
+  opencanvas cloud       keep your work in your cloud too (R2 / S3)
   opencanvas uninstall   remove it
 '@
   } finally {

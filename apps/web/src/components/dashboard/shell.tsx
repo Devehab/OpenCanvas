@@ -4,6 +4,7 @@ import { FileUp, FolderKanban, FolderOpen, House, Palette, Plus, Settings, Trash
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from 'react';
+import { CloudStatusButton, StorageNotice } from '@/components/cloud/cloud-sync';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/toast';
 import { useI18n } from '@/i18n';
@@ -138,7 +139,8 @@ export function DashboardShell({ children }: { children: ReactNode }) {
           </button>
         </nav>
         <div className="mt-auto space-y-3 px-2">
-          <p className="text-xs leading-relaxed text-slate-500">{t('home.localNotice')}</p>
+          <CloudStatusButton />
+          <StorageNotice />
           {isDesktop ? <LanguageSwitcher /> : null}
         </div>
       </aside>
@@ -196,6 +198,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
         ) : null}
         <div className="flex items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-3 md:hidden">
           <Logo />
+          {isDesktop ? null : <CloudStatusButton />}
           {isDesktop ? null : <LanguageSwitcher />}
           <Button variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
             <Plus className="size-4" />

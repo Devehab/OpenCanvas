@@ -85,6 +85,45 @@ jobs:
           path: apps/web/test-results/performance.json
           if-no-files-found: ignore
 
+  cloud:
+    name: Cloud sync (real S3 server)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: checks
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: S3 test server (moto, with authentication)
+        run: pip install "moto[server]"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - name: Install Chromium
+        run: pnpm --filter @opencanvas/web exec playwright install --with-deps chromium
+      - name: S3 client against the server
+        run: |
+          S3_TEST_OUT="$RUNNER_TEMP/s3.json" python scripts/s3-test-server.py 5066 > "$RUNNER_TEMP/s3.log" 2>&1 &
+          for i in $(seq 1 60); do [ -s "$RUNNER_TEMP/s3.json" ] && break; sleep 0.5; done
+          S3_TEST="$(cat "$RUNNER_TEMP/s3.json")" pnpm exec vitest run --project web apps/web/test/cloud
+      - name: Sync end to end (upload, offline, restore, two computers, security)
+        run: pnpm --filter @opencanvas/web exec playwright test -c playwright.cloud.config.ts
+        env:
+          CI: 'true'
+          S3_TEST_PYTHON: python
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloud-report
+          path: apps/web/test-results/cloud
+          retention-days: 14
+
   browsers:
     name: End-to-end (all browsers)
     if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.all-browsers)

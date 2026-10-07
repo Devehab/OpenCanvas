@@ -24,6 +24,8 @@ if (allBrowsers) {
 
 export default defineConfig({
   testDir: './e2e',
+  // Needs an S3 server: run with playwright.cloud.config.ts.
+  testIgnore: 'cloud.spec.ts',
   outputDir: './test-results',
   snapshotPathTemplate: '{testDir}/__screenshots__/{testFilePath}/{arg}-{projectName}-{platform}{ext}',
   fullyParallel: true,

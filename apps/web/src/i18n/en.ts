@@ -936,6 +936,27 @@ export const en = {
       },
     },
   },
+  cloud: {
+    synced: 'Saved to your cloud',
+    syncing: 'Syncing…',
+    offline: 'Offline: saved on this computer',
+    error: 'Cloud sync needs attention',
+    waiting: '{count} waiting to upload',
+    title: 'Cloud sync',
+    where: '{provider} · bucket {bucket}',
+    lastSynced: 'Last synced {time}',
+    neverSynced: 'Not synced yet',
+    syncNow: 'Sync now',
+    offlineHint:
+      'Keep working: everything is saved on this computer, and uploads by itself when the connection is back.',
+    syncedHint: 'Everything on this computer is also in your cloud.',
+    errorHint: 'Your work is safe on this computer. Sync tries again by itself.',
+    localOnly: 'Saved on this computer only. It uploads to your cloud when you are back online.',
+    localOnlyShort: 'This computer only',
+    conflictCopy: '{title} (from another computer)',
+    localNotice: 'Your designs are saved on this computer and synced to your cloud.',
+    providers: { r2: 'Cloudflare R2', s3: 'Amazon S3', custom: 'S3-compatible storage' },
+  },
 } as const;
 
 type Widen<T> = T extends string ? string : { [K in keyof T]: Widen<T[K]> };

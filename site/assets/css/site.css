@@ -2216,3 +2216,56 @@ svg.i.gh {
   text-decoration: underline;
   text-underline-offset: 2px;
 }
+
+/* Cloud sync section */
+.cloud-demo {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 28px;
+  align-items: center;
+  margin-top: 40px;
+}
+
+.cloud-demo .code {
+  border-radius: 16px;
+  background: #0f0d1f;
+  box-shadow: var(--shadow-lg);
+}
+
+.cloud-demo pre {
+  margin: 0;
+  padding: 20px 22px;
+  overflow-x: auto;
+  color: #e9e6ff;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.cloud-notes {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cloud-notes li {
+  display: flex;
+  gap: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.cloud-notes li > svg {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 3px;
+  color: var(--brand-600);
+}
+
+@media (max-width: 860px) {
+  .cloud-demo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

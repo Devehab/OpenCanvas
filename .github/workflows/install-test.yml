@@ -19,7 +19,8 @@ on:
       - install.ps1
       - packaging/**
       - scripts/build-bundle.sh
-      - scripts/test-install.*
+      - scripts/test-install*
+      - scripts/s3-test-server.py
       - .github/workflows/install-test.yml
   workflow_dispatch:
     inputs:
@@ -135,3 +136,34 @@ jobs:
             fi
             bash scripts/test-install.sh $target
           "
+
+  # The storage question against a real S3 server: wrong keys fall back to
+  # this computer, right keys connect, a reinstall finds the library.
+  cloud:
+    name: cloud setup on ${{ matrix.os }}
+    needs: bundle
+    if: ${{ (inputs.source || 'commit') == 'commit' && github.event_name != 'schedule' }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install "moto[server]"
+      - uses: actions/download-artifact@v4
+        with:
+          name: bundle
+          path: dist
+      - name: Install and check (macOS, Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: PYTHON=python scripts/test-install-cloud.sh dist/opencanvas.tar.gz
+      - name: Install and check (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/test-install-cloud.ps1 dist/opencanvas.tar.gz
