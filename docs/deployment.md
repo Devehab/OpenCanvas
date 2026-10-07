@@ -2,6 +2,25 @@
 
 OpenCanvas ships as a single, stateless web container. In Phase 1 designs live in each visitor's browser (IndexedDB), so the server keeps no data: there is nothing to back up and you can run as many replicas as you like.
 
+## On a personal computer
+
+For one person on their own Mac, Windows or Linux computer, use the one-line installer instead of Docker (see the [README](../README.md#install)):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.sh | bash   # macOS, Linux
+irm https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.ps1 | iex          # Windows PowerShell
+```
+
+How it works:
+
+- **The bundle.** The [Release](../.github/workflows/release.yml) workflow builds `opencanvas.tar.gz` with `scripts/build-bundle.sh`: the Next.js standalone server, its static files and the `opencanvas` command. Dependencies are installed with pnpm's hoisted linker so the archive has no symbolic links, and sharp (native, unused: the app has no `next/image`) is left out, so one archive runs on every system.
+- **The installer** downloads the official Node.js 22 build for the computer from nodejs.org (checking its SHA-256; on Alpine it uses the system's Node.js), then the bundle from the latest GitHub release (also checked), into `~/.opencanvas` (`%LOCALAPPDATA%\OpenCanvas` on Windows). It never needs administrator rights.
+- **The port** is 4790, or the next free one; it is saved, and updates keep it, because the browser saves designs per address. The server listens on 127.0.0.1 only.
+- **Starting with the computer:** a LaunchAgent on macOS (restarted if it stops), a systemd user service on Linux (with lingering, so it starts at boot), an entry in the user's Run key on Windows (a hidden window), or, without systemd, a background process restarted at login (XDG autostart) and boot (cron).
+- **`opencanvas stop`** stops the server and removes the autostart; `opencanvas start` puts both back. `opencanvas uninstall` removes everything except the designs in the browser.
+
+The [install test](../.github/workflows/install-test.yml) workflow runs the installer on fresh GitHub machines (macOS, Ubuntu, Windows) and bare Debian, Ubuntu, Fedora and Alpine images, then checks start, stop, status, restart, reinstalling and uninstalling.
+
 ## Docker
 
 ```bash

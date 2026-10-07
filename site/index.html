@@ -254,7 +254,7 @@
               </span>
             </div>
             <div class="window">
-              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/design</span></div>
+              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
               <img
                 data-l="en"
                 src="assets/media/editor-en.webp"
@@ -949,7 +949,7 @@
           <div class="gallery">
             <figure class="reveal">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000</span></div>
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790</span></div>
                 <img
                   data-l="en"
                   src="assets/media/dashboard-en.webp"
@@ -976,7 +976,7 @@
             </figure>
             <figure class="reveal">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000</span></div>
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790</span></div>
                 <img
                   src="assets/media/create-dialog-en.webp"
                   width="2880"
@@ -994,7 +994,7 @@
             </figure>
             <figure class="reveal">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/brand</span></div>
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/brand</span></div>
                 <img
                   src="assets/media/brand-kit-en.webp"
                   width="1280"
@@ -1012,7 +1012,7 @@
             </figure>
             <figure class="reveal">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:3000/design</span></div>
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <img
                   data-l="en"
                   src="assets/media/editor-ar.webp"
@@ -1182,49 +1182,55 @@
             <div class="reveal">
               <span class="eyebrow"><span data-l="en">Get started</span><span data-l="ar">ابدأ الآن</span></span>
               <h2 class="h2" id="install-title">
-                <span data-l="en">Up and running in two minutes</span>
-                <span data-l="ar">جاهز للعمل خلال دقيقتين</span>
+                <span data-l="en">One line to install</span>
+                <span data-l="ar">سطر واحد للتثبيت</span>
               </h2>
               <p class="section-sub" data-l="en" style="margin-top: 16px; color: var(--muted)">
-                Clone the repository, install and start. OpenCanvas opens in your browser at
-                <code>localhost:3000</code>, and everything runs on your machine.
+                Paste one line in a terminal. It downloads everything OpenCanvas needs, runs it quietly in the background and
+                opens it in your browser at <code>localhost:4790</code>. Everything stays on your computer.
               </p>
               <p class="section-sub" data-l="ar" style="margin-top: 16px; color: var(--muted)">
-                انسخ المستودع، وثبّت الحزم، وشغّله. يفتح OpenCanvas في متصفحك على العنوان <code>localhost:3000</code>، وكل شيء
-                يعمل على جهازك.
+                الصق سطرًا واحدًا في الطرفية، فينزّل كل ما يحتاج إليه OpenCanvas، ويشغّله في الخلفية بهدوء، ويفتحه في متصفحك على
+                العنوان <code>localhost:4790</code>. ويبقى كل شيء على جهازك.
               </p>
               <ul class="requirements">
                 <li>
                   <span class="icon-badge"><svg class="i"><use href="#i-package" /></svg></span>
                   <span>
-                    <b><span data-l="en">Node.js 22 or newer</span><span data-l="ar">Node.js الإصدار 22 أو أحدث</span></b>
-                    <small><a href="https://nodejs.org">nodejs.org</a></small>
+                    <b><span data-l="en">Nothing to install first</span><span data-l="ar">لا شيء تثبّته مسبقًا</span></b>
+                    <small>
+                      <span data-l="en">No Node.js, pnpm or Git: the installer brings what it needs</span>
+                      <span data-l="ar">لا Node.js ولا pnpm ولا Git: يجلب المثبّت كل ما يحتاج إليه</span>
+                    </small>
+                  </span>
+                </li>
+                <li>
+                  <span class="icon-badge"><svg class="i"><use href="#i-rocket" /></svg></span>
+                  <span>
+                    <b><span data-l="en">Starts with your computer</span><span data-l="ar">يعمل مع تشغيل جهازك</span></b>
+                    <small>
+                      <span data-l="en">Always ready in the browser, on port 4790 (3000 stays free)</span>
+                      <span data-l="ar">جاهز دائمًا في المتصفح على المنفذ 4790، ويبقى المنفذ 3000 متاحًا لبرامجك</span>
+                    </small>
                   </span>
                 </li>
                 <li>
                   <span class="icon-badge"><svg class="i"><use href="#i-terminal" /></svg></span>
                   <span>
-                    <b>pnpm 10</b>
+                    <b><code>opencanvas stop</code></b>
                     <small>
-                      <span data-l="en">Through Corepack, which ships with Node</span>
-                      <span data-l="ar">عبر Corepack المرفقة مع Node</span>
+                      <span data-l="en">Stops it until you run <code>opencanvas start</code></span>
+                      <span data-l="ar">يوقفه حتى تشغّل <code>opencanvas start</code></span>
                     </small>
-                  </span>
-                </li>
-                <li>
-                  <span class="icon-badge"><svg class="i"><use href="#i-git-branch" /></svg></span>
-                  <span>
-                    <b>Git</b>
-                    <small><span data-l="en">To clone the repository</span><span data-l="ar">لنسخ المستودع</span></small>
                   </span>
                 </li>
                 <li>
                   <span class="icon-badge"><svg class="i"><use href="#i-container" /></svg></span>
                   <span>
-                    <b><span data-l="en">Or just Docker</span><span data-l="ar">أو Docker فقط</span></b>
+                    <b><span data-l="en">Or Docker, for servers</span><span data-l="ar">أو Docker للخوادم</span></b>
                     <small>
-                      <span data-l="en">No Node.js needed; ideal for servers</span>
-                      <span data-l="ar">دون الحاجة إلى Node.js، وهو الأنسب للخوادم</span>
+                      <span data-l="en">And the source code, for developers</span>
+                      <span data-l="ar">والشيفرة المصدرية للمطوّرين</span>
                     </small>
                   </span>
                 </li>
@@ -1245,6 +1251,9 @@
                 <button type="button" role="tab" id="tab-docker" aria-controls="panel-docker" aria-selected="false" tabindex="-1" data-os="docker">
                   <svg class="i"><use href="#i-container" /></svg>Docker
                 </button>
+                <button type="button" role="tab" id="tab-source" aria-controls="panel-source" aria-selected="false" tabindex="-1" data-os="source">
+                  <svg class="i"><use href="#i-code-xml" /></svg><span data-l="en">Developers</span><span data-l="ar">للمطوّرين</span>
+                </button>
               </div>
 
               <!-- macOS -->
@@ -1252,40 +1261,26 @@
                 <div class="step">
                   <p class="step-label">
                     <span class="n">1</span>
-                    <span data-l="en">Install Node.js 22+ (skip if you have it)</span>
-                    <span data-l="ar">ثبّت Node.js 22 أو أحدث (تخطَّ هذه الخطوة إن كان مثبّتًا)</span>
+                    <span data-l="en">Open Terminal (Spotlight: ⌘ Space, type “Terminal”) and paste</span>
+                    <span data-l="ar">افتح تطبيق Terminal (ابحث عنه بـ ⌘ Space) والصق</span>
                   </p>
-                  <div class="code"><pre><code>brew install node   <span class="c"># or use the installer from nodejs.org</span></code></pre></div>
+                  <div class="code"><pre><code>curl -fsSL https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.sh | bash</code></pre></div>
                 </div>
                 <div class="step">
                   <p class="step-label">
                     <span class="n">2</span>
-                    <span data-l="en">Enable pnpm</span><span data-l="ar">فعّل pnpm</span>
+                    <span data-l="en">To stop it, start it again, update or remove it</span>
+                    <span data-l="ar">لإيقافه أو تشغيله من جديد أو تحديثه أو إزالته</span>
                   </p>
-                  <div class="code"><pre><code>corepack enable</code></pre></div>
-                  <p class="note" data-l="en">
-                    Permission error? Run <code>sudo corepack enable</code>, or install pnpm directly with
-                    <code>sudo npm install -g pnpm@10.28.0</code>.
-                  </p>
-                  <p class="note" data-l="ar">
-                    ظهر خطأ في الصلاحيات؟ شغّل <code>sudo corepack enable</code>، أو ثبّت pnpm مباشرة بالأمر
-                    <code>sudo npm install -g pnpm@10.28.0</code>.
-                  </p>
-                </div>
-                <div class="step">
-                  <p class="step-label">
-                    <span class="n">3</span>
-                    <span data-l="en">Clone and start</span><span data-l="ar">انسخ المستودع وشغّله</span>
-                  </p>
-                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
-cd OpenCanvas
-pnpm install
-pnpm dev</code></pre></div>
+                  <div class="code"><pre><code>opencanvas stop
+opencanvas start
+opencanvas update
+opencanvas uninstall</code></pre></div>
                 </div>
                 <p class="open-app">
                   <svg class="i"><use href="#i-rocket" /></svg>
-                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
-                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                  <span data-l="en">It opens <code>http://localhost:4790</code> by itself. Bookmark it.</span>
+                  <span data-l="ar">يفتح <code>http://localhost:4790</code> تلقائيًا. احفظه في المفضّلة.</span>
                 </p>
               </div>
 
@@ -1294,34 +1289,28 @@ pnpm dev</code></pre></div>
                 <div class="step">
                   <p class="step-label">
                     <span class="n">1</span>
-                    <span data-l="en">Install Node.js 22+ with nvm (or your package manager)</span>
-                    <span data-l="ar">ثبّت Node.js 22 أو أحدث عبر nvm (أو مدير الحزم في نظامك)</span>
+                    <span data-l="en">Open a terminal and paste</span>
+                    <span data-l="ar">افتح الطرفية والصق</span>
                   </p>
-                  <div class="code"><pre><code>curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash
-<span class="c"># open a new terminal, then:</span>
-nvm install 22</code></pre></div>
+                  <div class="code"><pre><code>curl -fsSL https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.sh | bash</code></pre></div>
+                  <p class="note" data-l="en">No curl? <code>sudo apt install curl</code> (Debian, Ubuntu) or <code>sudo dnf install curl</code> (Fedora).</p>
+                  <p class="note" data-l="ar">لا يوجد curl؟ ثبّته أولًا في Debian وUbuntu بالأمر <code>sudo apt install curl</code>، وفي Fedora بالأمر <code>sudo dnf install curl</code>.</p>
                 </div>
                 <div class="step">
                   <p class="step-label">
                     <span class="n">2</span>
-                    <span data-l="en">Enable pnpm</span><span data-l="ar">فعّل pnpm</span>
+                    <span data-l="en">To stop it, start it again, update or remove it</span>
+                    <span data-l="ar">لإيقافه أو تشغيله من جديد أو تحديثه أو إزالته</span>
                   </p>
-                  <div class="code"><pre><code>corepack enable</code></pre></div>
-                </div>
-                <div class="step">
-                  <p class="step-label">
-                    <span class="n">3</span>
-                    <span data-l="en">Clone and start</span><span data-l="ar">انسخ المستودع وشغّله</span>
-                  </p>
-                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
-cd OpenCanvas
-pnpm install
-pnpm dev</code></pre></div>
+                  <div class="code"><pre><code>opencanvas stop
+opencanvas start
+opencanvas update
+opencanvas uninstall</code></pre></div>
                 </div>
                 <p class="open-app">
                   <svg class="i"><use href="#i-rocket" /></svg>
-                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
-                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                  <span data-l="en">Open <code>http://localhost:4790</code> and start designing.</span>
+                  <span data-l="ar">افتح <code>http://localhost:4790</code> وابدأ التصميم.</span>
                 </p>
               </div>
 
@@ -1330,35 +1319,28 @@ pnpm dev</code></pre></div>
                 <div class="step">
                   <p class="step-label">
                     <span class="n">1</span>
-                    <span data-l="en">Install Node.js and Git (PowerShell)</span>
-                    <span data-l="ar">ثبّت Node.js وGit (من PowerShell)</span>
+                    <span data-l="en">Open PowerShell (Start menu, type “PowerShell”) and paste</span>
+                    <span data-l="ar">افتح PowerShell (من قائمة ابدأ، اكتب PowerShell) والصق</span>
                   </p>
-                  <div class="code"><pre><code>winget install OpenJS.NodeJS.LTS
-winget install Git.Git</code></pre></div>
+                  <div class="code"><pre><code>irm https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.ps1 | iex</code></pre></div>
+                  <p class="note" data-l="en">No administrator rights needed. It starts when you sign in to Windows.</p>
+                  <p class="note" data-l="ar">لا يحتاج إلى صلاحيات المسؤول، ويعمل تلقائيًا عند تسجيل الدخول إلى Windows.</p>
                 </div>
                 <div class="step">
                   <p class="step-label">
                     <span class="n">2</span>
-                    <span data-l="en">Enable pnpm (PowerShell as Administrator)</span>
-                    <span data-l="ar">فعّل pnpm (من PowerShell بصلاحيات المسؤول)</span>
+                    <span data-l="en">To stop it, start it again, update or remove it</span>
+                    <span data-l="ar">لإيقافه أو تشغيله من جديد أو تحديثه أو إزالته</span>
                   </p>
-                  <div class="code"><pre><code>corepack enable</code></pre></div>
-                </div>
-                <div class="step">
-                  <p class="step-label">
-                    <span class="n">3</span>
-                    <span data-l="en">Clone and start (a new terminal)</span>
-                    <span data-l="ar">انسخ المستودع وشغّله (في نافذة طرفية جديدة)</span>
-                  </p>
-                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
-cd OpenCanvas
-pnpm install
-pnpm dev</code></pre></div>
+                  <div class="code"><pre><code>opencanvas stop
+opencanvas start
+opencanvas update
+opencanvas uninstall</code></pre></div>
                 </div>
                 <p class="open-app">
                   <svg class="i"><use href="#i-rocket" /></svg>
-                  <span data-l="en">Open <code>http://localhost:3000</code> and start designing.</span>
-                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التصميم.</span>
+                  <span data-l="en">It opens <code>http://localhost:4790</code> by itself. Bookmark it.</span>
+                  <span data-l="ar">يفتح <code>http://localhost:4790</code> تلقائيًا. احفظه في المفضّلة.</span>
                 </p>
               </div>
 
@@ -1391,6 +1373,34 @@ cd OpenCanvas</code></pre></div>
                   <svg class="i"><use href="#i-rocket" /></svg>
                   <span data-l="en">Open <code>http://localhost:3000</code>, or your server's address.</span>
                   <span data-l="ar">افتح <code>http://localhost:3000</code> أو عنوان خادمك.</span>
+                </p>
+              </div>
+
+              <!-- From source -->
+              <div class="tabpanel" role="tabpanel" id="panel-source" aria-labelledby="tab-source" tabindex="0" hidden>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">1</span>
+                    <span data-l="en">Install Node.js 22+, then enable pnpm</span>
+                    <span data-l="ar">ثبّت Node.js 22 أو أحدث، ثم فعّل pnpm</span>
+                  </p>
+                  <div class="code"><pre><code>corepack enable</code></pre></div>
+                </div>
+                <div class="step">
+                  <p class="step-label">
+                    <span class="n">2</span>
+                    <span data-l="en">Clone and start the development server</span>
+                    <span data-l="ar">انسخ المستودع وشغّل خادم التطوير</span>
+                  </p>
+                  <div class="code"><pre><code>git clone https://github.com/Devehab/OpenCanvas.git
+cd OpenCanvas
+pnpm install
+pnpm dev</code></pre></div>
+                </div>
+                <p class="open-app">
+                  <svg class="i"><use href="#i-rocket" /></svg>
+                  <span data-l="en">Open <code>http://localhost:3000</code> and start coding.</span>
+                  <span data-l="ar">افتح <code>http://localhost:3000</code> وابدأ التطوير.</span>
                 </p>
               </div>
             </div>

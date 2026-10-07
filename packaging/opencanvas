@@ -1,0 +1,363 @@
+#!/usr/bin/env bash
+#
+# opencanvas: start, stop and manage OpenCanvas on this computer (macOS, Linux).
+# Installed by install.sh; run `opencanvas help` for the commands.
+
+set -uo pipefail
+
+OC_HOME="${OPENCANVAS_HOME:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
+CONFIG="$OC_HOME/config.env"
+APP="$OC_HOME/app"
+LOG_DIR="$OC_HOME/logs"
+LOG="$LOG_DIR/server.log"
+PID_FILE="$OC_HOME/server.pid"
+LABEL="org.opencanvas.server"
+PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+UNIT_NAME="opencanvas.service"
+UNIT="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user/$UNIT_NAME"
+AUTOSTART="${XDG_CONFIG_HOME:-$HOME/.config}/autostart/opencanvas.desktop"
+CRON_MARK="# opencanvas autostart"
+
+PORT=4790
+NODE_BIN="$OC_HOME/node/bin/node"
+SERVICE=""
+BIN_LINK=""
+REPO="Devehab/OpenCanvas"
+# shellcheck disable=SC1090
+[ -f "$CONFIG" ] && . "$CONFIG"
+
+URL="http://localhost:$PORT"
+QUIET=0
+YES=0
+AUTOSTART_OK=0
+
+if [ -t 1 ]; then
+  green() { printf '\033[32m%s\033[0m\n' "$*"; }
+  red() { printf '\033[31m%s\033[0m\n' "$*"; }
+  bold() { printf '\033[1m%s\033[0m\n' "$*"; }
+else
+  green() { printf '%s\n' "$*"; }
+  red() { printf '%s\n' "$*"; }
+  bold() { printf '%s\n' "$*"; }
+fi
+say() { [ "$QUIET" = 1 ] || printf '%s\n' "$*"; }
+
+save_config() {
+  {
+    printf 'PORT=%q\n' "$PORT"
+    printf 'NODE_BIN=%q\n' "$NODE_BIN"
+    printf 'SERVICE=%q\n' "$SERVICE"
+    printf 'BIN_LINK=%q\n' "$BIN_LINK"
+    printf 'REPO=%q\n' "$REPO"
+  } > "$CONFIG"
+}
+
+healthy() {
+  curl -fsS --max-time 2 "http://127.0.0.1:$PORT/api/health" 2>/dev/null | grep -q opencanvas-web
+}
+
+wait_until() { # wait_until up|down seconds
+  local want="$1" i=0
+  while [ "$i" -lt "$2" ]; do
+    if [ "$want" = up ] && healthy; then return 0; fi
+    if [ "$want" = down ] && ! healthy; then return 0; fi
+    sleep 1
+    i=$((i + 1))
+  done
+  return 1
+}
+
+detect_service() {
+  case "$(uname -s)" in
+    Darwin) echo launchd ;;
+    Linux)
+      if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then
+        echo systemd
+      else
+        echo background
+      fi
+      ;;
+    *) echo background ;;
+  esac
+}
+
+xml() { printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'; }
+
+# ── macOS: a LaunchAgent starts it at login and restarts it if it stops ─────
+launchd_start() {
+  mkdir -p "$(dirname "$PLIST")" "$LOG_DIR"
+  cat > "$PLIST" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>$LABEL</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>$(xml "$NODE_BIN")</string>
+    <string>$(xml "$APP/apps/web/server.js")</string>
+  </array>
+  <key>WorkingDirectory</key><string>$(xml "$APP")</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PORT</key><string>$PORT</string>
+    <key>HOSTNAME</key><string>127.0.0.1</string>
+    <key>NODE_ENV</key><string>production</string>
+    <key>NEXT_TELEMETRY_DISABLED</key><string>1</string>
+  </dict>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>StandardOutPath</key><string>$(xml "$LOG")</string>
+  <key>StandardErrorPath</key><string>$(xml "$LOG")</string>
+</dict>
+</plist>
+EOF
+  local domain
+  domain="gui/$(id -u)"
+  launchctl bootout "$domain/$LABEL" >/dev/null 2>&1 || true
+  launchctl enable "$domain/$LABEL" >/dev/null 2>&1 || true
+  launchctl bootstrap "$domain" "$PLIST" >/dev/null 2>&1 || launchctl load -w "$PLIST" >/dev/null 2>&1
+}
+
+launchd_stop() {
+  [ "$(uname -s)" = Darwin ] || return 0
+  launchctl bootout "gui/$(id -u)/$LABEL" >/dev/null 2>&1 || launchctl unload "$PLIST" >/dev/null 2>&1 || true
+  rm -f "$PLIST"
+}
+
+# ── Linux with systemd: a user service, started at login (or at boot) ───────
+systemd_start() {
+  mkdir -p "$(dirname "$UNIT")" "$LOG_DIR"
+  cat > "$UNIT" <<EOF
+[Unit]
+Description=OpenCanvas design editor
+After=network.target
+
+[Service]
+Environment=PORT=$PORT HOSTNAME=127.0.0.1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1
+WorkingDirectory=$APP
+ExecStart="$NODE_BIN" "$APP/apps/web/server.js"
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:$LOG
+StandardError=append:$LOG
+
+[Install]
+WantedBy=default.target
+EOF
+  systemctl --user daemon-reload &&
+    systemctl --user enable "$UNIT_NAME" >/dev/null 2>&1 &&
+    systemctl --user restart "$UNIT_NAME" || return 1
+  # Start at boot even before anyone logs in, when the system allows it.
+  loginctl --no-ask-password enable-linger "$(id -un)" >/dev/null 2>&1 || true
+}
+
+systemd_stop() {
+  command -v systemctl >/dev/null 2>&1 || return 0
+  if [ -f "$UNIT" ]; then
+    systemctl --user disable --now "$UNIT_NAME" >/dev/null 2>&1 || true
+    rm -f "$UNIT"
+    systemctl --user daemon-reload >/dev/null 2>&1 || true
+  fi
+}
+
+# ── Anything else: a background process, restarted at login and at boot ────
+background_pid() {
+  local pid
+  pid="$(cat "$PID_FILE" 2>/dev/null || true)"
+  [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null && echo "$pid"
+}
+
+background_start() {
+  AUTOSTART_OK=0
+  mkdir -p "$LOG_DIR"
+  if [ -z "$(background_pid)" ]; then
+    local runner=nohup
+    command -v setsid >/dev/null 2>&1 && runner="setsid nohup"
+    (
+      cd "$APP" || exit 1
+      PORT="$PORT" HOSTNAME=127.0.0.1 NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 \
+        $runner "$NODE_BIN" "$APP/apps/web/server.js" >>"$LOG" 2>&1 </dev/null &
+      echo $! > "$PID_FILE"
+    )
+  fi
+  local self="${BIN_LINK:-$APP/bin/opencanvas}"
+  if [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || [ -d "$(dirname "$AUTOSTART")" ]; then
+    mkdir -p "$(dirname "$AUTOSTART")"
+    cat > "$AUTOSTART" <<EOF
+[Desktop Entry]
+Type=Application
+Name=OpenCanvas
+Comment=Starts the OpenCanvas design editor
+Exec="$self" start --quiet
+X-GNOME-Autostart-enabled=true
+NoDisplay=true
+EOF
+    AUTOSTART_OK=1
+  fi
+  if command -v crontab >/dev/null 2>&1; then
+    if { crontab -l 2>/dev/null | grep -v "$CRON_MARK"; echo "@reboot \"$self\" start --quiet $CRON_MARK"; } | crontab - 2>/dev/null; then
+      AUTOSTART_OK=1
+    fi
+  fi
+}
+
+background_stop() {
+  local pid
+  pid="$(background_pid)"
+  if [ -n "$pid" ]; then
+    kill "$pid" 2>/dev/null || true
+    for _ in 1 2 3 4 5 6 7 8 9 10; do kill -0 "$pid" 2>/dev/null || break; sleep 0.5; done
+    kill -9 "$pid" 2>/dev/null || true
+  fi
+  rm -f "$PID_FILE" "$AUTOSTART"
+  if command -v crontab >/dev/null 2>&1 && crontab -l 2>/dev/null | grep -q "$CRON_MARK"; then
+    crontab -l 2>/dev/null | grep -v "$CRON_MARK" | crontab - 2>/dev/null || true
+  fi
+}
+
+# ── Commands ────────────────────────────────────────────────────────────────
+cmd_start() {
+  if [ ! -f "$APP/apps/web/server.js" ] || [ ! -x "$NODE_BIN" ]; then
+    red "OpenCanvas is not installed correctly. Reinstall it:"
+    say "  curl -fsSL https://raw.githubusercontent.com/$REPO/HEAD/install.sh | bash"
+    return 1
+  fi
+  [ -n "$SERVICE" ] || SERVICE="$(detect_service)"
+  local started=0
+  AUTOSTART_OK=1
+  case "$SERVICE" in
+    launchd) launchd_start && started=1 ;;
+    systemd) systemd_start && started=1 ;;
+  esac
+  if [ "$started" = 0 ]; then
+    if [ "$SERVICE" != background ]; then
+      say "Using a background process instead of $SERVICE."
+      launchd_stop
+      systemd_stop
+    fi
+    SERVICE=background
+    background_start
+  fi
+  save_config
+  if wait_until up 60; then
+    say "$(green "✓ OpenCanvas is running: $URL")"
+    if [ "$AUTOSTART_OK" = 1 ]; then
+      say "  It starts by itself when you turn on your computer. Stop it with: opencanvas stop"
+    else
+      say "  This system has no way to start it with the computer: after a restart, run: opencanvas start"
+    fi
+  else
+    red "OpenCanvas did not start. The last lines of $LOG:"
+    tail -n 20 "$LOG" 2>/dev/null
+    return 1
+  fi
+}
+
+cmd_stop() {
+  launchd_stop
+  systemd_stop
+  background_stop
+  if wait_until down 15; then
+    say "$(green "✓ OpenCanvas is stopped.")"
+    say "  It will not start with your computer until you run: opencanvas start"
+  else
+    red "Something is still answering on port $PORT."
+    return 1
+  fi
+}
+
+cmd_status() {
+  local version
+  version="$(cat "$APP/VERSION" 2>/dev/null || echo unknown)"
+  if healthy; then
+    green "● OpenCanvas $version is running: $URL"
+  else
+    red "○ OpenCanvas $version is stopped. Start it with: opencanvas start"
+  fi
+  printf '  Folder:   %s\n' "$OC_HOME"
+  printf '  Logs:     %s\n' "$LOG"
+  printf '  Runs as:  %s\n' "${SERVICE:-not started yet}"
+  healthy
+}
+
+open_url() {
+  if [ "$(uname -s)" = Darwin ]; then
+    open "$URL"
+  elif command -v xdg-open >/dev/null 2>&1 && [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ]; then
+    xdg-open "$URL" >/dev/null 2>&1 &
+  else
+    say "Open $URL in your browser."
+  fi
+}
+
+cmd_open() {
+  healthy || cmd_start || return 1
+  open_url
+}
+
+cmd_update() {
+  bold "Updating OpenCanvas…"
+  curl -fsSL "https://raw.githubusercontent.com/$REPO/HEAD/install.sh" | OPENCANVAS_HOME="$OC_HOME" bash
+}
+
+cmd_uninstall() {
+  if [ "$YES" != 1 ]; then
+    printf 'Remove OpenCanvas from this computer? Designs stay in your browser. [y/N] '
+    local answer=""
+    read -r answer </dev/tty 2>/dev/null || true
+    case "$answer" in y | Y | yes | YES) ;; *) say "Nothing removed."; return 1 ;; esac
+  fi
+  QUIET=1 cmd_stop >/dev/null 2>&1 || true
+  if [ -n "$BIN_LINK" ] && grep -q OPENCANVAS_HOME "$BIN_LINK" 2>/dev/null; then rm -f "$BIN_LINK"; fi
+  for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.profile" "$HOME/.zprofile" "$HOME/.bash_profile"; do
+    if [ -f "$rc" ] && grep -q '# Added by OpenCanvas' "$rc"; then
+      grep -v '# Added by OpenCanvas' "$rc" > "$rc.opencanvas-tmp" && cat "$rc.opencanvas-tmp" > "$rc"
+      rm -f "$rc.opencanvas-tmp"
+    fi
+  done
+  rm -rf "$OC_HOME"
+  green "✓ OpenCanvas was removed."
+  say "  Your designs are still saved in your browser (at $URL) if you install it again."
+}
+
+cmd_help() {
+  cat <<EOF
+OpenCanvas $(cat "$APP/VERSION" 2>/dev/null || true), running at $URL
+
+  opencanvas start       Start it (and start it with the computer)
+  opencanvas stop        Stop it (and don't start it with the computer)
+  opencanvas restart     Stop and start again
+  opencanvas status      Is it running?
+  opencanvas open        Open it in the browser
+  opencanvas logs        Show the last lines of the log
+  opencanvas update      Install the latest version
+  opencanvas uninstall   Remove it from this computer (-y: don't ask)
+EOF
+}
+
+main() {
+  local command="${1:-help}"
+  [ $# -gt 0 ] && shift
+  for arg in "$@"; do
+    case "$arg" in
+      -q | --quiet) QUIET=1 ;;
+      -y | --yes) YES=1 ;;
+    esac
+  done
+  case "$command" in
+    start) cmd_start ;;
+    stop) cmd_stop ;;
+    restart) QUIET=1 cmd_stop >/dev/null; cmd_start ;;
+    status) cmd_status ;;
+    open) cmd_open ;;
+    logs | log) tail -n 100 "$LOG" 2>/dev/null || say "No log yet." ;;
+    update | upgrade) cmd_update ;;
+    uninstall | remove) cmd_uninstall ;;
+    version | --version | -v) cat "$APP/VERSION" 2>/dev/null ;;
+    help | --help | -h) cmd_help ;;
+    *) red "Unknown command: $command"; cmd_help; return 1 ;;
+  esac
+}
+
+main "$@"

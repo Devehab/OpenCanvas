@@ -27,7 +27,36 @@ OpenCanvas is not a template viewer or a UI prototype. Designs are structured do
 - **Export.** PNG, JPEG and WebP (any scale or DPI, transparent backgrounds, compressed palette PNGs, or a maximum file size), SVG with embedded fonts, PDF and print PDF, any set of pages (hidden pages skipped), multi-page ZIPs, and the editable `.opencanvas` format.
 - **Tested like a product.** 439 unit, property and golden-image tests; 96 Playwright tests (including a plugin that tries to escape its sandbox) including visual regression, WCAG 2.1 AA scans, keyboard-only use and frame-rate budgets.
 
-## Quick start
+## Install
+
+One line, nothing to install first (no Node.js, pnpm or Git). It downloads everything it needs, runs OpenCanvas in the background on **port 4790** (3000 stays free for your own projects), starts it with the computer and opens it in your browser.
+
+**macOS and Linux** (Terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.sh | bash
+```
+
+**Windows** (PowerShell, no administrator rights needed):
+
+```powershell
+irm https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.ps1 | iex
+```
+
+Then use the `opencanvas` command:
+
+| Command | What it does |
+| --- | --- |
+| `opencanvas stop` | Stops it; it no longer starts with the computer |
+| `opencanvas start` | Starts it again, and with the computer from now on |
+| `opencanvas status` | Is it running, and where |
+| `opencanvas open` | Opens it in the browser |
+| `opencanvas update` | Installs the latest version (keeps the port, so your designs stay) |
+| `opencanvas uninstall` | Removes it (designs stay in the browser) |
+
+Options: `OPENCANVAS_PORT=5000` picks another port on the first install, `OPENCANVAS_VERSION=v0.1.0` a specific release. The installers are tested on fresh macOS, Windows, Ubuntu, Debian, Fedora and Alpine machines by the [install test](.github/workflows/install-test.yml) workflow. New versions are published by the [Release](.github/workflows/release.yml) workflow (Actions → Release → Run workflow).
+
+## Develop
 
 Requirements: Node.js 22+ and pnpm 10 (`corepack enable`).
 
@@ -105,7 +134,42 @@ Contributions are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md) and 
 - **خطوطك وأيقوناتك وإضافاتك:** ارفع خطوطك وأيقونات SVG، وثبّت إضافات تعمل في بيئة معزولة بالصلاحيات التي توافق عليها. لتطوير إضافة اقرأ [دليل تطوير الإضافات](docs/plugins.ar.md).
 - **اختبارات صارمة:** أكثر من 430 اختبارًا للوحدات، و96 اختبارًا شاملًا في المتصفح تغطي المقارنة البصرية وإمكانية الوصول والأداء.
 
-### التشغيل
+### التثبيت بسطر واحد
+
+لا تحتاج إلى تثبيت أي شيء مسبقًا، فلا Node.js ولا pnpm ولا Git. ينزّل المثبّت كل ما يحتاج إليه، ويشغّل OpenCanvas في الخلفية على **المنفذ 4790** (ويبقى المنفذ 3000 متاحًا لمشاريعك)، ويجعله يعمل تلقائيًا مع تشغيل الجهاز، ثم يفتحه في متصفحك.
+
+على **macOS وLinux** افتح الطرفية (Terminal) والصق:
+
+</div>
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.sh | bash
+```
+
+<div dir="rtl" lang="ar">
+
+وعلى **Windows** افتح PowerShell والصق (دون صلاحيات المسؤول):
+
+</div>
+
+```powershell
+irm https://raw.githubusercontent.com/Devehab/OpenCanvas/HEAD/install.ps1 | iex
+```
+
+<div dir="rtl" lang="ar">
+
+ثم تحكّم به بالأمر `opencanvas`:
+
+| الأمر | ما يفعله |
+| --- | --- |
+| `opencanvas stop` | يوقفه، فلا يعمل مع تشغيل الجهاز بعد ذلك |
+| `opencanvas start` | يشغّله من جديد، ويعمل مع تشغيل الجهاز من الآن |
+| `opencanvas status` | هل يعمل؟ وعلى أي عنوان؟ |
+| `opencanvas open` | يفتحه في المتصفح |
+| `opencanvas update` | يثبّت أحدث إصدار ويحافظ على المنفذ، فتبقى تصاميمك |
+| `opencanvas uninstall` | يزيله من الجهاز، وتبقى التصاميم في المتصفح |
+
+### للمطوّرين
 
 </div>
 
