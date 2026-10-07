@@ -164,8 +164,12 @@ function Invoke-Cloud($sub) {
     $script:Quiet = $false
     if (-not $started) { Say 'OpenCanvas could not start. See: opencanvas logs' Red; return $false }
   }
-  & $Config.node (Join-Path $App 'bin\cloud-setup.mjs') $sub --home $OcHome --port $Port
-  return $LASTEXITCODE -eq 0
+  # Started on its own (not `& node`), so its questions reach the console instead
+  # of being captured as this function's return value.
+  $script = Join-Path $App 'bin\cloud-setup.mjs'
+  $p = Start-Process -FilePath $Config.node -NoNewWindow -Wait -PassThru `
+    -ArgumentList "`"$script`" $sub --home `"$OcHome`" --port $Port"
+  return $p.ExitCode -eq 0
 }
 
 function Show-Help {
