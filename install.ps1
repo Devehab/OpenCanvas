@@ -109,7 +109,12 @@ function Install-OpenCanvas {
         else { "https://github.com/$repo/releases/download/$version/opencanvas.tar.gz" }
       }
       try { Invoke-WebRequest -UseBasicParsing $source -OutFile $bundle }
-      catch { throw "Could not download $source. Is there a published release? See https://github.com/$repo/releases" }
+      catch {
+        $none = $false
+        try { $none = ((Invoke-WebRequest -UseBasicParsing "https://api.github.com/repos/$repo/releases?per_page=1").Content -replace '\s', '') -eq '[]' } catch { }
+        if ($none) { throw "No version of OpenCanvas has been published yet, so there is nothing to download. Try again in a few minutes: https://github.com/$repo/releases" }
+        throw "Could not download $source. Check your internet connection and try again. Releases: https://github.com/$repo/releases"
+      }
       try { $sum = (((Invoke-WebRequest -UseBasicParsing "$source.sha256").Content) -split '\s+')[0] } catch { $sum = '' }
     }
     if ($sum -and ((Get-Sha256 $bundle) -ne $sum.ToLower())) { throw 'The OpenCanvas download is damaged (checksum mismatch). Please try again.' }

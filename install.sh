@@ -126,9 +126,16 @@ download_app() {
         source="https://github.com/$REPO/releases/download/$VERSION/opencanvas.tar.gz"
       fi
     fi
-    curl -fL --progress-bar -o "$file" "$source" ||
+    if ! curl -fL --progress-bar -o "$file" "$source"; then
+      if [ -z "${OPENCANVAS_BUNDLE:-}" ] &&
+        [ "$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" 2>/dev/null | tr -d ' \n\r\t')" = "[]" ]; then
+        die "no version of OpenCanvas has been published yet, so there is nothing to download.
+       The maintainer publishes one from GitHub: Actions → Release → Run workflow.
+       Try again in a few minutes: https://github.com/$REPO/releases"
+      fi
       die "could not download $source
-       Is there a published release? See https://github.com/$REPO/releases"
+       Check your internet connection and try again. Releases: https://github.com/$REPO/releases"
+    fi
     sums="$(curl -fsSL "$source.sha256" 2>/dev/null | cut -d' ' -f1 || true)"
   fi
   if [ -n "$sums" ]; then check_sha256 "$file" "$sums"; fi
