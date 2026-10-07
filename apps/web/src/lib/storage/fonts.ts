@@ -4,7 +4,7 @@
 import { createRandomIdGenerator } from '@opencanvas/core';
 import { broadcast, TAB_ID } from '../channel';
 import { FONT_MIME, guessFontInfo, MAX_FONT_BYTES, sniffFontFormat } from '../font-files';
-import { type CustomFontRecord, getDB } from './db';
+import { type CustomFontRecord, getDB, updateRecordWithFiles } from './db';
 
 export type { CustomFontRecord };
 
@@ -69,16 +69,13 @@ export async function updateCustomFont(
   id: string,
   patch: Partial<Pick<CustomFontRecord, 'family' | 'weight' | 'style'>>,
 ): Promise<void> {
-  const db = await getDB();
-  const font = await db.get('fonts', id);
-  if (!font) return;
   const family = patch.family?.trim().slice(0, 64);
-  await db.put('fonts', {
+  await updateRecordWithFiles('fonts', id, (font) => ({
     ...font,
     ...patch,
     family: family || font.family,
     weight: Math.min(900, Math.max(100, Math.round((patch.weight ?? font.weight) / 100) * 100)),
-  });
+  }));
   fontsChanged();
 }
 

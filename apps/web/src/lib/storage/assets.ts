@@ -1,5 +1,5 @@
 import { type AssetRecord, createRandomIdGenerator } from '@opencanvas/core';
-import { type AssetBlobRecord, getDB, withDB } from './db';
+import { type AssetBlobRecord, getDB, updateRecordWithFiles, withDB } from './db';
 
 const newId = createRandomIdGenerator();
 
@@ -25,7 +25,8 @@ export async function putAssetBlob(input: {
     } else if (existing.removedAt) {
       // Content-addressed: identical bytes are stored once. Uploading a removed
       // image again brings it back to the top of the library.
-      await tx.store.put({ ...existing, removedAt: null, createdAt: Date.now() });
+      // The new upload's bytes (identical), not the stored file read back.
+      await tx.store.put({ ...existing, blob: input.blob, removedAt: null, createdAt: Date.now() });
     }
     await tx.done;
   });
@@ -53,38 +54,21 @@ export async function updateUpload(
   hash: string,
   patch: { name?: string; folderId?: string | null },
 ): Promise<void> {
-  return withDB(async (db) => {
-    const tx = db.transaction('assets', 'readwrite');
-    const current = await tx.store.get(hash);
-    if (current) {
-      await tx.store.put({
-        ...current,
-        ...(patch.name !== undefined ? { name: patch.name.trim().slice(0, 200) || current.name } : {}),
-        ...(patch.folderId !== undefined ? { folderId: patch.folderId } : {}),
-      });
-    }
-    await tx.done;
-  });
+  await updateRecordWithFiles('assets', hash, (current) => ({
+    ...current,
+    ...(patch.name !== undefined ? { name: patch.name.trim().slice(0, 200) || current.name } : {}),
+    ...(patch.folderId !== undefined ? { folderId: patch.folderId } : {}),
+  }));
 }
 
 /** Removes an upload from the library; designs using it keep working. */
 export async function removeUpload(hash: string): Promise<void> {
-  return withDB(async (db) => {
-    const tx = db.transaction('assets', 'readwrite');
-    const current = await tx.store.get(hash);
-    if (current) await tx.store.put({ ...current, removedAt: Date.now() });
-    await tx.done;
-  });
+  await updateRecordWithFiles('assets', hash, (current) => ({ ...current, removedAt: Date.now() }));
 }
 
 /** Brings a removed upload back (undo). */
 export async function restoreUpload(hash: string): Promise<void> {
-  return withDB(async (db) => {
-    const tx = db.transaction('assets', 'readwrite');
-    const current = await tx.store.get(hash);
-    if (current) await tx.store.put({ ...current, removedAt: null });
-    await tx.done;
-  });
+  await updateRecordWithFiles('assets', hash, (current) => ({ ...current, removedAt: null }));
 }
 
 /** Asset record for the document (metadata only; bytes stay in IndexedDB by hash). */

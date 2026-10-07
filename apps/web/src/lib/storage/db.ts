@@ -259,3 +259,64 @@ export async function withDB<T>(operation: (db: IDBPDatabase<OpenCanvasDB>) => P
     return operation(await getDB());
   }
 }
+
+/** In-memory copies of every file (Blob) in a value read from the database. */
+async function copyFiles<T>(value: T): Promise<T> {
+  const walk = async (v: unknown): Promise<unknown> => {
+    if (typeof Blob !== 'undefined' && v instanceof Blob) {
+      return new Blob([await v.arrayBuffer()], { type: v.type });
+    }
+    if (Array.isArray(v)) return Promise.all(v.map(walk));
+    if (v && typeof v === 'object') {
+      const out: Record<string, unknown> = {};
+      for (const [k, x] of Object.entries(v)) out[k] = await walk(x);
+      return out;
+    }
+    return v;
+  };
+  return (await walk(value)) as T;
+}
+
+/** `target` with each file replaced by the copy at the same place in `copies`. */
+function withFileCopies<T>(target: T, copies: unknown): T {
+  const walk = (t: unknown, c: unknown): unknown => {
+    if (typeof Blob !== 'undefined' && t instanceof Blob)
+      return c instanceof Blob && c.size === t.size && c.type === t.type ? c : t;
+    if (Array.isArray(t)) return t.map((x, i) => walk(x, Array.isArray(c) ? c[i] : undefined));
+    if (t && typeof t === 'object') {
+      const out: Record<string, unknown> = {};
+      const src = (c && typeof c === 'object' ? c : {}) as Record<string, unknown>;
+      for (const [k, x] of Object.entries(t)) out[k] = walk(x, src[k]);
+      return out;
+    }
+    return t;
+  };
+  return walk(target, copies) as T;
+}
+
+type StoresWithFiles = 'assets' | 'fonts' | 'plugins';
+
+/**
+ * Changes a record that holds files (an upload, a font, a plugin) without
+ * storing back the files read from the database: WebKit can fail to store a
+ * Blob that came out of IndexedDB ("Error preparing Blob/File data to be
+ * stored in object store"). The files are copied into memory first (they do
+ * not change: uploads are content-addressed), then the latest record is
+ * changed and stored with those copies. `change` returns null to leave it.
+ */
+export async function updateRecordWithFiles<S extends StoresWithFiles>(
+  store: S,
+  key: string,
+  change: (current: OpenCanvasDB[S]['value']) => OpenCanvasDB[S]['value'] | null,
+): Promise<void> {
+  await withDB(async (db) => {
+    const before = await db.get(store, key);
+    if (!before) return;
+    const copies = await copyFiles(before);
+    const tx = db.transaction(store, 'readwrite');
+    const latest = await tx.objectStore(store).get(key);
+    const next = latest ? change(latest) : null;
+    if (next) await tx.objectStore(store).put(withFileCopies(next, copies));
+    await tx.done;
+  });
+}

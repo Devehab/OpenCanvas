@@ -10,7 +10,7 @@ import { FONT_MIME, sniffFontFormat } from '../font-files';
 import { compareVersions, type PluginManifest } from '../plugins/manifest';
 import { iconPackFiles, type PluginPackage, readPluginPackage } from '../plugins/package';
 import { svgToIcon } from '../svg-icon';
-import { type CustomIcon, getDB, type PluginRecord } from './db';
+import { type CustomIcon, getDB, type PluginRecord, updateRecordWithFiles } from './db';
 import { iconsChanged } from './icon-packs';
 
 export interface InstalledPlugin extends Omit<PluginRecord, 'manifest'> {
@@ -135,10 +135,7 @@ async function removeContributions(pluginId: string): Promise<void> {
 }
 
 export async function setPluginEnabled(id: string, enabled: boolean): Promise<void> {
-  const db = await getDB();
-  const plugin = await db.get('plugins', id);
-  if (!plugin) return;
-  await db.put('plugins', { ...plugin, enabled, updatedAt: Date.now() });
+  await updateRecordWithFiles('plugins', id, (plugin) => ({ ...plugin, enabled, updatedAt: Date.now() }));
   pluginsChanged();
   iconsChanged();
   fontsChanged();

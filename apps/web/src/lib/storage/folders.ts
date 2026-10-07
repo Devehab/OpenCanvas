@@ -1,6 +1,6 @@
 /** Projects: folders that organize designs and uploads. */
 import { createRandomIdGenerator } from '@opencanvas/core';
-import { type FolderRecord, getDB } from './db';
+import { type FolderRecord, getDB, updateRecordWithFiles } from './db';
 
 export type { FolderRecord };
 
@@ -86,14 +86,19 @@ export async function updateFolder(
 /** Deletes a folder. Its designs and uploads are kept and move out of it. */
 export async function deleteFolder(id: string): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(['folders', 'designs', 'assets'], 'readwrite');
+  const tx = db.transaction(['folders', 'designs'], 'readwrite');
   await tx.objectStore('folders').delete(id);
-  for (const name of ['designs', 'assets'] as const) {
-    let cursor = await tx.objectStore(name).openCursor();
-    while (cursor) {
-      if (cursor.value.folderId === id) await cursor.update({ ...cursor.value, folderId: null });
-      cursor = await cursor.continue();
-    }
+  let cursor = await tx.objectStore('designs').openCursor();
+  while (cursor) {
+    if (cursor.value.folderId === id) await cursor.update({ ...cursor.value, folderId: null });
+    cursor = await cursor.continue();
   }
   await tx.done;
+  // Uploads hold their image: changed one by one without storing the read-back file.
+  for (const asset of await db.getAll('assets')) {
+    if (asset.folderId !== id) continue;
+    await updateRecordWithFiles('assets', asset.hash, (current) =>
+      current.folderId === id ? { ...current, folderId: null } : null,
+    );
+  }
 }
