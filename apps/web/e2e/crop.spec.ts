@@ -89,3 +89,63 @@ test('leaving crop mode removes the faded preview outside the box', async ({ pag
   await waitForCanvasIdle(page);
   expect(await sceneColor()).toBe(255 * 3);
 });
+
+test('resizing a photo frame keeps the photo covering it, like Canva', async ({ page }) => {
+  await createDesign(page);
+  await openPanel(page, 'uploads');
+  await page
+    .getByTestId('upload-input')
+    .setInputFiles([{ name: 'wide.png', mimeType: 'image/png', buffer: samplePng(800, 400) }]);
+  await expect.poll(async () => (await getNodes(page)).length).toBe(1);
+  // A 300×300 frame (placed in the middle of the page) holding the 2:1 photo (the middle half shows).
+  await page.evaluate(() => {
+    const { editor } = window.__opencanvas!;
+    const [imageId] = editor.selectedIds;
+    const [frameId] = editor.insertNodes([{ type: 'frame', width: 300, height: 300, shape: 'rect' }]);
+    editor.execute('frame.fill', { frameId, imageId });
+    editor.select([frameId!]);
+  });
+  await waitForCanvasIdle(page);
+  type Box = { x: number; y: number; width: number; height: number };
+  const state = async () => {
+    const [frame, photo] = (await getNodes(page)) as (Box & { type: string; crop: Box })[];
+    return { frame: frame!, photo: photo! };
+  };
+  // The photo always fills the frame, undistorted (crop proportions = frame proportions).
+  const expectCovering = async () => {
+    const { frame, photo } = await state();
+    expect(photo).toMatchObject({ x: 0, y: 0, width: frame.width, height: frame.height });
+    const { crop } = photo;
+    expect(crop.x).toBeGreaterThanOrEqual(-1e-6);
+    expect(crop.y).toBeGreaterThanOrEqual(-1e-6);
+    expect(crop.x + crop.width).toBeLessThanOrEqual(1 + 1e-6);
+    expect(crop.y + crop.height).toBeLessThanOrEqual(1 + 1e-6);
+    expect((crop.width * 800) / (crop.height * 400)).toBeCloseTo(frame.width / frame.height, 2);
+    return { frame, photo };
+  };
+
+  // Wider from the right edge: the hidden sides of the photo come into view.
+  const { x: left, y: top } = (await state()).frame;
+  const right = await toScreen(page, { x: left + 300, y: top + 150 });
+  const zoom = await page.evaluate(() => window.__opencanvas!.editor.state.get().camera.zoom);
+  await dragMouse(page, right, { x: right.x + 150 * zoom, y: right.y });
+  let { frame, photo } = await expectCovering();
+  expect(frame.width).toBeCloseTo(450, 0);
+  expect(frame.height).toBe(300);
+  expect(photo.crop.height).toBeCloseTo(1, 5);
+  expect(photo.crop.x).toBeCloseTo((1 - photo.crop.width) / 2, 2);
+
+  // Taller from the bottom edge: no spare height, so the photo zooms in to cover.
+  const bottom = await toScreen(page, { x: left + frame.width / 2, y: top + 300 });
+  await dragMouse(page, bottom, { x: bottom.x, y: bottom.y + 200 * zoom });
+  ({ frame, photo } = await expectCovering());
+  expect(frame.height).toBeCloseTo(500, 0);
+
+  // From a corner: frame and photo scale together, the same part stays visible.
+  const before = photo.crop;
+  const corner = await toScreen(page, { x: left + frame.width, y: top + frame.height });
+  await dragMouse(page, corner, { x: corner.x - 100 * zoom, y: corner.y - 100 * zoom });
+  ({ frame, photo } = await expectCovering());
+  expect(frame.width).toBeLessThan(450);
+  for (const k of ['x', 'y', 'width', 'height'] as const) expect(photo.crop[k]).toBeCloseTo(before[k], 3);
+});

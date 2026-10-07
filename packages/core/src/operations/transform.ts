@@ -21,6 +21,7 @@ import { rotateAround, type Vec } from '../math/vec';
 import { mapTextStyles } from '../model/text-content';
 import type { Id, NodePatch, NodeRecord, TextNode } from '../model/types';
 import type { DocumentStore, Transaction } from '../store/store';
+import { refitFrameContent } from './frames';
 import { editableIds, topLevelIds, updateNodes } from './nodes';
 
 const clean = (n: number) => (Object.is(n, -0) ? 0 : n);
@@ -148,6 +149,10 @@ export function scaledProps(node: NodeRecord, s: number): NodePatch {
 }
 
 /** Scales the content of a container (children positions and sizes) by `s` in its local space. */
+export function scaleContent(tx: Transaction, containerId: Id, s: number): void {
+  scaleChildren(tx, containerId, s);
+}
+
 function scaleChildren(tx: Transaction, containerId: Id, s: number): void {
   for (const child of tx.store.getChildren(containerId)) {
     tx.update<NodeRecord>(child.id, {
@@ -373,11 +378,12 @@ export function setNodeSize(
     (patch as Partial<TextNode>).sizing = 'auto-height';
   }
   updateNodes(tx, [id], patch);
-  if (node.type === 'group' || node.type === 'frame') {
+  if (node.type === 'frame') {
+    // The photo follows the frame (anchored at the top-left corner).
+    refitFrameContent(tx, node, { x: 0, y: 0, width, height });
+  } else if (node.type === 'group') {
     // Non-uniform group resize: scale children's geometry per axis (unrotated children stay exact).
-    const sx = width / node.width;
-    const sy = height / node.height;
-    if (node.type === 'group') scaleChildrenNonUniform(tx, id, sx, sy);
+    scaleChildrenNonUniform(tx, id, width / node.width, height / node.height);
   }
 }
 

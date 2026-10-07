@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { createAssetRecord, type FrameNode, getFrameAtPoint, History, type ImageNode } from '../src';
+import {
+  createAssetRecord,
+  type FrameNode,
+  getFrameAtPoint,
+  History,
+  type ImageNode,
+  refitFrameContent,
+} from '../src';
 import { createTestDoc, pageCorners } from './helpers';
 
 const HASH = `sha256-${'a'.repeat(64)}`;
@@ -203,5 +210,82 @@ describe('nested creation', () => {
     expect(() =>
       t.add({ type: 'shape', shape: 'rect', children: [{ type: 'shape', shape: 'rect' }] } as never),
     ).toThrow();
+  });
+});
+
+describe('resizing a photo frame (Canva behaviour)', () => {
+  const filled = () => {
+    const t = setup();
+    // 400×200 photo in a 200×200 frame at (100, 100): the middle half shows.
+    t.run('frame.fill', { frameId: t.frame.id, assetId: 'asset_wide' });
+    return t;
+  };
+  const photo = (t: ReturnType<typeof setup>) => imagesIn(t, t.frame.id)[0]!;
+  const r = (n: number) => Math.round(n * 1e6) / 1e6;
+  const cropOf = (t: ReturnType<typeof setup>) => {
+    const c = photo(t).crop;
+    return { x: r(c.x), y: r(c.y), width: r(c.width), height: r(c.height) };
+  };
+
+  it('scales the photo with the frame when the proportions stay', () => {
+    const t = filled();
+    t.run('node.set-size', { id: t.frame.id, width: 300, height: 300 });
+    expect(photo(t)).toMatchObject({ x: 0, y: 0, width: 300, height: 300 });
+    expect(cropOf(t)).toEqual({ x: 0.25, y: 0, width: 0.5, height: 1 });
+  });
+
+  it('wider: uses the spare part of the photo, without zooming', () => {
+    const t = filled();
+    t.run('node.set-size', { id: t.frame.id, width: 300, height: 200 });
+    expect(photo(t)).toMatchObject({ x: 0, y: 0, width: 300, height: 200 });
+    // Same scale (the photo is still 400 px wide), showing its middle 3/4.
+    expect(cropOf(t)).toEqual({ x: 0.125, y: 0, width: 0.75, height: 1 });
+  });
+
+  it('wider than the photo: zooms in just enough to cover, centered', () => {
+    const t = filled();
+    t.run('node.set-size', { id: t.frame.id, width: 500, height: 200 });
+    expect(photo(t)).toMatchObject({ x: 0, y: 0, width: 500, height: 200 });
+    // Scaled 1.25× to 500×250 (full width), cut equally top and bottom.
+    expect(cropOf(t)).toEqual({ x: 0, y: 0.1, width: 1, height: 0.8 });
+  });
+
+  it('taller: never leaves an empty part of the frame', () => {
+    const t = filled();
+    t.run('node.set-size', { id: t.frame.id, width: 200, height: 260 });
+    const c = cropOf(t);
+    expect(c.height).toBe(1);
+    // The visible part has the frame's proportions: no stretching.
+    expect((c.width * 400) / (c.height * 200)).toBeCloseTo(200 / 260, 4);
+    // Centered: cut equally left and right.
+    expect(c.x).toBeCloseTo((1 - c.width) / 2, 4);
+  });
+
+  it('dragging the left edge keeps the photo centered in the frame', () => {
+    const t = filled();
+    const frame = t.store.getNode(t.frame.id) as FrameNode;
+    t.store.transact((tx) => {
+      // The left edge moves 50 px to the right.
+      tx.update<FrameNode>(frame.id, { x: 150, width: 150 });
+      refitFrameContent(tx, frame, { x: 50, y: 0, width: 150, height: 200 });
+    });
+    expect(photo(t)).toMatchObject({ x: 0, y: 0, width: 150, height: 200 });
+    // The middle of the photo stays in the middle: 75 px shown on each side of it.
+    expect(cropOf(t)).toEqual({ x: 0.3125, y: 0, width: 0.375, height: 1 });
+  });
+
+  it('keeps a zoom chosen in crop mode when the frame gets wider', () => {
+    const t = filled();
+    const image = photo(t);
+    // Zoomed in: the photo is shown at 2× (crop of a quarter of its width).
+    t.run('node.update', {
+      ids: [image.id],
+      patch: { crop: { x: 0.375, y: 0.25, width: 0.25, height: 0.5 } },
+    });
+    t.run('node.set-size', { id: t.frame.id, width: 300, height: 200 });
+    const c = cropOf(t);
+    // Still 2×: 300 px of frame show 300/800 of the photo's width.
+    expect(c.width).toBe(r(300 / 800));
+    expect(c.height).toBe(0.5);
   });
 });

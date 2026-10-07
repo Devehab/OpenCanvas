@@ -11,6 +11,7 @@ import {
   boxNormalize,
   collectSnapTargets,
   duplicateNodes,
+  type FrameNode,
   getFrameAtPoint,
   getNodeAtPoint,
   getNodesInBox,
@@ -27,6 +28,7 @@ import {
   placeImageInFrame,
   type ResizeHandle,
   radToDeg,
+  refitFrameContent,
   resizeImageCrop,
   resizeLocalBox,
   rotateNodesFrom,
@@ -474,10 +476,10 @@ export class SelectTool implements Tool {
       const m = getPageTransform(editor.store, single);
       const local = applyToVector(invert(linearOf(m)), delta);
       const corner = isCornerHandle(s.handle);
-      // Images and text always scale proportionally from corners (no distortion);
-      // icons/paths do by default (Shift frees them); shapes are free (Shift locks).
+      // Images, photo frames and text always scale proportionally from corners (no
+      // distortion); icons/paths do by default (Shift frees them); shapes are free (Shift locks).
       const keepAspect =
-        corner && (single.type === 'image' || single.type === 'text')
+        corner && (single.type === 'image' || single.type === 'text' || single.type === 'frame')
           ? true
           : corner && single.type === 'path'
             ? !p.shiftKey
@@ -541,6 +543,10 @@ export class SelectTool implements Tool {
               ? 'auto-height'
               : text.sizing;
           tx.update<TextNode>(single.id, { ...boxFromLocal(single, box), sizing });
+        } else if (single.type === 'frame') {
+          // The photo inside follows: scaled from corners, revealed or cropped from sides.
+          tx.update<NodeRecord>(single.id, boxFromLocal(single, box));
+          refitFrameContent(tx, single as FrameNode, box);
         } else {
           tx.update<NodeRecord>(single.id, boxFromLocal(single, box));
         }
