@@ -1,5 +1,5 @@
 import { type AssetRecord, createRandomIdGenerator } from '@opencanvas/core';
-import { type AssetBlobRecord, getDB } from './db';
+import { type AssetBlobRecord, getDB, withDB } from './db';
 
 const newId = createRandomIdGenerator();
 
@@ -11,23 +11,24 @@ export async function putAssetBlob(input: {
   height: number;
   name: string;
 }): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction('assets', 'readwrite');
-  const existing = await tx.store.get(input.hash);
-  if (!existing) {
-    await tx.store.put({
-      ...input,
-      size: input.blob.size,
-      createdAt: Date.now(),
-      folderId: null,
-      removedAt: null,
-    });
-  } else if (existing.removedAt) {
-    // Content-addressed: identical bytes are stored once. Uploading a removed
-    // image again brings it back to the top of the library.
-    await tx.store.put({ ...existing, removedAt: null, createdAt: Date.now() });
-  }
-  await tx.done;
+  return withDB(async (db) => {
+    const tx = db.transaction('assets', 'readwrite');
+    const existing = await tx.store.get(input.hash);
+    if (!existing) {
+      await tx.store.put({
+        ...input,
+        size: input.blob.size,
+        createdAt: Date.now(),
+        folderId: null,
+        removedAt: null,
+      });
+    } else if (existing.removedAt) {
+      // Content-addressed: identical bytes are stored once. Uploading a removed
+      // image again brings it back to the top of the library.
+      await tx.store.put({ ...existing, removedAt: null, createdAt: Date.now() });
+    }
+    await tx.done;
+  });
 }
 
 export async function getAssetBlob(hash: string): Promise<Blob | null> {
@@ -52,35 +53,38 @@ export async function updateUpload(
   hash: string,
   patch: { name?: string; folderId?: string | null },
 ): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction('assets', 'readwrite');
-  const current = await tx.store.get(hash);
-  if (current) {
-    await tx.store.put({
-      ...current,
-      ...(patch.name !== undefined ? { name: patch.name.trim().slice(0, 200) || current.name } : {}),
-      ...(patch.folderId !== undefined ? { folderId: patch.folderId } : {}),
-    });
-  }
-  await tx.done;
+  return withDB(async (db) => {
+    const tx = db.transaction('assets', 'readwrite');
+    const current = await tx.store.get(hash);
+    if (current) {
+      await tx.store.put({
+        ...current,
+        ...(patch.name !== undefined ? { name: patch.name.trim().slice(0, 200) || current.name } : {}),
+        ...(patch.folderId !== undefined ? { folderId: patch.folderId } : {}),
+      });
+    }
+    await tx.done;
+  });
 }
 
 /** Removes an upload from the library; designs using it keep working. */
 export async function removeUpload(hash: string): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction('assets', 'readwrite');
-  const current = await tx.store.get(hash);
-  if (current) await tx.store.put({ ...current, removedAt: Date.now() });
-  await tx.done;
+  return withDB(async (db) => {
+    const tx = db.transaction('assets', 'readwrite');
+    const current = await tx.store.get(hash);
+    if (current) await tx.store.put({ ...current, removedAt: Date.now() });
+    await tx.done;
+  });
 }
 
 /** Brings a removed upload back (undo). */
 export async function restoreUpload(hash: string): Promise<void> {
-  const db = await getDB();
-  const tx = db.transaction('assets', 'readwrite');
-  const current = await tx.store.get(hash);
-  if (current) await tx.store.put({ ...current, removedAt: null });
-  await tx.done;
+  return withDB(async (db) => {
+    const tx = db.transaction('assets', 'readwrite');
+    const current = await tx.store.get(hash);
+    if (current) await tx.store.put({ ...current, removedAt: null });
+    await tx.done;
+  });
 }
 
 /** Asset record for the document (metadata only; bytes stay in IndexedDB by hash). */

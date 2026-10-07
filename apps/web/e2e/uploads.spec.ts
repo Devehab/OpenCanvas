@@ -189,7 +189,12 @@ test.describe('uploads', () => {
       const toasts = await page.locator('[role="status"], [role="alert"]').allInnerTexts();
       throw new Error(`The delete dialog stayed open. ${write}. ${[...problems, ...toasts].join(' | ')}`);
     });
-    await expect(page.getByTestId('upload-item')).toHaveCount(0);
+    await expect(page.getByTestId('upload-item'))
+      .toHaveCount(0)
+      .catch(async (error: Error) => {
+        const toasts = await page.locator('[role="status"], [role="alert"]').allInnerTexts();
+        throw new Error(`${error.message}\nWhat happened: ${[...problems, ...toasts].join(' | ')}`);
+      });
     expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
   });
 

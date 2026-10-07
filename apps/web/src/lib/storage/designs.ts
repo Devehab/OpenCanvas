@@ -5,7 +5,7 @@ import {
   type DocumentSnapshot,
   parseDocument,
 } from '@opencanvas/core';
-import { type DesignRecord, getDB } from './db';
+import { type DesignRecord, getDB, withDB } from './db';
 
 export type { DesignRecord };
 
@@ -87,7 +87,7 @@ export async function createDesign(options: {
     starred: false,
     ...(options.kind ? { kind: options.kind } : {}),
   };
-  await (await getDB()).put('designs', record);
+  await withDB((db) => db.put('designs', record));
   return record;
 }
 
@@ -104,27 +104,28 @@ export async function saveDesign(
   snapshot: DocumentSnapshot,
   baseRevision: number,
 ): Promise<SaveResult> {
-  const db = await getDB();
-  const tx = db.transaction('designs', 'readwrite');
-  const current = await tx.store.get(id);
-  if (!current) {
+  return withDB(async (db) => {
+    const tx = db.transaction('designs', 'readwrite');
+    const current = await tx.store.get(id);
+    if (!current) {
+      await tx.done;
+      return { ok: false, reason: 'missing' } as const;
+    }
+    if (current.revision !== baseRevision) {
+      await tx.done;
+      return { ok: false, reason: 'conflict', revision: current.revision } as const;
+    }
+    const revision = current.revision + 1;
+    await tx.store.put({
+      ...current,
+      ...metaFromSnapshot(snapshot),
+      snapshot,
+      revision,
+      updatedAt: Date.now(),
+    });
     await tx.done;
-    return { ok: false, reason: 'missing' };
-  }
-  if (current.revision !== baseRevision) {
-    await tx.done;
-    return { ok: false, reason: 'conflict', revision: current.revision };
-  }
-  const revision = current.revision + 1;
-  await tx.store.put({
-    ...current,
-    ...metaFromSnapshot(snapshot),
-    snapshot,
-    revision,
-    updatedAt: Date.now(),
+    return { ok: true, revision } as const;
   });
-  await tx.done;
-  return { ok: true, revision };
 }
 
 export async function renameDesign(id: string, title: string): Promise<void> {

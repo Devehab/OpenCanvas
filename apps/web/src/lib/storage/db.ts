@@ -218,6 +218,44 @@ export function getDB(): Promise<IDBPDatabase<OpenCanvasDB>> {
       void dbPromise?.then((db) => db.close());
       dbPromise = null;
     },
+    terminated() {
+      // The browser dropped the connection (Safari does under memory pressure or
+      // after time in the background: "Connection to Indexed Database server
+      // lost"). Open a new one next time instead of failing every save from now on.
+      console.warn('IndexedDB connection lost; reopening it');
+      dbPromise = null;
+    },
+  });
+  // A failed open is not kept: the next call tries again.
+  dbPromise.catch(() => {
+    dbPromise = null;
   });
   return dbPromise;
+}
+
+/** Errors that mean the connection is gone, not that the operation was wrong. */
+function isConnectionLost(error: unknown): boolean {
+  if (!(error instanceof Error) && !(error instanceof DOMException)) return false;
+  const e = error as { name?: string; message?: string };
+  return (
+    e.name === 'InvalidStateError' ||
+    (e.name === 'UnknownError' && /connection|server/i.test(e.message ?? ''))
+  );
+}
+
+/**
+ * Runs a storage operation; if it failed because the browser dropped the
+ * database connection, reopens the database and runs it once more. Used for
+ * writes that must not get lost (saving designs, the uploads library).
+ */
+export async function withDB<T>(operation: (db: IDBPDatabase<OpenCanvasDB>) => Promise<T>): Promise<T> {
+  const db = await getDB();
+  try {
+    return await operation(db);
+  } catch (error) {
+    if (!isConnectionLost(error)) throw error;
+    console.warn('IndexedDB operation failed on a lost connection; retrying', error);
+    if (dbPromise && (await dbPromise.catch(() => null)) === db) dbPromise = null;
+    return operation(await getDB());
+  }
 }
