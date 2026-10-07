@@ -150,11 +150,17 @@ test.describe('uploads', () => {
       'Sunset',
     );
 
-    // Delete: gone from the library, the design keeps its image.
-    await page.getByTestId('upload-item').first().hover();
-    await page.getByTestId('upload-menu').click();
-    await page.getByRole('menuitem', { name: 'Delete' }).click();
-    await page.getByTestId('confirm-delete-upload').click();
+    // Delete: gone from the library, the design keeps its image. From the keyboard
+    // too, for the same reason as above (the mouse may still be dragging in WebKit).
+    await page.getByTestId('upload-menu').first().focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('menuitem', { name: 'Delete' }).focus();
+    await page.keyboard.press('Enter');
+    const confirm = page.getByTestId('confirm-delete-upload');
+    await expect(confirm).toBeVisible();
+    await confirm.focus();
+    await page.keyboard.press('Enter');
+    await expect(confirm).toBeHidden();
     await expect(page.getByTestId('upload-item')).toHaveCount(0);
     expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
   });
