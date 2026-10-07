@@ -138,6 +138,16 @@ export function UploadsPanel() {
   };
 
   const changed = () => broadcast({ type: 'uploads-changed', tabId: TAB_ID }, { self: true });
+  /** A change to the library failed (storage refused it): say so instead of doing nothing. */
+  const failed = (error: unknown) => {
+    console.error('Uploads library change failed', error);
+    toast(
+      t('editor.uploads.changeFailed', {
+        reason: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+      }),
+      'error',
+    );
+  };
 
   const visible = useMemo(() => {
     const q = query.trim().toLocaleLowerCase();
@@ -314,7 +324,11 @@ export function UploadsPanel() {
         onClose={() => setDetails(null)}
         onRename={async (name) => {
           if (!details) return;
-          await updateUpload(details.hash, { name });
+          try {
+            await updateUpload(details.hash, { name });
+          } catch (error) {
+            failed(error);
+          }
           changed();
         }}
       />
@@ -331,10 +345,14 @@ export function UploadsPanel() {
               data-testid="confirm-delete-upload"
               onClick={async () => {
                 if (!confirmDelete) return;
-                await removeUpload(confirmDelete.hash);
+                try {
+                  await removeUpload(confirmDelete.hash);
+                  toast(t('editor.uploads.deleted'), 'success');
+                } catch (error) {
+                  failed(error);
+                }
                 setConfirmDelete(null);
                 changed();
-                toast(t('editor.uploads.deleted'), 'success');
               }}
             >
               {t('common.delete')}

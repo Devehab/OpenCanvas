@@ -165,9 +165,30 @@ test.describe('uploads', () => {
     await page.keyboard.press('Enter');
     const confirm = page.getByTestId('confirm-delete-upload');
     await expect(confirm).toBeVisible();
+    const problems: string[] = [];
+    page.on('pageerror', (e) => problems.push(`page error: ${e.message}`));
+    page.on('console', (m) => m.type() === 'error' && problems.push(`console: ${m.text()}`));
     await confirm.focus();
     await page.keyboard.press('Enter');
-    await expect(confirm).toBeHidden();
+    await confirm.waitFor({ state: 'hidden', timeout: 10_000 }).catch(async () => {
+      // Says why if the dialog stays: an error, or storage that does not take a write.
+      const write = await page.evaluate(
+        () =>
+          new Promise<string>((resolve) => {
+            const open = indexedDB.open('opencanvas');
+            open.onsuccess = () => {
+              const tx = open.result.transaction('assets', 'readwrite');
+              tx.oncomplete = () => resolve('a new write completes');
+              tx.onerror = () => resolve(`a new write fails: ${tx.error?.message}`);
+              tx.objectStore('assets').count();
+              setTimeout(() => resolve('a new write is still waiting after 3 s'), 3000);
+            };
+            open.onblocked = () => resolve('opening the database is blocked');
+          }),
+      );
+      const toasts = await page.locator('[role="status"], [role="alert"]').allInnerTexts();
+      throw new Error(`The delete dialog stayed open. ${write}. ${[...problems, ...toasts].join(' | ')}`);
+    });
     await expect(page.getByTestId('upload-item')).toHaveCount(0);
     expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
   });

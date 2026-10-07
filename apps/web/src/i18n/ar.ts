@@ -337,6 +337,7 @@ export const ar: Dictionary = {
       deleteTitle: 'حذف هذا الملف المرفوع؟',
       deleteBody: 'سيُزال من ملفاتك المرفوعة، ولن تتأثر التصاميم التي تستخدمه.',
       deleted: 'حُذف الملف المرفوع',
+      changeFailed: 'تعذّر ذلك: {reason}. لم يضع شيء، فحاول مرة أخرى.',
       name: 'الاسم',
       type: 'النوع',
       dimensions: 'الأبعاد',

@@ -336,6 +336,7 @@ export const en = {
       deleteTitle: 'Delete this upload?',
       deleteBody: 'It will be removed from your uploads. Designs that already use it are not affected.',
       deleted: 'Upload deleted',
+      changeFailed: 'That did not work: {reason}. Nothing was lost; try again.',
       name: 'Name',
       type: 'Type',
       dimensions: 'Dimensions',
