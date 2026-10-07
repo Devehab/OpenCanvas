@@ -2,18 +2,18 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { onChannelMessage } from '@/lib/channel';
-import { type FolderRecord, listFolders } from '@/lib/storage/folders';
+import { type FolderKind, type FolderRecord, listFolders } from '@/lib/storage/folders';
 import { useLatestCall } from './use-latest-call';
 
-/** Project folders, refreshed when any tab changes them. */
-export function useFolders() {
+/** Project folders (or template folders), refreshed when any tab changes them. */
+export function useFolders(kind: FolderKind = 'project') {
   const [folders, setFolders] = useState<FolderRecord[] | null>(null);
   const begin = useLatestCall();
   const refresh = useCallback(async () => {
     const isLatest = begin();
-    const list = await listFolders();
+    const list = await listFolders(kind);
     if (isLatest()) setFolders(list);
-  }, [begin]);
+  }, [kind, begin]);
   useEffect(() => {
     void refresh();
     return onChannelMessage((m) => {

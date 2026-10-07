@@ -463,7 +463,9 @@ test('saves on this computer at once, uploads once editing pauses (one upload), 
   }
   // Never "Saved to your cloud" while the last change is not up there, and nothing went up mid-burst.
   expect(shown).not.toContain('synced');
-  await expect(status).toContainText('Waiting to upload');
+  // One status: saved on this computer, waiting to go up.
+  await expect(status).toHaveAttribute('data-shown', 'waiting');
+  await expect(status).toContainText('Saved on this computer');
   expect(uploads).toEqual([]);
 
   // Editing pauses: one upload of the design (and the small change marker).
@@ -632,6 +634,117 @@ test('two computers, each with its own OpenCanvas, share everything (files byte 
   await expect(b.getByTestId('design-card').filter({ hasText: 'Shared design, edited on A' })).toBeVisible({
     timeout: 45_000,
   });
+  await contextB.close();
+});
+
+test('brand kits and templates (with their folders) reach another computer, and stay templates there', async ({
+  page,
+  browser,
+}) => {
+  // Computer A: a full brand kit (an extra color, a logo, a heading font)…
+  await page.goto('/brand');
+  await page.getByTestId('new-brand').first().click();
+  await page.getByTestId('brand-kit-name').fill('Studio kit');
+  await page.getByTestId('create-brand').click();
+  await page.waitForURL(/\/brand\?id=/);
+  const brandId = new URL(page.url()).searchParams.get('id')!;
+  await page.getByTestId('brand-add-color').click();
+  const logo = noisePng(300, 120);
+  await page
+    .getByTestId('brand-input-logos')
+    .setInputFiles([{ name: 'studio-logo.png', mimeType: 'image/png', buffer: logo }]);
+  await expect(page.getByTestId('brand-images-logos').locator('li')).toHaveCount(1);
+  await page.getByTestId('brand-font-heading-family').selectOption('Cairo');
+
+  // …a template folder with an icon, a starter copied to the templates, and a design saved as a template into the folder.
+  await page.goto('/templates');
+  await page.getByTestId('new-template-folder').click();
+  await page.getByTestId('template-folder-name').fill('Social');
+  await page.locator('input[data-testid="template-folder-icon"][value="heart"]').check({ force: true });
+  await page.getByTestId('save-template-folder').click();
+  const sale = page.getByTestId('starter-card').filter({ hasText: 'Summer sale' });
+  await sale.hover();
+  await sale.getByTestId('starter-menu').click();
+  await page.getByTestId('copy-starter').click();
+  await expect(page.getByTestId('template-card').filter({ hasText: 'Summer sale' })).toHaveCount(1);
+  await createDesign(page);
+  await insertNodes(page, [{ type: 'shape', shape: 'star', x: 200, y: 200, width: 300, height: 300 }], {
+    center: false,
+  });
+  await waitForSaved(page);
+  await page.getByRole('button', { name: 'File', exact: true }).click();
+  await page.getByTestId('editor-save-as-template').click();
+  await page.getByTestId('template-name').fill('Promo');
+  await page.getByTestId('template-folder-select').selectOption({ label: 'Social' });
+  await page.getByTestId('confirm-save-template').click();
+  await page.goto('/templates');
+  await expect(page.getByTestId('template-folder-card')).toContainText('1 template');
+  await expect(page.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
+    timeout: 30_000,
+  });
+  const templatesOn = async (p: Page) =>
+    (await localRecords(p, 'designs')).filter((d) => d.kind === 'template' && d.deletedAt === null);
+  const templates = await templatesOn(page);
+  expect(templates.map((d) => d.title).sort()).toEqual(['Promo', 'Summer sale']);
+
+  // Computer B: the kit, the folder (with its icon) and both templates arrive by themselves.
+  const contextB = await browser.newContext({ baseURL: urlB, viewport: { width: 1440, height: 900 } });
+  const b = await contextB.newPage();
+  await b.goto('/templates');
+  const folderOnB = b.getByTestId('template-folder-card').filter({ hasText: 'Social' });
+  await expect(folderOnB).toBeVisible({ timeout: 30_000 });
+  await expect(folderOnB.locator('[data-icon]')).toHaveAttribute('data-icon', 'heart');
+  await expect(folderOnB).toContainText('1 template');
+  await expect(b.getByTestId('template-card').filter({ hasText: 'Summer sale' })).toHaveCount(1);
+  await expectSynced(b);
+
+  // The very same records: the brand kit, the folder and the templates (still templates).
+  const same = async (store: string, keep: (r: Record<string, unknown>) => boolean) => {
+    const mine = (await localRecords(page, store)).filter(keep);
+    const theirs = (await localRecords(b, store)).filter(keep);
+    expect(theirs.length, store).toBe(mine.length);
+    for (const record of mine) {
+      const other = theirs.find((r) => r.id === record.id)!;
+      const { revision: _a, ...left } = record;
+      const { revision: _b, ...right } = other ?? {};
+      expect(right, `${store}/${String(record.id)}`).toEqual(left);
+    }
+  };
+  await same('brands', (r) => r.id === brandId);
+  await same('folders', (r) => r.kind === 'template');
+  await same('designs', (r) => r.kind === 'template');
+  // The kit's logo is the very file uploaded on A.
+  const kit = (await localRecords(b, 'brands')).find((r) => r.id === brandId) as {
+    name: string;
+    logos: { hash: string }[];
+    fonts: { heading: { family: string } };
+  };
+  expect(kit.name).toBe('Studio kit');
+  expect(kit.fonts.heading.family).toBe('Cairo');
+  const logoOnB = (await localRecords(b, 'assets')).find((r) => r.hash === kit.logos[0]!.hash) as {
+    blob: { file: string; size: number };
+  };
+  expect(logoOnB.blob).toMatchObject({
+    file: createHash('sha256').update(logo).digest('hex'),
+    size: logo.byteLength,
+  });
+  // Templates stay out of B's designs.
+  await b.goto('/');
+  await expect(b.getByTestId('design-card').filter({ hasText: 'Promo' })).toHaveCount(0);
+
+  // B renames a template; A, showing its templates, gets the new name by itself.
+  await b.goto('/templates?folder=' + String(templates.find((d) => d.title === 'Promo')!.folderId));
+  const promo = b.getByTestId('template-card').filter({ hasText: 'Promo' });
+  await promo.hover();
+  await promo.getByTestId('template-menu').click();
+  await b.getByTestId('rename-template').click();
+  await b.getByTestId('rename-template-input').fill('Promo (team)');
+  await b.getByTestId('confirm-rename-template').click();
+  await expect(b.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
+    timeout: 20_000,
+  });
+  await page.goto('/templates?folder=' + String(templates.find((d) => d.title === 'Promo')!.folderId));
+  await expect(page.getByTestId('template-title')).toHaveText('Promo (team)', { timeout: 45_000 });
   await contextB.close();
 });
 

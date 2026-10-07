@@ -32,12 +32,21 @@ function metaFromSnapshot(snapshot: DocumentSnapshot) {
   };
 }
 
+/** Designs, templates, or both (the trash lists both). */
+export type DesignKind = 'design' | 'template' | 'any';
+
+export function isTemplate(design: Pick<DesignRecord, 'kind'>): boolean {
+  return design.kind === 'template';
+}
+
 export async function listDesigns(
-  options: { trashed?: boolean; folderId?: string | null } = {},
+  options: { trashed?: boolean; folderId?: string | null; kind?: DesignKind } = {},
 ): Promise<DesignSummary[]> {
   const db = await getDB();
   const all = await db.getAllFromIndex('designs', 'updatedAt');
+  const kind = options.kind ?? 'design';
   return all
+    .filter((d) => kind === 'any' || (isTemplate(d) ? 'template' : 'design') === kind)
     .filter((d) => (options.trashed ? d.deletedAt !== null : d.deletedAt === null))
     .filter((d) => options.folderId === undefined || (d.folderId ?? null) === options.folderId)
     .sort((a, b) => b.updatedAt - a.updatedAt)
@@ -55,6 +64,7 @@ export async function createDesign(options: {
   format?: DesignFormat | null;
   snapshot?: DocumentSnapshot;
   folderId?: string | null;
+  kind?: 'template';
 }): Promise<DesignRecord> {
   const snapshot =
     options.snapshot ??
@@ -75,6 +85,7 @@ export async function createDesign(options: {
     snapshot,
     folderId: options.folderId ?? null,
     starred: false,
+    ...(options.kind ? { kind: options.kind } : {}),
   };
   await (await getDB()).put('designs', record);
   return record;
@@ -171,8 +182,15 @@ export async function duplicateDesign(id: string, title: string): Promise<Design
   return createDesignCopy(source.snapshot, title);
 }
 
-/** Stores a snapshot as a new design with the given title. */
-export async function createDesignCopy(source: DocumentSnapshot, title: string): Promise<DesignRecord> {
+/**
+ * Stores a snapshot as a new design (or template) with the given title.
+ * Always a new record: the source is never touched.
+ */
+export async function createDesignCopy(
+  source: DocumentSnapshot,
+  title: string,
+  options: { kind?: 'template'; folderId?: string | null } = {},
+): Promise<DesignRecord> {
   // Re-parse so the copy is validated like any import.
   const { snapshot } = parseDocument(source);
   const renamed: DocumentSnapshot = {
@@ -180,5 +198,30 @@ export async function createDesignCopy(source: DocumentSnapshot, title: string):
     records: snapshot.records.map((r) => (r.typeName === 'document' ? { ...r, title } : r)),
   };
   const meta = metaFromSnapshot(renamed);
-  return createDesign({ title, width: meta.width, height: meta.height, snapshot: renamed });
+  return createDesign({
+    title,
+    width: meta.width,
+    height: meta.height,
+    snapshot: renamed,
+    kind: options.kind,
+    folderId: options.folderId ?? null,
+  });
+}
+
+/** Saves a copy of a design (or of another template) as a template. */
+export async function saveAsTemplate(
+  id: string,
+  title: string,
+  folderId: string | null = null,
+): Promise<DesignRecord | null> {
+  const source = await getDesign(id);
+  if (!source) return null;
+  return createDesignCopy(source.snapshot, title, { kind: 'template', folderId });
+}
+
+/** A new design from a template: a copy with the template's title; the template stays as it is. */
+export async function designFromTemplate(id: string): Promise<DesignRecord | null> {
+  const template = await getDesign(id);
+  if (!template || template.deletedAt !== null) return null;
+  return createDesignCopy(template.snapshot, template.title);
 }

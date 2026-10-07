@@ -3,7 +3,6 @@
 import { serializeDocument } from '@opencanvas/core';
 import { PACKAGE_EXTENSION, PACKAGE_MIME, safeFileName } from '@opencanvas/export';
 import {
-  AlertTriangle,
   ArrowDownToLine,
   BringToFront,
   ChevronDown,
@@ -16,12 +15,8 @@ import {
   Keyboard,
   LayoutGrid,
   LayoutTemplate,
-  Loader2,
   Lock,
   Maximize,
-  Monitor,
-  MonitorCheck,
-  MonitorX,
   PanelBottom,
   Redo2,
   Rows3,
@@ -38,8 +33,9 @@ import {
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { CloudStatusButton } from '@/components/cloud/cloud-sync';
+import { SaveStatusIndicator } from '@/components/cloud/cloud-sync';
 import { Logo } from '@/components/dashboard/logo';
+import { SaveAsTemplateDialog } from '@/components/templates/templates';
 import { Button, IconButton } from '@/components/ui/button';
 import {
   Menu,
@@ -67,37 +63,6 @@ function MenuButton({ label }: { label: string }) {
       {label}
       <ChevronDown className="size-3.5 opacity-70" />
     </MenuTrigger>
-  );
-}
-
-function SaveIndicator() {
-  const { t } = useI18n();
-  const status = useSaveStatus();
-  // Saving on this computer comes first (the cloud follows, see CloudStatusButton).
-  const icon =
-    status === 'saving' ? (
-      <Loader2 className="size-4 animate-spin" />
-    ) : status === 'error' ? (
-      <MonitorX className="size-4" />
-    ) : status === 'conflict' ? (
-      <AlertTriangle className="size-4" />
-    ) : status === 'unsaved' ? (
-      <Monitor className="size-4 opacity-70" />
-    ) : (
-      <MonitorCheck className="size-4" />
-    );
-  return (
-    <span
-      className="flex items-center gap-1.5 text-xs text-white/85"
-      role="status"
-      aria-live="polite"
-      title={t('editor.status.savedHint')}
-      data-testid="save-status"
-      data-status={status}
-    >
-      {icon}
-      <span className="max-md:sr-only">{t(`editor.status.${status}`)}</span>
-    </span>
   );
 }
 
@@ -151,6 +116,8 @@ export function TopBar() {
   const { editor, session, setDialog } = useEditorContext();
   const saveStatus = useSaveStatus();
   const fileInput = useRef<HTMLInputElement>(null);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const isTemplate = session.design.kind === 'template';
   const { canUndo, canRedo, hasSelection, snapping, rulers, hasGuides, locked, isGroup, multi } =
     useEditorValue((e) => {
       const nodes = e.getSelectedNodes();
@@ -176,11 +143,9 @@ export function TopBar() {
     }
   };
   return (
-    <header
-      className="flex h-14 shrink-0 items-center gap-1 bg-gradient-to-r from-brand-600 to-fuchsia-600 px-2 text-white"
-      dir="ltr"
-    >
-      <div className="flex items-center gap-1" dir="auto">
+    <header className="flex h-14 shrink-0 items-center gap-1 bg-gradient-to-r from-brand-600 to-fuchsia-600 px-2 text-white rtl:bg-gradient-to-l">
+      {/* Follows the page direction: in Arabic the bar is the English one mirrored. */}
+      <div className="flex items-center gap-1">
         <a
           href="/"
           className="flex items-center rounded-md px-1.5 py-1 hover:bg-white/15"
@@ -226,6 +191,13 @@ export function TopBar() {
               }}
             >
               {t('editor.menu.makeCopy')}
+            </MenuItem>
+            <MenuItem
+              icon={<LayoutTemplate className="size-4" />}
+              onSelect={() => setSavingTemplate(true)}
+              testId="editor-save-as-template"
+            >
+              {t('templates.saveAsTemplate')}
             </MenuItem>
             <MenuItem icon={<Ruler className="size-4" />} onSelect={() => setDialog('resize')}>
               {t('editor.menu.resize')}
@@ -448,7 +420,7 @@ export function TopBar() {
           className="text-white hover:bg-white/15"
           data-testid="undo"
         >
-          <Undo2 className="size-[18px]" />
+          <Undo2 className="size-[18px] rtl:-scale-x-100" />
         </IconButton>
         <IconButton
           label={t('editor.menu.redo')}
@@ -458,17 +430,26 @@ export function TopBar() {
           className="text-white hover:bg-white/15"
           data-testid="redo"
         >
-          <Redo2 className="size-[18px]" />
+          <Redo2 className="size-[18px] rtl:-scale-x-100" />
         </IconButton>
-        <div className="ms-2 flex items-center gap-1">
-          <SaveIndicator />
-          <CloudStatusButton tone="dark" localBusy={saveStatus !== 'saved'} />
+        <div className="ms-2 flex items-center">
+          <SaveStatusIndicator local={saveStatus} />
         </div>
       </div>
-      <div className="flex flex-1 justify-center" dir="auto">
+      <div className="flex flex-1 items-center justify-center gap-2">
+        {isTemplate ? (
+          <span
+            className="flex shrink-0 items-center gap-1 rounded-full bg-white/20 px-2 py-0.5 text-xs font-medium text-white"
+            title={t('templates.editing')}
+            data-testid="editing-template"
+          >
+            <LayoutTemplate className="size-3.5" aria-hidden />
+            {t('templates.badge')}
+          </span>
+        ) : null}
         <TitleInput />
       </div>
-      <div className="flex items-center gap-2" dir="auto">
+      <div className="flex items-center gap-2">
         <Button
           variant="secondary"
           size="md"
@@ -480,6 +461,13 @@ export function TopBar() {
           <span className="max-sm:sr-only">{t('editor.download')}</span>
         </Button>
       </div>
+      <SaveAsTemplateDialog
+        open={savingTemplate}
+        onOpenChange={setSavingTemplate}
+        designId={session.design.id}
+        title={editor.store.getDocument()?.title ?? ''}
+        beforeSave={() => session.autosave.flush()}
+      />
       <input
         ref={fileInput}
         type="file"

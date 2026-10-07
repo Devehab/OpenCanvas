@@ -53,7 +53,7 @@ These editor capabilities from the spec are scheduled into later phases:
 
 - Accounts, projects and sharing (view/edit links) with a backend (Fastify or Next.js API, PostgreSQL + Prisma, S3-compatible storage behind a CDN).
 - Server sync on top of local-first persistence: the revision-based save protocol already used between tabs becomes the client/server protocol; offline edits sync when the connection returns.
-- Template engine: templates are designs with semantic slots; "replace all photos" and "apply my brand".
+- Template engine: your own templates already work (save a design as a template, folders with icons, use one to open a copy, synced through cloud sync) and six starter templates ship in English and Arabic; next: semantic slots, "replace all photos" and "apply my brand".
 - Asset library (uploads, stock providers via adapters) and font upload.
 - Brand kits: logos, colors, fonts, voice, images and brand templates already work locally; next: sharing them through accounts and "apply my brand" to a whole design.
 - Projects and folders already work locally; next: shared team folders.

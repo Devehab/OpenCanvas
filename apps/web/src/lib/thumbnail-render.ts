@@ -74,3 +74,20 @@ export function ensureThumbnail(designId: string, revision: number): void {
     .catch(() => {})
     .finally(() => queued.delete(designId));
 }
+
+const previews = new Map<string, Promise<string | null>>();
+
+/**
+ * A preview (object URL) of a document that is not stored, such as a starter
+ * template; rendered once per key, in turn with the stored previews.
+ */
+export function documentPreview(key: string, build: () => DocumentSnapshot): Promise<string | null> {
+  let preview = previews.get(key);
+  if (!preview) {
+    const rendered = queue.then(() => renderSnapshot(build()));
+    queue = rendered.catch(() => {});
+    preview = rendered.then((blob) => (blob ? URL.createObjectURL(blob) : null)).catch(() => null);
+    previews.set(key, preview);
+  }
+  return preview;
+}

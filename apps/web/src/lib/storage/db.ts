@@ -29,6 +29,12 @@ export interface DesignRecord {
   folderId?: string | null;
   /** Starred designs are listed first in Projects. */
   starred?: boolean;
+  /**
+   * 'template': a template, listed under Templates only. Using it makes a
+   * copy; the template itself changes only when edited on purpose. Absent in
+   * designs (and in every record written before templates existed).
+   */
+  kind?: 'template';
 }
 
 export interface AssetBlobRecord {
@@ -55,6 +61,10 @@ export interface FolderRecord {
   color: string;
   createdAt: number;
   updatedAt: number;
+  /** 'template': a folder of templates (absent: a project folder). */
+  kind?: 'template';
+  /** Icon of a template folder (see TEMPLATE_FOLDER_ICONS). */
+  icon?: string;
 }
 
 export interface BrandFont {

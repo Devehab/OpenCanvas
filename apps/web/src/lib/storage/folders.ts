@@ -9,16 +9,45 @@ const newId = createRandomIdGenerator();
 /** Folder colors offered in the UI (the first is the default). */
 export const FOLDER_COLORS = ['#7c6cf8', '#0ea5e9', '#10b981', '#f59e0b', '#ef4444', '#ec4899', '#64748b'];
 
-export async function listFolders(): Promise<FolderRecord[]> {
+/** Icons offered for template folders (lucide names; the first is the default). */
+export const TEMPLATE_FOLDER_ICONS = [
+  'folder',
+  'megaphone',
+  'presentation',
+  'briefcase',
+  'calendar',
+  'gift',
+  'heart',
+  'star',
+  'shopping-bag',
+  'graduation-cap',
+  'camera',
+  'utensils',
+  'music',
+  'plane',
+  'rocket',
+  'sparkles',
+] as const;
+
+export type FolderKind = 'project' | 'template';
+
+/** Project folders (default) or template folders. */
+export async function listFolders(kind: FolderKind = 'project'): Promise<FolderRecord[]> {
   const folders = await (await getDB()).getAll('folders');
-  return folders.sort((a, b) => a.name.localeCompare(b.name));
+  return folders
+    .filter((f) => (f.kind === 'template' ? 'template' : 'project') === kind)
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export async function getFolder(id: string): Promise<FolderRecord | undefined> {
   return (await getDB()).get('folders', id);
 }
 
-export async function createFolder(name: string, color = FOLDER_COLORS[0]!): Promise<FolderRecord> {
+export async function createFolder(
+  name: string,
+  color = FOLDER_COLORS[0]!,
+  options: { kind?: FolderKind; icon?: string } = {},
+): Promise<FolderRecord> {
   const now = Date.now();
   const folder: FolderRecord = {
     id: newId('folder'),
@@ -26,12 +55,18 @@ export async function createFolder(name: string, color = FOLDER_COLORS[0]!): Pro
     color,
     createdAt: now,
     updatedAt: now,
+    ...(options.kind === 'template'
+      ? { kind: 'template' as const, icon: options.icon ?? TEMPLATE_FOLDER_ICONS[0] }
+      : {}),
   };
   await (await getDB()).put('folders', folder);
   return folder;
 }
 
-export async function updateFolder(id: string, patch: { name?: string; color?: string }): Promise<void> {
+export async function updateFolder(
+  id: string,
+  patch: { name?: string; color?: string; icon?: string },
+): Promise<void> {
   const db = await getDB();
   const tx = db.transaction('folders', 'readwrite');
   const current = await tx.store.get(id);
@@ -41,6 +76,7 @@ export async function updateFolder(id: string, patch: { name?: string; color?: s
       ...current,
       ...(name ? { name } : {}),
       ...(patch.color ? { color: patch.color } : {}),
+      ...(patch.icon && current.kind === 'template' ? { icon: patch.icon } : {}),
       updatedAt: Date.now(),
     });
   }

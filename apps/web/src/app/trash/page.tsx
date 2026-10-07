@@ -12,7 +12,8 @@ import { deleteDesignForever } from '@/lib/storage/designs';
 
 export default function TrashPage() {
   const { t } = useI18n();
-  const { designs, refresh } = useDesigns({ trashed: true });
+  // Designs and templates both come here when deleted.
+  const { designs, refresh } = useDesigns({ trashed: true, kind: 'any' });
   const [confirm, setConfirm] = useState(false);
   return (
     <DashboardShell>

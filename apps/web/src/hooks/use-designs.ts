@@ -2,27 +2,28 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { onChannelMessage } from '@/lib/channel';
-import { type DesignSummary, listDesigns } from '@/lib/storage/designs';
+import { type DesignKind, type DesignSummary, listDesigns } from '@/lib/storage/designs';
 import { getThumbnailRecord } from '@/lib/storage/thumbnails';
 import { ensureThumbnail } from '@/lib/thumbnail-render';
 import { useLatestCall } from './use-latest-call';
 
-export function useDesigns(options: { trashed?: boolean } = {}) {
+export function useDesigns(options: { trashed?: boolean; kind?: DesignKind } = {}) {
   const [designs, setDesigns] = useState<DesignSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const trashed = options.trashed ?? false;
+  const kind = options.kind ?? 'design';
   const begin = useLatestCall();
   const refresh = useCallback(async () => {
     const isLatest = begin();
     try {
-      const list = await listDesigns({ trashed });
+      const list = await listDesigns({ trashed, kind });
       if (isLatest()) setDesigns(list);
     } catch (e) {
       if (!isLatest()) return;
       setError(String(e));
       setDesigns([]);
     }
-  }, [trashed, begin]);
+  }, [trashed, kind, begin]);
   useEffect(() => {
     void refresh();
     const off = onChannelMessage(() => void refresh());

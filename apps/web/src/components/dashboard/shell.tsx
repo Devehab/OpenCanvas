@@ -1,6 +1,16 @@
 'use client';
 
-import { FileUp, FolderKanban, FolderOpen, House, Palette, Plus, Settings, Trash2 } from 'lucide-react';
+import {
+  FileUp,
+  FolderKanban,
+  FolderOpen,
+  House,
+  LayoutTemplate,
+  Palette,
+  Plus,
+  Settings,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, type ReactNode, Suspense, useContext, useEffect, useRef, useState } from 'react';
@@ -87,6 +97,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   const nav = [
     { href: '/', label: t('nav.home'), icon: House },
     { href: '/designs', label: t('nav.projects'), icon: FolderKanban },
+    { href: '/templates', label: t('nav.templates'), icon: LayoutTemplate },
     { href: '/brand', label: t('nav.brand'), icon: Palette },
     { href: '/trash', label: t('nav.trash'), icon: Trash2 },
     { href: '/settings', label: t('nav.settings'), icon: Settings },

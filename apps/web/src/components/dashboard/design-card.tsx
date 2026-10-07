@@ -1,10 +1,21 @@
 'use client';
 
-import { Copy, Download, ExternalLink, MoreHorizontal, Pencil, RotateCcw, Star, Trash2 } from 'lucide-react';
+import {
+  Copy,
+  Download,
+  ExternalLink,
+  LayoutTemplate,
+  MoreHorizontal,
+  Pencil,
+  RotateCcw,
+  Star,
+  Trash2,
+} from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { LocalOnlyBadge } from '@/components/cloud/cloud-sync';
+import { SaveAsTemplateDialog } from '@/components/templates/templates';
 import { Button } from '@/components/ui/button';
 import { Dialog } from '@/components/ui/dialog';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
@@ -42,6 +53,7 @@ export function DesignCard({
   const thumbnail = useThumbnail(design.id, design.revision);
   const [renaming, setRenaming] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [title, setTitle] = useState(design.title);
   const changed = () => {
     broadcast({ type: 'designs-changed', tabId: TAB_ID });
@@ -69,6 +81,15 @@ export function DesignCard({
           />
         )}
         {trashed ? null : <LocalOnlyBadge designId={design.id} className="absolute end-2 top-2 z-20" />}
+        {design.kind === 'template' ? (
+          <span
+            className="absolute start-2 top-2 z-20 flex items-center gap-1 rounded-full bg-brand-600 px-2 py-0.5 text-[11px] font-medium text-white shadow-sm"
+            data-testid="template-badge"
+          >
+            <LayoutTemplate className="size-3.5" aria-hidden />
+            {t('templates.badge')}
+          </span>
+        ) : null}
         {design.starred && !trashed ? (
           <Star
             className="absolute start-2 top-2 z-20 size-4 fill-amber-400 text-amber-500"
@@ -153,6 +174,13 @@ export function DesignCard({
                 >
                   {design.starred ? t('projects.unstar') : t('projects.star')}
                 </MenuItem>
+                <MenuItem
+                  icon={<LayoutTemplate className="size-4" />}
+                  onSelect={() => setSavingTemplate(true)}
+                  testId="design-save-as-template"
+                >
+                  {t('templates.saveAsTemplate')}
+                </MenuItem>
                 {folders ? (
                   <MoveToFolderMenu
                     folders={folders}
@@ -187,6 +215,14 @@ export function DesignCard({
           </MenuContent>
         </Menu>
       </div>
+      {trashed ? null : (
+        <SaveAsTemplateDialog
+          open={savingTemplate}
+          onOpenChange={setSavingTemplate}
+          designId={design.id}
+          title={design.title}
+        />
+      )}
       <Dialog
         open={renaming}
         onOpenChange={setRenaming}

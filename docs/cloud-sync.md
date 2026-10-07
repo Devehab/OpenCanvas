@@ -4,7 +4,7 @@ A local install can keep its work on the computer only (the default), or on the 
 
 - Everything is saved on the computer first. The app never waits for the network.
 - With a connection, changes go up to the bucket once editing pauses (3 seconds without a change); changes made elsewhere come down by themselves.
-- The editor shows both steps: **Saved on this computer**, then **Waiting to upload** → **Uploading 1 of 2…** → **Saved to your cloud**, which only shows once the cloud has the latest change.
+- The editor has one save status that shows only the current step: **Saved on this computer** (the latest change is here, waiting to go up) → **Saving to your cloud (1 of 2)…** → **Saved to your cloud**, which only shows once the cloud has the latest change. Without internet it says **Offline: saved on this computer** and uploads by itself when the connection is back.
 - Without a connection, work goes on. Records not uploaded yet show as **This computer only**, and go up by themselves when the bucket can be reached again.
 - Installing again (after removing OpenCanvas, or on a new computer) and choosing the same bucket brings the whole library back.
 
@@ -53,7 +53,7 @@ Without a terminal (or to automate), the answers can come from the environment: 
   | --- | --- |
   | `space.json` | Marks the folder as an OpenCanvas library |
   | `changes.json` | A tiny change marker, rewritten by every computer after it uploads |
-  | `records/<store>/<key>.json` | One record: a design, an upload, a folder, a brand kit, a font, an icon pack, a plugin, or a deletion marker; gzip-compressed (`Content-Encoding: gzip`) when larger than 4 KB |
+  | `records/<store>/<key>.json` | One record: a design or template, an upload, a folder (of designs or of templates), a brand kit, a font, an icon pack, a plugin, or a deletion marker; gzip-compressed (`Content-Encoding: gzip`) when larger than 4 KB |
   | `blobs/<sha256>` | File contents (photos, PDFs pages, fonts, plugin files), stored once, byte for byte, and never changed |
 
   Thumbnails are not synced: each computer redraws them.
@@ -93,7 +93,7 @@ R2 and S3 bill by the request (listing and writing cost the most), and a slow co
 - `apps/web/test/cloud/engine.test.ts`: two fake computers and a fake bucket: restore, offline, a connection dropping mid-round, both kinds of conflicts, deletions, races, convergence.
 - `apps/web/test/cloud/s3.test.ts`: the signature against the examples of the AWS documentation, URLs, XML, errors.
 - `apps/web/test/cloud/s3-integration.test.ts`: the client against a real S3 server with authentication (`scripts/s3-test-server.py`, moto), including conditional writes and wrong keys.
-- `apps/web/e2e/cloud.spec.ts` (`playwright.cloud.config.ts`): in the browser, against that server and two OpenCanvas servers (two computers, each with its own settings): upload, offline with "This computer only" then automatic upload, restore on a new computer (designs, files byte for byte, folders, brand kits, fonts), edits flowing both ways by themselves, an open editor following a change, two computers editing the same design, deletions, one upload per pause in editing (none while browsing pages), compression, no listing while nothing changes, and that other websites cannot use the API or see the keys.
+- `apps/web/e2e/cloud.spec.ts` (`playwright.cloud.config.ts`): in the browser, against that server and two OpenCanvas servers (two computers, each with its own settings): upload, offline with "This computer only" then automatic upload, restore on a new computer (designs, files byte for byte, folders, brand kits, fonts), brand kits (with their logos) and templates with their folders and icons reaching a second computer and staying templates there, edits flowing both ways by themselves, an open editor following a change, two computers editing the same design, deletions, one upload per pause in editing (none while browsing pages), compression, no listing while nothing changes, and that other websites cannot use the API or see the keys.
 - `scripts/test-install-cloud.sh` / `.ps1` (Install test workflow, macOS, Linux, Windows): the installer with wrong keys, right keys, and a reinstall that finds the library.
 
 ---
@@ -106,10 +106,10 @@ R2 and S3 bill by the request (listing and writing cost the most), and a slow co
 
 - **يُحفَظ كل شيء على جهازك أولًا،** فلا ينتظر التطبيق الإنترنت أبدًا.
 - **عند وجود الاتصال** تُرفع التعديلات إلى حاويتك بعد ثلاث ثوانٍ من توقفك عن التعديل، دفعةً واحدة لكل تصميم تغيّر، وتنزل التعديلات القادمة من أجهزتك الأخرى تلقائيًا.
-- **يعرض المحرر الخطوتين:** «محفوظ على هذا الجهاز»، ثم «بانتظار الرفع» ← «جارٍ الرفع 1 من 2…» ← «محفوظ في سحابتك»، ولا تظهر العبارة الأخيرة إلا بعد أن يصل آخر تعديل فعلًا.
+- **حالة حفظ واحدة في المحرر** تعرض الخطوة الحالية فقط: «محفوظ على هذا الجهاز» (آخر تعديل محفوظ هنا وينتظر الرفع) ← «جارٍ الحفظ في سحابتك (1 من 2)…» ← «محفوظ في سحابتك»، ولا تظهر العبارة الأخيرة إلا بعد أن يصل آخر تعديل فعلًا. ودون اتصال تظهر «دون اتصال: محفوظ على هذا الجهاز»، ثم يُرفع كل شيء تلقائيًا حين يعود الاتصال.
 - **طلبات قليلة وصغيرة:** تُرفع الصور والملفات مرة واحدة فقط مهما استُخدمت، وتُضغط التصاميم فيصغر حجمها خمس إلى عشر مرات. ولمعرفة ما تغيّر على الأجهزة الأخرى يكفي طلب صغير جدًا كل 20 ثانية، ولا يتصفح التطبيق الحاوية كاملة إلا عند وجود تغيير فعلي. أما التنقل بين الصفحات والتكبير والتمرير فلا يرفع شيئًا.
 - **دون اتصال** تتابع عملك، ويظهر ما لم يُرفع بعد بعلامة «على هذا الجهاز فقط»، ثم يُرفع تلقائيًا حين يعود الاتصال.
-- **بعد إعادة التثبيت أو على جهاز جديد** اختر الحاوية نفسها فتعود مكتبتك كاملة: التصاميم والصور والملفات وحزم الهوية والخطوط والإضافات.
+- **بعد إعادة التثبيت أو على جهاز جديد** اختر الحاوية نفسها فتعود مكتبتك كاملة: التصاميم والقوالب ومجلداتها والصور والملفات وحزم الهوية والخطوط والإضافات.
 
 **التحقق من البيانات:** يتأكد المثبّت من صحة البيانات بكتابة ملف تجريبي وقراءته وحذفه. وإذا فشل يشرح السبب بوضوح (مفتاح خاطئ، أو حاوية غير موجودة، أو صلاحيات ناقصة، أو عنوان لا يمكن الوصول إليه)، ثم يعرض عليك: المحاولة من جديد، أو تعديل البيانات، أو التخطي والبقاء على هذا الجهاز. ويمكنك ربط السحابة أو تغييرها لاحقًا بالأمر `opencanvas cloud`.
 

@@ -12,11 +12,15 @@ import {
   CloudOff,
   CloudUpload,
   Loader2,
+  Monitor,
+  MonitorCheck,
+  MonitorX,
   RefreshCw,
 } from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { useI18n } from '@/i18n';
+import type { SaveStatus } from '@/lib/autosave';
 import { type CloudStatus, CloudSyncService } from '@/lib/cloud/service';
 import { cn } from '@/lib/utils';
 
@@ -94,26 +98,33 @@ function shownState(status: CloudStatus, localBusy: boolean): Shown {
   return 'synced';
 }
 
-function label(status: CloudStatus, shown: Shown, t: ReturnType<typeof useI18n>['t']): string {
+/**
+ * The status in words. In the editor (`local` given) it is one status for
+ * both places: what this computer is doing first, then the cloud.
+ */
+function label(
+  status: CloudStatus,
+  shown: Shown,
+  t: ReturnType<typeof useI18n>['t'],
+  local?: SaveStatus,
+): string {
+  if (local && local !== 'saved') return t(`editor.status.${local}`);
   if (shown === 'offline') return t('cloud.offline');
   if (shown === 'error') return t('cloud.error');
   if (shown === 'syncing') {
     const p = status.progress;
-    if (!p || p.total === 0) return t('cloud.syncing');
+    if (p?.direction === 'down' && p.total > 0)
+      return t('cloud.downloading', { current: Math.min(p.done + 1, p.total), total: p.total });
+    if (!p || p.total <= 1) return t(p?.direction === 'up' ? 'cloud.saving' : 'cloud.syncing');
     const n = { current: Math.min(p.done + 1, p.total), total: p.total };
-    return t(
-      p.direction === 'up'
-        ? 'cloud.uploading'
-        : p.direction === 'down'
-          ? 'cloud.downloading'
-          : 'cloud.syncingCount',
-      n,
-    );
+    return t(p.direction === 'up' ? 'cloud.savingCount' : 'cloud.syncingCount', n);
   }
-  if (shown === 'waiting')
+  if (shown === 'waiting') {
+    if (local) return t('editor.status.saved');
     return status.pending.size > 1
       ? t('cloud.waitingMany', { count: status.pending.size })
       : t('cloud.waiting');
+  }
   return t('cloud.synced');
 }
 
@@ -123,18 +134,22 @@ function label(status: CloudStatus, shown: Shown, t: ReturnType<typeof useI18n>[
  */
 export function CloudStatusButton({
   tone = 'light',
-  localBusy = false,
+  local,
 }: {
   tone?: 'light' | 'dark';
-  localBusy?: boolean;
+  /** In the editor: how saving on this computer is going (shown first, in the same place). */
+  local?: SaveStatus;
 }) {
   const { t, formatRelative } = useI18n();
   const service = useContext(ServiceContext);
   const status = useCloudStatus();
   if (status.mode !== 'cloud') return null;
-  const shown = shownState(status, localBusy);
+  const shown = shownState(status, !!local && local !== 'saved');
+  const text = label(status, shown, t, local);
   const icon =
-    shown === 'syncing' ? (
+    local && local !== 'saved' ? (
+      <LocalIcon status={local} />
+    ) : shown === 'syncing' ? (
       status.progress?.direction === 'down' ? (
         <CloudDownload className="size-4 animate-pulse" />
       ) : status.progress ? (
@@ -147,7 +162,11 @@ export function CloudStatusButton({
     ) : shown === 'error' ? (
       <AlertTriangle className="size-4" />
     ) : shown === 'waiting' ? (
-      <CloudUpload className="size-4 opacity-70" />
+      local ? (
+        <MonitorCheck className="size-4" />
+      ) : (
+        <CloudUpload className="size-4 opacity-70" />
+      )
     ) : (
       <CloudCheck className="size-4" />
     );
@@ -171,7 +190,7 @@ export function CloudStatusButton({
           shown === 'offline' && (tone === 'dark' ? 'text-amber-200' : 'text-amber-700'),
           shown === 'error' && (tone === 'dark' ? 'text-red-200' : 'text-red-700'),
         )}
-        title={`${label(status, shown, t)} · ${last}`}
+        title={`${text} · ${last}`}
         data-testid="cloud-status"
         data-state={status.state}
         data-shown={shown}
@@ -184,7 +203,7 @@ export function CloudStatusButton({
           role="status"
           aria-live="polite"
         >
-          {label(status, shown, t)}
+          {text}
         </span>
       </Popover.Trigger>
       <Popover.Portal>
@@ -204,7 +223,7 @@ export function CloudStatusButton({
               bucket: status.bucket ?? '',
             })}
           </p>
-          <p className="text-slate-700">{label(status, shown, t)}</p>
+          <p className="text-slate-700">{text}</p>
           {shown === 'syncing' && status.progress && status.progress.total > 0 ? (
             <div
               className="h-1.5 overflow-hidden rounded-full bg-slate-100"
@@ -239,6 +258,42 @@ export function CloudStatusButton({
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
+  );
+}
+
+function LocalIcon({ status }: { status: SaveStatus }) {
+  if (status === 'saving') return <Loader2 className="size-4 animate-spin" />;
+  if (status === 'error') return <MonitorX className="size-4" />;
+  if (status === 'conflict') return <AlertTriangle className="size-4" />;
+  if (status === 'unsaved') return <Monitor className="size-4 opacity-70" />;
+  return <MonitorCheck className="size-4" />;
+}
+
+/**
+ * The editor's one save status. Without cloud sync: saving on this computer.
+ * With it, only the current step: saving here, saved here (waiting to go
+ * up), saving to the cloud (with progress), saved to the cloud, or offline
+ * (saved here, uploads when the connection is back).
+ */
+export function SaveStatusIndicator({ local }: { local: SaveStatus }) {
+  const { t } = useI18n();
+  const cloud = useCloudStatus();
+  return (
+    <span
+      className="flex items-center text-xs text-white/85"
+      data-testid="save-status"
+      data-status={local}
+      title={cloud.mode === 'cloud' ? undefined : t('editor.status.savedHint')}
+    >
+      {cloud.mode === 'cloud' ? (
+        <CloudStatusButton tone="dark" local={local} />
+      ) : (
+        <span className="flex items-center gap-1.5 px-2" role="status" aria-live="polite">
+          <LocalIcon status={local} />
+          <span className="max-md:sr-only">{t(`editor.status.${local}`)}</span>
+        </span>
+      )}
+    </span>
   );
 }
 

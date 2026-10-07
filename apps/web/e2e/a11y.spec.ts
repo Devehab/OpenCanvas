@@ -16,7 +16,7 @@ async function expectAccessible(page: Page, label: string) {
 
 test.describe('accessibility', () => {
   test('dashboard pages (English and Arabic)', async ({ page, context }) => {
-    for (const path of ['/', '/designs', '/trash']) {
+    for (const path of ['/', '/designs', '/templates', '/trash']) {
       await page.goto(path);
       await page.waitForLoadState('networkidle');
       await expectAccessible(page, `en ${path}`);
@@ -25,6 +25,12 @@ test.describe('accessibility', () => {
     await page.goto('/');
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expectAccessible(page, 'ar /');
+    await page.goto('/templates');
+    await page.waitForLoadState('networkidle');
+    await expectAccessible(page, 'ar /templates');
+    await page.getByTestId('new-template-folder').click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await expectAccessible(page, 'ar template folder dialog');
   });
 
   test('custom size dialog', async ({ page }) => {
