@@ -150,6 +150,9 @@ jobs:
           CI: 'true'
           E2E_BROWSERS: all
           E2E_FILTER: ${{ inputs.browsers-filter }}
+          # Chromium's frame budgets run here next to WebKit and Firefox on the same
+          # machine; the exact budgets are enforced by the Chromium job above.
+          PERF_BUDGET_SCALE: '1.5'
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
