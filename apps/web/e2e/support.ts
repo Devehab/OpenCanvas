@@ -32,9 +32,11 @@ export async function waitForEditor(page: Page): Promise<void> {
 }
 
 /**
- * Waits until fonts and images are loaded and no redraw or font check is
- * pending, for three animation frames in a row. (The predicate must stay
- * synchronous: waitForFunction treats a returned promise as truthy.)
+ * Waits until the fonts the design uses and its images are loaded and no
+ * redraw or font check is pending, for three animation frames in a row.
+ * (The view's font check has timeouts, so a font that cannot load, offline
+ * for example, never hangs this. The predicate must stay synchronous:
+ * waitForFunction treats a returned promise as truthy.)
  */
 export async function waitForCanvasIdle(page: Page): Promise<void> {
   await page.evaluate(() => {
@@ -43,8 +45,7 @@ export async function waitForCanvasIdle(page: Page): Promise<void> {
   await page.waitForFunction(() => {
     const oc = window.__opencanvas;
     const w = window as unknown as { __ocIdleFrames?: number };
-    const ready =
-      !!oc && oc.view.idle && oc.session.images.pending === 0 && document.fonts.status === 'loaded';
+    const ready = !!oc && oc.view.idle && oc.session.images.pending === 0;
     w.__ocIdleFrames = ready ? (w.__ocIdleFrames ?? 0) + 1 : 0;
     return w.__ocIdleFrames >= 3;
   });

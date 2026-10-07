@@ -116,7 +116,11 @@ export class CanvasView {
     // late): measure text again whenever any font finishes loading, so text
     // never keeps the line breaks of a fallback font.
     if (typeof document !== 'undefined' && document.fonts && 'addEventListener' in document.fonts) {
-      this.listen(document.fonts as unknown as EventTarget, 'loadingdone', () => {
+      this.listen(document.fonts as unknown as EventTarget, 'loadingdone', (event) => {
+        // Only when a face really loaded: offline, WebKit tries failed faces
+        // again whenever they are asked for and reports an empty load, which
+        // would otherwise start another check, and so on forever.
+        if ((event as Event & { fontfaces?: readonly FontFace[] }).fontfaces?.length === 0) return;
         this.fontWatcher.forget();
         this.scheduleFontCheck(50);
       });

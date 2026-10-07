@@ -168,12 +168,15 @@ test.describe('editor', () => {
     await hex.fill('#10b981');
     await hex.press('Enter');
     await page.keyboard.press('Escape');
+    // The closing picker hands focus back to its button; focus the slider after that.
+    await expect(hex).toBeHidden();
     const opacity = page.getByTestId('opacity').getByRole('slider');
     await opacity.focus();
+    await expect(opacity).toBeFocused();
     for (let i = 0; i < 5; i++) await page.keyboard.press('ArrowLeft');
 
     const expected = { x: 240, fill: { type: 'solid', color: '#10b981' }, opacity: 0.95 };
-    expect((await getNodes(page))[0]).toMatchObject(expected);
+    await expect.poll(async () => (await getNodes(page))[0]).toMatchObject(expected);
     await waitForSaved(page);
     await page.reload();
     await page.waitForFunction(() => !!window.__opencanvas);
