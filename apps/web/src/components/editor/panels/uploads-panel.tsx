@@ -8,6 +8,7 @@ import { Dialog } from '@/components/ui/dialog';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger, SubMenu } from '@/components/ui/menu';
 import { useToast } from '@/components/ui/toast';
 import { useEditorContext } from '@/hooks/use-editor';
+import { useLatestCall } from '@/hooks/use-latest-call';
 import { useI18n } from '@/i18n';
 import { broadcast, onChannelMessage, TAB_ID } from '@/lib/channel';
 import { ASSET_DRAG_TYPE, type LibraryImage, placeImage } from '@/lib/place-image';
@@ -71,8 +72,12 @@ export function UploadsPanel() {
   const [confirmDelete, setConfirmDelete] = useState<Upload | null>(null);
   const urls = useRef(new Map<string, string>());
 
+  const begin = useLatestCall();
+
   const refresh = useCallback(async () => {
+    const isLatest = begin();
     const [list, folderList] = await Promise.all([listUploads(), listFolders()]);
+    if (!isLatest()) return;
     // Object URLs are cached per hash and only revoked when an upload disappears.
     const keep = new Set(list.map((u) => u.hash));
     for (const [hash, url] of urls.current) {
@@ -94,9 +99,10 @@ export function UploadsPanel() {
         return { ...u, url };
       }),
     );
+    if (!isLatest()) return;
     setUploads(withUrls);
     setFolders(folderList);
-  }, []);
+  }, [begin]);
 
   useEffect(() => {
     void refresh();

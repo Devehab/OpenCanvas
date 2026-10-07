@@ -5,19 +5,24 @@ import { onChannelMessage } from '@/lib/channel';
 import { type DesignSummary, listDesigns } from '@/lib/storage/designs';
 import { getThumbnailRecord } from '@/lib/storage/thumbnails';
 import { ensureThumbnail } from '@/lib/thumbnail-render';
+import { useLatestCall } from './use-latest-call';
 
 export function useDesigns(options: { trashed?: boolean } = {}) {
   const [designs, setDesigns] = useState<DesignSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const trashed = options.trashed ?? false;
+  const begin = useLatestCall();
   const refresh = useCallback(async () => {
+    const isLatest = begin();
     try {
-      setDesigns(await listDesigns({ trashed }));
+      const list = await listDesigns({ trashed });
+      if (isLatest()) setDesigns(list);
     } catch (e) {
+      if (!isLatest()) return;
       setError(String(e));
       setDesigns([]);
     }
-  }, [trashed]);
+  }, [trashed, begin]);
   useEffect(() => {
     void refresh();
     const off = onChannelMessage(() => void refresh());

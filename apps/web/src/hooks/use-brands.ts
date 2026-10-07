@@ -4,15 +4,19 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { broadcast, onChannelMessage, TAB_ID } from '@/lib/channel';
 import { getAssetBlob } from '@/lib/storage/assets';
 import { type BrandRecord, listBrands } from '@/lib/storage/brands';
+import { useLatestCall } from './use-latest-call';
 
 export const brandsChanged = () => broadcast({ type: 'brands-changed', tabId: TAB_ID }, { self: true });
 
 /** All brand kits, refreshed when any tab changes them. */
 export function useBrands() {
   const [brands, setBrands] = useState<BrandRecord[] | null>(null);
+  const begin = useLatestCall();
   const refresh = useCallback(async () => {
-    setBrands(await listBrands());
-  }, []);
+    const isLatest = begin();
+    const list = await listBrands();
+    if (isLatest()) setBrands(list);
+  }, [begin]);
   useEffect(() => {
     void refresh();
     return onChannelMessage((m) => {

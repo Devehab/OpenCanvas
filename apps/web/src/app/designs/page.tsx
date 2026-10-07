@@ -19,6 +19,7 @@ import { Segmented } from '@/components/ui/fields';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { useDesigns } from '@/hooks/use-designs';
 import { useFolders } from '@/hooks/use-folders';
+import { useLatestCall } from '@/hooks/use-latest-call';
 import { useI18n } from '@/i18n';
 import { broadcast, onChannelMessage, TAB_ID } from '@/lib/channel';
 import { matchesQuery } from '@/lib/search';
@@ -30,30 +31,32 @@ type Tab = 'all' | 'folders' | 'designs' | 'images';
 function useUploadsWithUrls() {
   const [uploads, setUploads] = useState<(UploadSummary & { url: string | null })[] | null>(null);
   const urls = useRef(new Map<string, string>());
+  const begin = useLatestCall();
   const refresh = useCallback(async () => {
+    const isLatest = begin();
     const list = await listUploads();
+    if (!isLatest()) return;
     const keep = new Set(list.map((u) => u.hash));
     for (const [hash, url] of urls.current)
       if (!keep.has(hash)) {
         URL.revokeObjectURL(url);
         urls.current.delete(hash);
       }
-    setUploads(
-      await Promise.all(
-        list.slice(0, 300).map(async (u) => {
-          let url = urls.current.get(u.hash) ?? null;
-          if (!url) {
-            const blob = await getAssetBlob(u.hash);
-            if (blob) {
-              url = URL.createObjectURL(blob);
-              urls.current.set(u.hash, url);
-            }
+    const withUrls = await Promise.all(
+      list.slice(0, 300).map(async (u) => {
+        let url = urls.current.get(u.hash) ?? null;
+        if (!url) {
+          const blob = await getAssetBlob(u.hash);
+          if (blob) {
+            url = URL.createObjectURL(blob);
+            urls.current.set(u.hash, url);
           }
-          return { ...u, url };
-        }),
-      ),
+        }
+        return { ...u, url };
+      }),
     );
-  }, []);
+    if (isLatest()) setUploads(withUrls);
+  }, [begin]);
   useEffect(() => {
     void refresh();
     const off = onChannelMessage((m) => {
