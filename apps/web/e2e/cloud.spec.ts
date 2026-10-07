@@ -346,7 +346,7 @@ test('deleting a design for good removes it everywhere', async ({ page, browser 
       tx.oncomplete = resolve;
     });
   }, copyId);
-  await page.reload();
+  await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(copy).toHaveCount(0);
   await syncNow(page);
   await expectSynced(page);

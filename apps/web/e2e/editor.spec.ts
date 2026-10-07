@@ -11,6 +11,7 @@ import {
   showInspector,
   toScreen,
   waitForCanvasIdle,
+  waitForEditor,
   waitForSaved,
 } from './support';
 
@@ -178,8 +179,8 @@ test.describe('editor', () => {
     const expected = { x: 240, fill: { type: 'solid', color: '#10b981' }, opacity: 0.95 };
     await expect.poll(async () => (await getNodes(page))[0]).toMatchObject(expected);
     await waitForSaved(page);
-    await page.reload();
-    await page.waitForFunction(() => !!window.__opencanvas);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForEditor(page);
     expect((await getNodes(page))[0]).toMatchObject(expected);
   });
 
@@ -259,7 +260,7 @@ test.describe('editor', () => {
     await title.press('Enter');
     await expect(page).toHaveTitle(/Launch poster/);
     await waitForSaved(page);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.getByTestId('design-title-input')).toHaveValue('Launch poster');
   });
 });

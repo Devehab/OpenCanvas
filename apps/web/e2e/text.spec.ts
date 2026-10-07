@@ -1,6 +1,14 @@
 import type { NodeRecord, TextNode } from '@opencanvas/core';
 import { expect, type Page, test } from './fixtures';
-import { createDesign, getNodes, insertNodes, openPanel, toScreen, waitForCanvasIdle } from './support';
+import {
+  createDesign,
+  getNodes,
+  insertNodes,
+  openPanel,
+  toScreen,
+  waitForCanvasIdle,
+  waitForEditor,
+} from './support';
 
 const paragraphs = (node: NodeRecord | undefined) =>
   (node as TextNode).content.paragraphs.map((p) => p.runs.map((r) => r.text).join(''));
@@ -148,8 +156,8 @@ test.describe('text', () => {
       },
     ]);
     await expect(page.getByTestId('save-status')).toHaveAttribute('data-status', 'saved');
-    await page.reload();
-    await page.waitForFunction(() => !!window.__opencanvas);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForEditor(page);
     const [node] = await getNodes(page);
     expect(node!.type).toBe('text');
     expect(paragraphs(node)).toEqual(['Editable after reload']);

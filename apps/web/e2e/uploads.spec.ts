@@ -61,7 +61,7 @@ test.describe('uploads', () => {
     await expect(page.getByTestId('inspector').getByRole('heading', { level: 2 })).toHaveText('Image');
 
     await waitForSaved(page);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     // The image decodes from local storage (nothing pending, nothing failed).
     const loaded = await page.evaluate(async (id) => {
@@ -141,7 +141,7 @@ test.describe('uploads', () => {
     // After a drag and drop, Playwright's WebKit can keep the mouse in its drag state,
     // and later clicks then miss. Reloading ends it (and shows the photo stayed in its frame).
     await waitForSaved(page);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
     await openPanel(page, 'uploads');

@@ -1,5 +1,5 @@
 import { expect, test } from './fixtures';
-import { createDesign, getNodes, openPanel, waitForCanvasIdle } from './support';
+import { createDesign, getNodes, openPanel, waitForCanvasIdle, waitForEditor } from './support';
 
 const pageIds = (page: import('@playwright/test').Page) =>
   page.evaluate(() => window.__opencanvas!.editor.store.getPageIds());
@@ -139,8 +139,8 @@ test.describe('page views', () => {
     await page.getByTestId('toggle-thumbnails').click();
     await expect(page.getByTestId('pages-list')).toHaveCount(0);
     expect(await page.evaluate(() => window.__opencanvas!.editor.pageView)).toBe('scroll');
-    await page.reload();
-    await page.waitForFunction(() => !!window.__opencanvas?.editor);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await waitForEditor(page);
     await expect(page.getByTestId('pages-list')).toHaveCount(0);
     await expect(page.getByTestId('toggle-thumbnails')).toHaveAttribute('aria-pressed', 'false');
   });

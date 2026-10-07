@@ -154,7 +154,7 @@ test.describe('dashboard', () => {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ar');
     await expect(page.getByTestId('create-design')).toContainText('إنشاء تصميم');
     // The choice survives a reload.
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
   });
 

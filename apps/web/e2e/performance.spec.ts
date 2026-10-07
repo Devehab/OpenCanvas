@@ -189,7 +189,7 @@ test.describe('performance @perf', () => {
         timeout: 30_000,
       });
       const t1 = Date.now();
-      await page.reload();
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await waitForEditor(page);
       const openMs = Date.now() - t1;
 
@@ -235,7 +235,7 @@ test.describe('performance @perf', () => {
     });
 
     const t1 = Date.now();
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     const openMs = Date.now() - t1;
     expect(await pageCount()).toBe(100);

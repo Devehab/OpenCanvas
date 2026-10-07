@@ -53,7 +53,7 @@ test.describe('persistence', () => {
     await waitForSaved(page);
     const before = await getRecords(page);
 
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     expect(await getRecords(page)).toEqual(before);
   });
@@ -141,7 +141,7 @@ test.describe('persistence', () => {
     await expect(other.getByTestId('design-title-input')).toHaveValue(/^Copy of /);
 
     // The first tab's version is untouched.
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     expect((await getNodes(page)).map((n) => (n.type === 'shape' ? n.shape : n.type))).toEqual(['rect']);
   });
@@ -154,7 +154,7 @@ test.describe('persistence', () => {
       ]);
     });
     // No waiting for the debounced save: the tab reloads immediately.
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     expect((await getNodes(page)).map((n) => n.type)).toEqual(['shape']);
     await waitForSaved(page);
@@ -202,7 +202,7 @@ test.describe('persistence', () => {
       };
       localStorage.setItem(`opencanvas:journal:${designId}`, JSON.stringify(entry));
     }, id);
-    await page.reload();
+    await page.reload({ waitUntil: 'domcontentloaded' });
     await waitForEditor(page);
     // The stored design is untouched…
     expect(await getNodes(page)).toHaveLength(1);
