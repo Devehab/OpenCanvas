@@ -109,7 +109,7 @@ jobs:
       - name: S3 client against the server
         run: |
           S3_TEST_OUT="$RUNNER_TEMP/s3.json" python scripts/s3-test-server.py 5066 > "$RUNNER_TEMP/s3.log" 2>&1 &
-          for i in $(seq 1 60); do [ -s "$RUNNER_TEMP/s3.json" ] && break; sleep 0.5; done
+          for i in $(seq 1 240); do [ -s "$RUNNER_TEMP/s3.json" ] && break; sleep 0.5; done
           S3_TEST="$(cat "$RUNNER_TEMP/s3.json")" pnpm exec vitest run --project web apps/web/test/cloud
       - name: Sync end to end (upload, offline, restore, two computers, security)
         run: pnpm --filter @opencanvas/web exec playwright test -c playwright.cloud.config.ts

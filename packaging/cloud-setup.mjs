@@ -230,8 +230,8 @@ async function setup() {
     if (choice.mode === 'local') return saveLocal();
     const error = await connect(choice);
     if (error) {
-      console.error(red(`✗ ${error.message}`));
-      console.error(
+      console.log(red(`✗ ${error.message}`));
+      console.log(
         '  Keeping everything on this computer for now. Fix the settings and run: opencanvas cloud',
       );
       await saveLocal();

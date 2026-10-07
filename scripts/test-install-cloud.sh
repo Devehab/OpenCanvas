@@ -27,7 +27,13 @@ export S3_TEST_OUT="$WORK/s3.json"
 "${PYTHON:-python3}" scripts/s3-test-server.py 5077 >"$WORK/s3.log" 2>&1 &
 S3_PID=$!
 trap 'kill $S3_PID 2>/dev/null; rm -rf "$WORK"' EXIT
-for _ in $(seq 1 60); do [ -s "$S3_TEST_OUT" ] && break; sleep 0.5; done
+# Importing moto can take a while on a fresh machine.
+for _ in $(seq 1 240); do [ -s "$S3_TEST_OUT" ] && break; sleep 0.5; done
+if [ ! -s "$S3_TEST_OUT" ]; then
+  echo "The S3 test server did not start:"
+  cat "$WORK/s3.log"
+  exit 1
+fi
 read -r ENDPOINT BUCKET KEY SECRET < <("${PYTHON:-python3}" -c "import json,sys;d=json.load(open(sys.argv[1]));print(d['endpoint'],d['bucket'],d['accessKeyId'],d['secretAccessKey'])" "$S3_TEST_OUT")
 export OPENCANVAS_STORAGE=custom OPENCANVAS_S3_ENDPOINT="$ENDPOINT" OPENCANVAS_S3_BUCKET="$BUCKET" OPENCANVAS_S3_ACCESS_KEY_ID="$KEY"
 

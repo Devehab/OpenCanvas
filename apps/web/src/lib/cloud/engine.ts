@@ -69,8 +69,12 @@ export interface LocalSide {
   write(store: SyncStore, key: string, value: unknown, expectedFp: string | null): Promise<string | null>;
   /** Deletes the record if it still has `expectedFp`. False if it changed. */
   remove(store: SyncStore, key: string, expectedFp: string): Promise<boolean>;
-  /** Stores a record under a new key (a conflict copy of a design). */
-  addCopy(store: SyncStore, value: Record<string, unknown>): Promise<string>;
+  /**
+   * Stores a conflict copy of a design under `key`, unless it exists. The key
+   * comes from the copied version, so a round interrupted after making the
+   * copy (a closed tab) never makes it twice.
+   */
+  addCopy(store: SyncStore, key: string, value: Record<string, unknown>): Promise<void>;
   states(): Promise<SyncState[]>;
   setState(state: SyncState): Promise<void>;
   deleteState(id: string): Promise<void>;
@@ -340,14 +344,14 @@ export class SyncEngine {
       // Never lose a design: the older version is kept as a copy.
       result.conflicts++;
       if (remoteNewer) {
-        await this.local.addCopy(store, this.asCopy(record.value));
+        await this.local.addCopy(store, copyKey(key, record.fp), this.asCopy(record.value));
         return this.pull(store, key, record.fp, result, got!);
       }
       const theirs = (await fromCloudValue(remoteDoc.value, (h, t) => this.remote.getBlob(h, t))) as Record<
         string,
         unknown
       >;
-      await this.local.addCopy(store, this.asCopy(theirs));
+      await this.local.addCopy(store, copyKey(key, remoteDoc.fp ?? 'remote'), this.asCopy(theirs));
       return this.push(store, key, got!.etag, result);
     }
     if (remoteNewer) return this.pull(store, key, record.fp, result, got!);
@@ -359,6 +363,11 @@ export class SyncEngine {
     const copyTitle = this.options.conflictTitle?.(title) ?? `${title} (conflict copy)`;
     return { ...value, title: copyTitle, updatedAt: Math.max(recordChangedAt(value), 0) };
   }
+}
+
+/** The key of the conflict copy of one version of a record. */
+export function copyKey(key: string, fp: string): string {
+  return `${key}-copy-${fp.replace(/[^a-z0-9]/gi, '').slice(0, 12)}`;
 }
 
 function pendingOf(entries: LocalEntry[], states: Map<string, SyncState>): Set<string> {

@@ -1,7 +1,6 @@
 /**
  * The sync engine's view of this browser's IndexedDB (see engine.ts).
  */
-import { createRandomIdGenerator } from '@opencanvas/core';
 import { getDB } from '../storage/db';
 import type { LocalEntry, LocalRecord, LocalSide, SyncState } from './engine';
 import { changedAt, fingerprint } from './fingerprint';
@@ -16,8 +15,6 @@ const KEY_PATH: Record<SyncStore, string> = {
   assets: 'hash',
   designs: 'id',
 };
-
-const newId = createRandomIdGenerator();
 
 type AnyRecord = Record<string, unknown>;
 
@@ -111,16 +108,19 @@ export class IdbLocal implements LocalSide {
     return true;
   }
 
-  async addCopy(store: SyncStore, value: AnyRecord): Promise<string> {
+  async addCopy(store: SyncStore, key: string, value: AnyRecord): Promise<void> {
     if (store !== 'designs') throw new Error(`Copies of ${store} are not supported`);
-    const id = newId('design');
-    const now = Date.now();
-    const copy = retitleDesign(
-      { ...value, id, revision: 1, createdAt: now, updatedAt: now },
-      String(value.title ?? 'Untitled design'),
-    );
-    await (await getDB()).put('designs', copy as never);
-    return id;
+    const db = await getDB();
+    const tx = db.transaction('designs', 'readwrite');
+    if (!(await tx.store.get(key))) {
+      // Times come from the copied version, so the same copy is identical wherever it is made.
+      const copy = retitleDesign(
+        { ...value, id: key, revision: 1 },
+        String(value.title ?? 'Untitled design'),
+      );
+      await tx.store.put(copy as never);
+    }
+    await tx.done;
   }
 
   async states(): Promise<SyncState[]> {

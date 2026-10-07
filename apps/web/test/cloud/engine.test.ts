@@ -65,7 +65,6 @@ class FakeComputer implements LocalSide {
   stores = new Map<SyncStore, Map<string, Record<string, unknown>>>();
   syncStates = new Map<string, SyncState>();
   uploaded = new Set<string>();
-  private copies = 0;
   engine: SyncEngine;
 
   constructor(
@@ -117,10 +116,8 @@ class FakeComputer implements LocalSide {
     this.s(store).delete(key);
     return true;
   }
-  async addCopy(store: SyncStore, value: Record<string, unknown>) {
-    const key = `${this.name}-copy-${++this.copies}`;
-    this.s(store).set(key, { ...value, id: key });
-    return key;
+  async addCopy(store: SyncStore, key: string, value: Record<string, unknown>) {
+    if (!this.s(store).has(key)) this.s(store).set(key, { ...value, id: key });
   }
   async states() {
     return [...this.syncStates.values()];
@@ -310,6 +307,33 @@ describe('cloud sync engine', () => {
     expect(a.all('designs').map((d) => d.title)).toContain('B older (from another computer)');
     await b.sync();
     expect(b.get('designs', 'd1')!.title).toBe('A newer');
+  });
+
+  it('never makes the same conflict copy twice, even when a round is cut short', async () => {
+    a.put('designs', 'd1', design('d1', 'Plan'));
+    await a.sync();
+    await b.sync();
+    a.put('designs', 'd1', design('d1', 'A edit'));
+    b.put('designs', 'd1', design('d1', 'B edit'));
+    await b.sync();
+    // A's tab closes right after making the copy, before downloading B's version.
+    const realWrite = a.write.bind(a);
+    a.write = async () => {
+      throw new Error('tab closed');
+    };
+    await a.sync();
+    a.write = realWrite;
+    await a.sync();
+    await a.sync();
+    await b.sync();
+    for (const c of [a, b]) {
+      expect(
+        c
+          .all('designs')
+          .map((d) => d.title)
+          .sort(),
+      ).toEqual(['A edit (from another computer)', 'B edit']);
+    }
   });
 
   it('settles other records changed on both sides with the newest version', async () => {

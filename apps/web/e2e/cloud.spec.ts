@@ -4,10 +4,12 @@
  * OpenCanvas server set up like a local install).
  *
  * Each browser context is a separate computer: it has its own IndexedDB.
- * "No internet" is simulated the way it happens: the local server can no
- * longer reach the bucket (cloud.json points at a closed port).
+ * "No internet" is simulated the way it happens: the bucket becomes
+ * unreachable (a relay between the server and S3 is cut), while the
+ * settings stay exactly the same.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import net from 'node:net';
 import path from 'node:path';
 import { type Browser, expect, type Page, test } from '@playwright/test';
 import { S3Client } from '../src/lib/cloud/s3';
@@ -56,9 +58,34 @@ function writeCloudJson(endpoint: string) {
   );
 }
 
-/** The internet goes away (for the local server) or comes back. */
-const goOffline = () => writeCloudJson('http://127.0.0.1:9');
-const goOnline = () => writeCloudJson(s3Info().endpoint);
+// A TCP relay in front of the S3 server: cutting it is "no internet".
+let relay: net.Server | null = null;
+let relayPort = 0;
+const sockets = new Set<net.Socket>();
+
+async function goOnline() {
+  if (relay) return;
+  const target = new URL(s3Info().endpoint);
+  relay = net.createServer((client) => {
+    const upstream = net.connect(Number(target.port), target.hostname);
+    for (const socket of [client, upstream]) {
+      sockets.add(socket);
+      socket.on('error', () => socket.destroy());
+      socket.on('close', () => sockets.delete(socket));
+    }
+    client.pipe(upstream).pipe(client);
+  });
+  await new Promise<void>((resolve) => relay!.listen(relayPort, '127.0.0.1', resolve));
+  relayPort = (relay.address() as net.AddressInfo).port;
+}
+
+/** The internet goes away: the bucket can no longer be reached. */
+async function goOffline() {
+  const server = relay;
+  relay = null;
+  for (const socket of sockets) socket.destroy();
+  await new Promise<void>((resolve) => (server ? server.close(() => resolve()) : resolve()));
+}
 
 const bucket = () => new S3Client({ ...s3Info(), region: 'us-east-1', pathStyle: true });
 
@@ -113,10 +140,16 @@ test.describe.configure({ mode: 'serial' });
 let designId = '';
 
 test.beforeAll(async () => {
-  for (let i = 0; i < 120 && !existsSync(process.env.E2E_S3_INFO!); i++) {
+  test.setTimeout(180_000);
+  for (let i = 0; i < 480 && !existsSync(process.env.E2E_S3_INFO!); i++) {
     await new Promise((r) => setTimeout(r, 250));
   }
-  goOnline();
+  await goOnline();
+  writeCloudJson(`http://127.0.0.1:${relayPort}`);
+});
+
+test.afterAll(async () => {
+  await goOffline();
 });
 
 test('uploads designs and files to the bucket, and says when everything is saved there', async ({ page }) => {
@@ -172,7 +205,7 @@ test('without internet it keeps working, marks what is only on this computer, an
 }) => {
   await page.goto('/');
   await expectSynced(page);
-  goOffline();
+  await goOffline();
   await page.goto(`/design/${designId}`);
   await setTitle(page, 'Edited offline');
   await syncNow(page);
@@ -189,7 +222,7 @@ test('without internet it keeps working, marks what is only on this computer, an
   expect((await bucketRecord('designs', designId))?.value.title).toBe('Cloud poster');
 
   // The connection comes back: it uploads by itself (no click).
-  goOnline();
+  await goOnline();
   await expect(card.getByTestId('local-only-badge')).toHaveCount(0, { timeout: 40_000 });
   await expectSynced(page);
   expect((await bucketRecord('designs', designId))?.value.title).toBe('Edited offline');
@@ -244,13 +277,13 @@ test('when two computers change the same design, both versions are kept', async 
   ).toBeVisible();
   await expectSynced(other);
 
-  goOffline();
+  await goOffline();
   await page.goto(`/design/${designId}`);
   await setTitle(page, 'Version from computer A');
   await other.goto(`/design/${designId}`);
   await setTitle(other, 'Version from computer B');
 
-  goOnline();
+  await goOnline();
   await other.goto('/');
   await syncNow(other);
   await expectSynced(other);
@@ -262,10 +295,12 @@ test('when two computers change the same design, both versions are kept', async 
 
   for (const p of [page, other]) {
     await p.goto('/');
-    await expect(p.getByTestId('design-card').filter({ hasText: 'Version from computer B' })).toBeVisible();
+    // Exactly the two versions: no duplicate copies.
+    await expect(p.getByTestId('design-card').filter({ hasText: 'Version from computer' })).toHaveCount(2);
+    await expect(p.getByTestId('design-card').filter({ hasText: 'Version from computer B' })).toHaveCount(1);
     await expect(
       p.getByTestId('design-card').filter({ hasText: 'Version from computer A (from another computer)' }),
-    ).toBeVisible();
+    ).toHaveCount(1);
   }
   await other.context().close();
 });

@@ -23,7 +23,13 @@ $env:S3_TEST_OUT = Join-Path $work 's3.json'
 $python = if ($env:PYTHON) { $env:PYTHON } else { 'python' }
 $server = Start-Process -FilePath $python -ArgumentList "`"$root\scripts\s3-test-server.py`" 5077" -PassThru -WindowStyle Hidden `
   -RedirectStandardOutput (Join-Path $work 'out.log') -RedirectStandardError (Join-Path $work 'err.log')
-for ($i = 0; $i -lt 60 -and -not (Test-Path $env:S3_TEST_OUT); $i++) { Start-Sleep -Milliseconds 500 }
+# Importing moto can take a while on a fresh machine.
+for ($i = 0; $i -lt 240 -and -not (Test-Path $env:S3_TEST_OUT); $i++) { Start-Sleep -Milliseconds 500 }
+if (-not (Test-Path $env:S3_TEST_OUT)) {
+  Write-Host 'The S3 test server did not start:'
+  Get-Content (Join-Path $work 'out.log'), (Join-Path $work 'err.log') -ErrorAction SilentlyContinue
+  exit 1
+}
 $s3 = Get-Content $env:S3_TEST_OUT -Raw | ConvertFrom-Json
 
 $env:OPENCANVAS_NO_OPEN = '1'
@@ -33,22 +39,33 @@ $env:OPENCANVAS_S3_ENDPOINT = $s3.endpoint
 $env:OPENCANVAS_S3_BUCKET = $s3.bucket
 $env:OPENCANVAS_S3_ACCESS_KEY_ID = $s3.accessKeyId
 $ocHome = Join-Path $env:LOCALAPPDATA 'OpenCanvas'
-$installer = Get-Content (Join-Path $root 'install.ps1') -Raw
+$oc = Join-Path $ocHome 'bin\opencanvas.cmd'
+
+# Output of nested native commands is captured reliably through cmd and a file.
+$n = 0
+function Run-Logged([string]$commandLine) {
+  $script:n++
+  $file = Join-Path $work "log$($script:n).txt"
+  cmd /c "$commandLine > `"$file`" 2>&1"
+  $text = Get-Content $file -Raw
+  Write-Host $text
+  return $text
+}
+$installCmd = "powershell -NoProfile -ExecutionPolicy Bypass -Command `"Get-Content '$root\install.ps1' -Raw | Invoke-Expression`""
 
 Write-Host '-------- wrong secret key --------'
 $env:OPENCANVAS_S3_SECRET_ACCESS_KEY = 'wrong-wrong-wrong-wrong-wrong'
-$log1 = (Invoke-Expression $installer *>&1 | Out-String)
-Write-Host $log1
+$log1 = Run-Logged $installCmd
 Check 'it explains the key is wrong' { $log1 -match 'secret access key does not match' }
 Check 'it keeps everything on this computer' { (Get-Content (Join-Path $ocHome 'cloud.json') -Raw) -match '"enabled":\s*false' }
 
 Write-Host '-------- right keys with opencanvas cloud --------'
 $env:OPENCANVAS_S3_SECRET_ACCESS_KEY = $s3.secretAccessKey
-$log2 = (& opencanvas cloud *>&1 | Out-String)
-Write-Host $log2
+$log2 = Run-Logged "`"$oc`" cloud"
 Check 'it connects' { $log2 -match 'connected' }
 Check 'the setup token is gone' { -not (Test-Path (Join-Path $ocHome '.setup-token')) }
-Check 'opencanvas cloud status shows the bucket' { (& opencanvas cloud status *>&1 | Out-String) -match $s3.bucket }
+$log2b = Run-Logged "`"$oc`" cloud status"
+Check 'opencanvas cloud status shows the bucket' { $log2b -match $s3.bucket }
 $port = (Get-Content (Join-Path $ocHome 'config.json') -Raw | ConvertFrom-Json).port
 $status = (Invoke-WebRequest -UseBasicParsing -Headers @{ 'x-opencanvas-sync' = '1' } "http://127.0.0.1:$port/api/cloud/status").Content
 Write-Host "  $status"
@@ -66,13 +83,12 @@ s3.put_object(Bucket=d["bucket"], Key="opencanvas/records/designs/d1.json", Body
 $seedFile = Join-Path $work 'seed.py'
 Set-Content -Path $seedFile -Value $seed
 & $python $seedFile $env:S3_TEST_OUT
-$log3 = (& opencanvas uninstall -y *>&1 | Out-String)
+$log3 = Run-Logged "`"$oc`" uninstall -y"
 Check 'uninstall reminds the work is in the bucket' { $log3 -match 'also in your cloud bucket' }
 Start-Sleep -Seconds 6
-$log4 = (Invoke-Expression $installer *>&1 | Out-String)
-Write-Host $log4
+$log4 = Run-Logged $installCmd
 Check 'the installer finds the library from before' { $log4 -match 'Found your OpenCanvas library from before' }
-& opencanvas uninstall -y | Out-Null
+Run-Logged "`"$oc`" uninstall -y" | Out-Null
 
 Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
 Write-Host ''
