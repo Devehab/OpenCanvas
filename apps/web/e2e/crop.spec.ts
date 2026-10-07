@@ -63,31 +63,30 @@ test('leaving crop mode removes the faded preview outside the box', async ({ pag
   });
   await waitForCanvasIdle(page);
   // A point left of the box, where the hidden part of the photo is shown faded while cropping.
-  const probe = await toScreen(page, { x: 300, y: 540 });
+  // Located on screen when it is read (the layout may still settle), and read until drawn.
   const sceneColor = () =>
-    page.evaluate(({ x, y }) => {
+    page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
       const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-layer="scene"]')!;
-      const r = canvas.getBoundingClientRect();
-      const scale = canvas.width / r.width;
+      const p = editor.pageToScreen({ x: 300, y: 540 });
+      const scale = canvas.width / canvas.getBoundingClientRect().width;
       const [red, green, blue] = canvas
         .getContext('2d')!
-        .getImageData(Math.round((x - r.left) * scale), Math.round((y - r.top) * scale), 1, 1).data;
+        .getImageData(Math.round(p.x * scale), Math.round(p.y * scale), 1, 1).data;
       return red! + green! + blue!;
-    }, probe);
-  expect(await sceneColor()).toBe(255 * 3); // white page
+    });
+  await expect.poll(sceneColor).toBe(255 * 3); // white page
 
   const [image] = await getNodes(page);
   const center = await nodeCenter(page, image!.id);
   await page.mouse.dblclick(center.x, center.y);
   await expect(page.getByTestId('crop-bar')).toBeVisible();
-  await waitForCanvasIdle(page);
-  expect(await sceneColor()).toBeLessThan(255 * 3); // faded photo visible
+  await expect.poll(sceneColor).toBeLessThan(255 * 3); // faded photo visible
 
   // Done without changing anything: the page is white again.
   await page.getByTestId('crop-done').click();
   await expect(page.getByTestId('crop-bar')).toHaveCount(0);
-  await waitForCanvasIdle(page);
-  expect(await sceneColor()).toBe(255 * 3);
+  await expect.poll(sceneColor).toBe(255 * 3);
 });
 
 test('resizing a photo frame keeps the photo covering it, like Canva', async ({ page }) => {

@@ -61,6 +61,7 @@ export class CanvasView {
   private readonly touches = new Map<number, Vec>();
   private pinch: { distance: number; zoom: number; center: Vec } | null = null;
   private fontCheckTimer: ReturnType<typeof setTimeout> | undefined;
+  private fontsLoadedTimer: ReturnType<typeof setTimeout> | undefined;
   private lastStoreVersion = -1;
   /** Milliseconds spent in the last scene render (for diagnostics and perf tests). */
   lastRenderMs = 0;
@@ -91,12 +92,7 @@ export class CanvasView {
     this.textEditor = new TextEditorOverlay(this.editor, this.container, {
       fallbacks: options.fontFallbacks,
     });
-    this.fontWatcher = new FontWatcher(this.editor.store, () => {
-      options.measurer.invalidate?.();
-      options.renderer.invalidateText(options.measurer);
-      this.editor.remeasureAllText();
-      this.invalidateScene();
-    });
+    this.fontWatcher = new FontWatcher(this.editor.store, () => this.fontsLoaded());
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(this.container);
@@ -114,6 +110,20 @@ export class CanvasView {
     this.listen(scrollArea, 'gesturestart', this.onGestureStart as EventListener);
     this.listen(scrollArea, 'gesturechange', this.onGestureChange as EventListener);
     this.listen(window, 'resize', () => this.resize());
+    // A face can finish loading after the check that asked for it (another
+    // unicode-range subset, Arabic for example, or a style sheet that arrived
+    // late): measure text again whenever any font finishes loading, so text
+    // never keeps the line breaks of a fallback font.
+    if (typeof document !== 'undefined' && document.fonts && 'addEventListener' in document.fonts) {
+      this.listen(document.fonts as unknown as EventTarget, 'loadingdone', () => {
+        this.fontCheckPending = true;
+        clearTimeout(this.fontsLoadedTimer);
+        this.fontsLoadedTimer = setTimeout(() => {
+          this.fontCheckPending = false;
+          this.fontsLoaded();
+        }, 50);
+      });
+    }
 
     this.cleanup.push(this.editor.subscribe(() => this.invalidate()));
     this.scheduleFontCheck(0);
@@ -123,6 +133,7 @@ export class CanvasView {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.fontCheckTimer);
+    clearTimeout(this.fontsLoadedTimer);
     this.resizeObserver.disconnect();
     for (const c of this.cleanup.splice(0)) c();
     this.textEditor.dispose();
@@ -138,6 +149,14 @@ export class CanvasView {
   ): void {
     target.addEventListener(type, handler, options);
     this.cleanup.push(() => target.removeEventListener(type, handler, options));
+  }
+
+  /** Fonts finished loading: measure and draw text again with them. */
+  private fontsLoaded(): void {
+    this.options.measurer.invalidate?.();
+    this.options.renderer.invalidateText(this.options.measurer);
+    this.editor.remeasureAllText();
+    this.invalidateScene();
   }
 
   /**

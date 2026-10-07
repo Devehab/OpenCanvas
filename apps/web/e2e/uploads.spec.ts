@@ -138,9 +138,10 @@ test.describe('uploads', () => {
     const nodes = await getNodes(page);
     expect(nodes[1]!.parentId).toBe(frame!.id);
 
-    // Details: rename.
-    await page.getByTestId('upload-item').first().hover();
-    await page.getByTestId('upload-menu').click();
+    // Details: rename. The menu opens from the keyboard here: after a drag and drop,
+    // Playwright's WebKit keeps the mouse in its drag state (menus open on pointer down).
+    await page.getByTestId('upload-menu').first().focus();
+    await page.keyboard.press('Enter');
     await page.getByRole('menuitem', { name: 'Details' }).click();
     await page.getByTestId('upload-name').fill('Sunset');
     await page.getByTestId('save-upload-details').click();
