@@ -20,6 +20,41 @@ test.describe('page views', () => {
     expect(await pageIds(page)).toHaveLength(3);
   });
 
+  test('scroll view: the wheel scrolls everywhere, also over page headers and rulers', async ({ page }) => {
+    await choosePageView(page, 'scroll');
+    await page.evaluate(() => {
+      const { editor } = window.__opencanvas!;
+      editor.zoomTo(0.4);
+      editor.setCurrentPage(editor.store.getPageIds()[0]!);
+    });
+    await waitForCanvasIdle(page);
+    const header = page.getByTestId('page-header').nth(1);
+    const headerY = async () => (await header.boundingBox())!.y;
+    // Over a page title (an input) and over the page actions alike: the pages move up.
+    for (const target of [header.getByTestId('page-title'), header.getByTestId('page-lock')]) {
+      const box = (await target.boundingBox())!;
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      const before = await headerY();
+      await page.mouse.wheel(0, 120);
+      await expect.poll(headerY).toBeLessThan(before - 40);
+    }
+    // The page under the middle of the view becomes the current page while scrolling.
+    for (let i = 0; i < 20; i++) await page.mouse.wheel(0, 200);
+    await expect.poll(() => currentPage(page)).toBe((await pageIds(page))[2]);
+    // The browser itself never scrolls or zooms.
+    expect(await page.evaluate(() => [window.scrollY, document.scrollingElement!.scrollTop])).toEqual([0, 0]);
+  });
+
+  test('grid view scrolls by itself', async ({ page }) => {
+    for (let i = 0; i < 9; i++) await page.getByTestId('add-page').click();
+    await choosePageView(page, 'grid');
+    const grid = page.getByTestId('page-grid');
+    const box = (await grid.boundingBox())!;
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.wheel(0, 400);
+    await expect.poll(() => grid.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  });
+
   test('scroll view stacks pages with a header and actions for each', async ({ page }) => {
     await choosePageView(page, 'scroll');
     await page.evaluate(() => {

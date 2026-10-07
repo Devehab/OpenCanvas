@@ -117,6 +117,7 @@ export function CanvasArea() {
   const { t } = useI18n();
   const { editor, session, viewRef, uploadFiles } = useEditorContext();
   const container = useRef<HTMLDivElement>(null);
+  const area = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
   const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
   const pageView = useEditorValue((e) => e.state.get().pageView);
@@ -138,6 +139,8 @@ export function CanvasArea() {
     const view = new CanvasView({
       editor,
       container: el,
+      // Page headers, rulers and toolbars lie over the canvas: scrolling over them scrolls it too.
+      scrollArea: area.current ?? undefined,
       renderer: session.renderer,
       platform: session.platform,
       measurer: session.measurer,
@@ -167,7 +170,7 @@ export function CanvasArea() {
   const pagePoint = (clientX: number, clientY: number) => editor.screenToPage(screenPoint(clientX, clientY));
 
   return (
-    <div className="relative min-h-0 flex-1 overflow-clip">
+    <div ref={area} className="relative min-h-0 flex-1 overflow-clip">
       <div
         ref={container}
         // biome-ignore lint/a11y/noNoninteractiveTabindex: the canvas is a keyboard-operated application region

@@ -71,6 +71,7 @@ export function PageGrid() {
   return (
     <section
       className="absolute inset-0 z-[6] overflow-y-auto bg-workspace p-6"
+      data-own-scroll
       data-testid="page-grid"
       aria-label={t('editor.pages.gridView')}
       onKeyDown={(e) => {

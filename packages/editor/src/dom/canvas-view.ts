@@ -35,6 +35,13 @@ export interface CanvasViewOptions {
   fontFallbacks: readonly string[];
   /** Called on right-click with the screen point (after selection was updated). */
   onContextMenu?: (point: Vec, event: MouseEvent) => void;
+  /**
+   * The element around the canvas, with what the application shows over it (page
+   * headers, rulers, toolbars). Scrolling and pinching over any of it moves the
+   * canvas too, so they never stop a scroll halfway. Parts that scroll by
+   * themselves opt out with a `data-own-scroll` attribute. Defaults to `container`.
+   */
+  scrollArea?: HTMLElement;
 }
 
 export class CanvasView {
@@ -101,10 +108,11 @@ export class CanvasView {
     this.listen(this.container, 'pointercancel', this.onPointerCancel as EventListener);
     this.listen(this.container, 'pointerleave', () => this.editor.state.set({ hoveredId: null }));
     this.listen(this.container, 'dblclick', this.onDoubleClick as EventListener);
-    this.listen(this.container, 'wheel', this.onWheel as EventListener, { passive: false });
+    const scrollArea = options.scrollArea ?? this.container;
+    this.listen(scrollArea, 'wheel', this.onWheel as EventListener, { passive: false });
     this.listen(this.container, 'contextmenu', this.onContextMenu as EventListener);
-    this.listen(this.container, 'gesturestart', this.onGestureStart as EventListener);
-    this.listen(this.container, 'gesturechange', this.onGestureChange as EventListener);
+    this.listen(scrollArea, 'gesturestart', this.onGestureStart as EventListener);
+    this.listen(scrollArea, 'gesturechange', this.onGestureChange as EventListener);
     this.listen(window, 'resize', () => this.resize());
 
     this.cleanup.push(this.editor.subscribe(() => this.invalidate()));
@@ -353,7 +361,13 @@ export class CanvasView {
     this.editor.doubleClick(toPointerInput(e, this.container));
   };
 
+  /** Over something that scrolls by itself (e.g. the page grid), the browser scrolls it. */
+  private ownScroll(e: Event): boolean {
+    return !!(e.target as Element | null)?.closest?.('[data-own-scroll]');
+  }
+
   private readonly onWheel = (e: WheelEvent): void => {
+    if (this.ownScroll(e)) return;
     e.preventDefault();
     const rect = this.container.getBoundingClientRect();
     const scale = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? rect.height : 1;
@@ -409,11 +423,13 @@ export class CanvasView {
 
   private gestureZoom = 1;
   private readonly onGestureStart = (e: Event): void => {
+    if (this.ownScroll(e)) return;
     e.preventDefault();
     this.gestureZoom = this.editor.state.get().camera.zoom;
   };
 
   private readonly onGestureChange = (e: Event): void => {
+    if (this.ownScroll(e)) return;
     e.preventDefault();
     const g = e as Event & { scale: number; clientX: number; clientY: number };
     const rect = this.container.getBoundingClientRect();
