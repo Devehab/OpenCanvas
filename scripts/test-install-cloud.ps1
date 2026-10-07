@@ -46,7 +46,8 @@ $n = 0
 function Run-Logged([string]$commandLine) {
   $script:n++
   $file = Join-Path $work "log$($script:n).txt"
-  cmd /c "$commandLine > `"$file`" 2>&1"
+  # Windows PowerShell must not inherit PowerShell 7's module paths.
+  cmd /c "set PSModulePath=&& $commandLine > `"$file`" 2>&1"
   $text = Get-Content $file -Raw
   Write-Host $text
   return $text

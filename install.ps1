@@ -31,7 +31,21 @@ function Install-OpenCanvas {
     $listeners = [System.Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners()
     return [bool]($listeners | Where-Object { $_.Port -eq $port })
   }
-  function Get-Sha256($path) { (Get-FileHash -Algorithm SHA256 -Path $path).Hash.ToLower() }
+  # .NET directly: Get-FileHash can be missing when Windows PowerShell is started from PowerShell 7.
+  function Get-Sha256($path) {
+    $stream = [IO.File]::OpenRead($path)
+    try {
+      $sha = [Security.Cryptography.SHA256]::Create()
+      return (($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') }) -join '')
+    } finally { $stream.Dispose() }
+  }
+  # Runs the opencanvas command in Windows PowerShell 5.1. Module paths inherited
+  # from PowerShell 7 would hide its built-in commands, so they are cleared for it.
+  function Invoke-Cli([string[]]$arguments) {
+    $saved = $env:PSModulePath
+    $env:PSModulePath = $null
+    try { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli @arguments } finally { $env:PSModulePath = $saved }
+  }
 
   $repo = Get-Setting 'OPENCANVAS_REPO' 'Devehab/OpenCanvas'
   $version = Get-Setting 'OPENCANVAS_VERSION' 'latest'
@@ -135,14 +149,14 @@ function Install-OpenCanvas {
     # Replace the previous version, if any (stopping it first).
     $app = Join-Path $ocHome 'app'
     $cli = Join-Path $app 'bin\opencanvas.ps1'
-    if (Test-Path $cli) { & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli stop --quiet | Out-Null }
+    if (Test-Path $cli) { Invoke-Cli @('stop', '--quiet') | Out-Null }
     if (Test-Path $app) { Remove-Item -Recurse -Force $app }
     Move-Item $newApp $app
 
     # The opencanvas command, on the user's PATH.
     $bin = Join-Path $ocHome 'bin'
     New-Item -ItemType Directory -Force -Path $bin | Out-Null
-    $cmd = "@echo off`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"%~dp0..\app\bin\opencanvas.ps1`" %*`r`n"
+    $cmd = "@echo off`r`nset PSModulePath=`r`npowershell.exe -NoProfile -ExecutionPolicy Bypass -File `"%~dp0..\app\bin\opencanvas.ps1`" %*`r`n"
     Set-Content -Path (Join-Path $bin 'opencanvas.cmd') -Value $cmd -Encoding ASCII -NoNewline
     $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
     $parts = @(if ($userPath) { $userPath -split ';' | Where-Object { $_ } })
@@ -157,7 +171,7 @@ function Install-OpenCanvas {
     $config | ConvertTo-Json | Set-Content -Path $configFile -Encoding UTF8
 
     Step "Starting OpenCanvas on port $port"
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $cli start
+    Invoke-Cli @('start')
     if ($LASTEXITCODE -ne 0) { throw "OpenCanvas did not start. See $(Join-Path $ocHome 'logs\server.log')" }
 
     # Where to keep the work: asked once (the answer is kept on updates).
