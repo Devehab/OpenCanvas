@@ -1,8 +1,8 @@
 'use client';
 
 import type { Fill, Shadow, Stroke } from '@opencanvas/core';
-import { ColorField } from '@/components/ui/color-field';
-import { NumberField, Segmented, SelectField, SliderField, Toggle } from '@/components/ui/fields';
+import { ColorField, FillPicker } from '@/components/ui/color-field';
+import { NumberField, Segmented, SliderField, Toggle } from '@/components/ui/fields';
 import { useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 
@@ -36,95 +36,25 @@ export function FillControl({
 }) {
   const { t } = useI18n();
   const swatches = useDocumentColors();
-  const mode = value?.type ?? 'none';
-  const first = value?.type === 'solid' ? value.color : (value?.stops[0]?.color ?? '#6d5dfc');
-  const last =
-    value && value.type !== 'solid' ? (value.stops[value.stops.length - 1]?.color ?? '#ffffff') : '#db2777';
-  const options = [
-    ...(allowNone ? [{ value: 'none' as const, label: t('editor.inspector.noFill') }] : []),
-    { value: 'solid' as const, label: t('editor.inspector.solidColor') },
-    { value: 'linear-gradient' as const, label: t('editor.inspector.linearGradient') },
-    { value: 'radial-gradient' as const, label: t('editor.inspector.radialGradient') },
-  ];
-  const setMode = (m: string) => {
-    if (m === 'none') onChange(null, true);
-    else if (m === 'solid') onChange({ type: 'solid', color: first }, true);
-    else if (m === 'linear-gradient')
-      onChange(
-        {
-          type: 'linear-gradient',
-          angle: 90,
-          stops: [
-            { offset: 0, color: first },
-            { offset: 1, color: last },
-          ],
-        },
-        true,
-      );
-    else
-      onChange(
-        {
-          type: 'radial-gradient',
-          cx: 0.5,
-          cy: 0.5,
-          stops: [
-            { offset: 0, color: first },
-            { offset: 1, color: last },
-          ],
-        },
-        true,
-      );
-  };
   return (
     <div className="space-y-2">
-      <SelectField
-        label={t('editor.inspector.fill')}
-        hideLabel
-        value={mode}
-        options={options}
-        onChange={setMode}
-        testId={testId ? `${testId}-mode` : undefined}
+      <FillPicker
+        label={t('editor.inspector.color')}
+        value={value}
+        swatches={swatches}
+        allowNone={allowNone}
+        onChange={onChange}
+        testId={testId ? `${testId}-color` : undefined}
       />
-      {value?.type === 'solid' ? (
-        <ColorField
-          label={t('editor.inspector.color')}
-          value={value.color}
-          swatches={swatches}
-          onChange={(c, final) => onChange({ type: 'solid', color: c }, final)}
-          testId={testId ? `${testId}-color` : undefined}
+      {value?.type === 'linear-gradient' ? (
+        <SliderField
+          label={t('editor.inspector.angle')}
+          value={value.angle}
+          min={0}
+          max={360}
+          format={(v) => `${Math.round(v)}°`}
+          onChange={(a) => onChange({ ...value, angle: a }, false)}
         />
-      ) : null}
-      {value && value.type !== 'solid' ? (
-        <>
-          <div className="grid grid-cols-2 gap-2">
-            <ColorField
-              label={`${t('editor.inspector.color')} 1`}
-              value={first}
-              swatches={swatches}
-              onChange={(c, final) =>
-                onChange({ ...value, stops: [{ offset: 0, color: c }, ...value.stops.slice(1)] }, final)
-              }
-            />
-            <ColorField
-              label={`${t('editor.inspector.color')} 2`}
-              value={last}
-              swatches={swatches}
-              onChange={(c, final) =>
-                onChange({ ...value, stops: [...value.stops.slice(0, -1), { offset: 1, color: c }] }, final)
-              }
-            />
-          </div>
-          {value.type === 'linear-gradient' ? (
-            <SliderField
-              label={t('editor.inspector.angle')}
-              value={value.angle}
-              min={0}
-              max={360}
-              format={(v) => `${Math.round(v)}°`}
-              onChange={(a) => onChange({ ...value, angle: a }, false)}
-            />
-          ) : null}
-        </>
       ) : null}
     </div>
   );

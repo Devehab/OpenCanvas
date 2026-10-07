@@ -163,6 +163,7 @@ test.describe('editor', () => {
     await page.getByTestId('pos-x').fill('240');
     await page.getByTestId('pos-x').press('Enter');
     await page.getByTestId('fill-color').click();
+    await page.getByTestId('color-custom').click();
     const hex = page.getByRole('textbox', { name: 'Color (hex)' });
     await hex.fill('#10b981');
     await hex.press('Enter');

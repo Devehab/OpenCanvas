@@ -94,6 +94,41 @@
     -6px 0;
 }
 
+/* Color picker (react-colorful), Canva-like: a rounded square and thin round sliders. */
+.oc-colorful .react-colorful {
+  width: 100%;
+  height: auto;
+}
+.oc-colorful .react-colorful__saturation {
+  flex: none;
+  height: 168px;
+  border-radius: 10px;
+  border-bottom: 0;
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06);
+}
+.oc-colorful .react-colorful__hue,
+.oc-colorful .react-colorful__alpha {
+  flex: none;
+  height: 12px;
+  margin: 14px 8px 0;
+  border-radius: 999px;
+}
+.oc-colorful .react-colorful__alpha-gradient,
+.oc-colorful .react-colorful__last-control {
+  border-radius: 999px;
+}
+.oc-colorful .react-colorful__pointer {
+  width: 20px;
+  height: 20px;
+  border-width: 3px;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+.oc-colorful .react-colorful__hue-pointer,
+.oc-colorful .react-colorful__alpha-pointer {
+  width: 18px;
+  height: 18px;
+}
+
 /* Search fields bring their own clear button where one is useful. */
 input[type="search"]::-webkit-search-cancel-button {
   appearance: none;

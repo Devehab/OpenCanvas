@@ -66,6 +66,8 @@ jobs:
           ```
 
           Then open http://localhost:4790. Stop it with `opencanvas stop`, start it with `opencanvas start`, update with `opencanvas update`, remove with `opencanvas uninstall`.
+
+          The installer asks where to keep your work: on this computer only, or also in your own cloud storage (Cloudflare R2, Amazon S3 or another S3-compatible service). Change it any time with `opencanvas cloud`.
           EOF
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/opencanvas.tar.gz dist/opencanvas.tar.gz.sha256 --clobber
