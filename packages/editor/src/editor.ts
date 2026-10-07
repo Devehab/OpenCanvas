@@ -45,6 +45,8 @@ import {
 import { Atom } from './atom';
 import {
   type Camera,
+  type CameraMargins,
+  clampCamera,
   clampZoom,
   fitBox,
   nextZoomStep,
@@ -91,6 +93,19 @@ export interface ClipboardData {
   /** Set when a whole page was copied: pasting then adds a new page. */
   page?: { width: number; height: number; name: string; background: Fill; notes: string };
 }
+
+/**
+ * Room kept around the pages when the camera is bounded (screen pixels). Above:
+ * the page header; below: the "Add page" button and the floating tool bar. The
+ * difference between top and bottom matches `zoomToFit`, so a fitted page
+ * stays exactly where the fit put it.
+ */
+const CAMERA_MARGINS: Record<PageView, CameraMargins> = {
+  single: { top: 56, right: 40, bottom: 116, left: 40 },
+  thumbnails: { top: 72, right: 40, bottom: 72, left: 40 },
+  scroll: { top: PAGE_GAP_PX, right: 40, bottom: 128, left: 40 },
+  grid: { top: 0, right: 0, bottom: 0, left: 0 },
+};
 
 export class Editor {
   readonly store: DocumentStore;
@@ -637,14 +652,37 @@ export class Editor {
     // Keep the page fitted while the layout settles or the window resizes,
     // until the user pans or zooms themselves.
     if (first || this.cameraFitted) this.revealPage();
+    else this.setCamera(this.state.get().camera, { keepFit: true });
   }
 
   /** True while the camera shows the automatic fit (no manual pan/zoom since). */
   private cameraFitted = false;
 
-  setCamera(camera: Camera): void {
-    this.cameraFitted = false;
-    this.state.set({ camera: { ...camera, zoom: clampZoom(camera.zoom) } });
+  setCamera(camera: Camera, options: { keepFit?: boolean } = {}): void {
+    if (!options.keepFit) this.cameraFitted = false;
+    this.state.set({ camera: this.boundCamera({ ...camera, zoom: clampZoom(camera.zoom) }) });
+  }
+
+  /**
+   * Keeps the pages in sight (like Canva): a page that fits the screen stays
+   * centered; a larger one (zoomed in) can be moved only up to its edges, with
+   * room for the page headers, the "Add page" button and the tool bar.
+   */
+  private boundCamera(camera: Camera): Camera {
+    const s = this.state.get();
+    if (s.viewport.width === 0 || s.viewport.height === 0 || s.pageView === 'grid') return camera;
+    const slots =
+      s.pageView === 'scroll' ? scrollLayout(this.store, s.pageId, camera.zoom) : this.getPageSlots();
+    if (slots.length === 0) return camera;
+    const x = Math.min(...slots.map((p) => p.x));
+    const y = Math.min(...slots.map((p) => p.y));
+    const content = {
+      x,
+      y,
+      width: Math.max(...slots.map((p) => p.x + p.width)) - x,
+      height: Math.max(...slots.map((p) => p.y + p.height)) - y,
+    };
+    return clampCamera(camera, content, s.viewport, CAMERA_MARGINS[s.pageView]);
   }
 
   panBy(dx: number, dy: number): void {

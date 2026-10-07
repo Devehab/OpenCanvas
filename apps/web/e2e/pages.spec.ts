@@ -45,6 +45,23 @@ test.describe('page views', () => {
     expect(await page.evaluate(() => [window.scrollY, document.scrollingElement!.scrollTop])).toEqual([0, 0]);
   });
 
+  test('scroll view: scrolling far sideways or past the last page never loses the pages', async ({
+    page,
+  }) => {
+    await choosePageView(page, 'scroll');
+    const canvas = (await page.getByTestId('canvas').boundingBox())!;
+    await page.mouse.move(canvas.x + canvas.width / 2, canvas.y + canvas.height / 2);
+    for (let i = 0; i < 30; i++) await page.mouse.wheel(800, 0);
+    for (let i = 0; i < 30; i++) await page.mouse.wheel(0, 800);
+    await waitForCanvasIdle(page);
+    // The last page is still there, centered across, with its "Add page" button in view.
+    const last = (await page.getByTestId('page-header').last().boundingBox())!;
+    expect(Math.abs(last.x + last.width / 2 - (canvas.x + canvas.width / 2))).toBeLessThan(2);
+    await expect(page.getByTestId('canvas-add-page')).toBeInViewport();
+    for (let i = 0; i < 30; i++) await page.mouse.wheel(-800, -800);
+    await expect(page.getByTestId('page-header').first()).toBeInViewport();
+  });
+
   test('grid view scrolls by itself', async ({ page }) => {
     for (let i = 0; i < 9; i++) await page.getByTestId('add-page').click();
     await choosePageView(page, 'grid');

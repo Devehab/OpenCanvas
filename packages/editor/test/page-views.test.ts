@@ -5,7 +5,9 @@ import { createTestEditor } from './helpers';
 function scrollSetup() {
   const t = createTestEditor({ width: 400, height: 300, pages: 3 });
   t.editor.setPageView('scroll');
-  t.editor.setCamera({ x: 100, y: 100, zoom: 0.5 });
+  // 400 × 300 pages at 100%: they fit across the 1000 × 800 view (centered at
+  // x = 300), and the stack is taller than the view, so it scrolls.
+  t.editor.setCamera({ x: 300, y: 50, zoom: 1 });
   return t;
 }
 
@@ -16,7 +18,7 @@ describe('scroll view', () => {
     expect(slots).toHaveLength(3);
     const camera = t.editor.state.get().camera;
     const [a, b, c] = slots.map((s) => slotScreenRect(camera, s));
-    expect(a).toEqual({ x: 100, y: 100, width: 200, height: 150 });
+    expect(a).toEqual({ x: 300, y: 50, width: 400, height: 300 });
     expect(b!.y - (a!.y + a!.height)).toBeCloseTo(PAGE_GAP_PX);
     expect(c!.y - (b!.y + b!.height)).toBeCloseTo(PAGE_GAP_PX);
   });
@@ -50,7 +52,7 @@ describe('scroll view', () => {
     t.editor.wheel({
       point: { x: 500, y: 400 },
       deltaX: 0,
-      deltaY: 150,
+      deltaY: 500,
       ctrlKey: false,
       metaKey: false,
       shiftKey: false,
@@ -65,7 +67,7 @@ describe('scroll view', () => {
     t.editor.setTool('rect');
     t.drag([rect.x + 10, rect.y + 10], [rect.x + 60, rect.y + 60]);
     const [node] = t.store.getChildren(second!);
-    expect(node).toMatchObject({ type: 'shape', x: 20, y: 20, width: 100, height: 100 });
+    expect(node).toMatchObject({ type: 'shape', x: 10, y: 10, width: 50, height: 50 });
   });
 
   it('other views show one page at a time', () => {
@@ -133,5 +135,65 @@ describe('copy and paste a page', () => {
 
     t.editor.undo();
     expect(t.store.getPageIds()).toEqual([first, second]);
+  });
+});
+
+describe('the pages never scroll out of sight (like Canva)', () => {
+  const wheel = (t: ReturnType<typeof createTestEditor>, deltaX: number, deltaY: number) =>
+    t.editor.wheel({
+      point: { x: 500, y: 400 },
+      deltaX,
+      deltaY,
+      ctrlKey: false,
+      metaKey: false,
+      shiftKey: false,
+    });
+  const pageRect = (t: ReturnType<typeof createTestEditor>) =>
+    slotScreenRect(t.editor.state.get().camera, t.editor.getPageSlots()[0]!);
+
+  it('a page that fits the screen stays centered: no sideways scrolling', () => {
+    const t = createTestEditor({ width: 400, height: 300 });
+    t.editor.zoomToFit();
+    const fitted = pageRect(t);
+    for (let i = 0; i < 50; i++) wheel(t, 200, 0);
+    wheel(t, 0, 500);
+    expect(pageRect(t)).toEqual(fitted);
+  });
+
+  it('zoomed in, it moves only until its edges show, with a margin', () => {
+    const t = createTestEditor({ width: 2000, height: 2000 });
+    t.editor.setCamera({ x: 0, y: 0, zoom: 1 });
+    for (let i = 0; i < 50; i++) wheel(t, 500, 500); // far right and down
+    let r = pageRect(t);
+    expect(r.x + r.width).toBe(1000 - 40);
+    expect(r.y + r.height).toBe(800 - 72); // thumbnails view: room for the tool bar
+    for (let i = 0; i < 50; i++) wheel(t, -500, -500); // far left and up
+    r = pageRect(t);
+    expect(r.x).toBe(40);
+    expect(r.y).toBe(72);
+  });
+
+  it('scroll view: from the first page header to the last page, and no further', () => {
+    const t = scrollSetup();
+    for (let i = 0; i < 50; i++) wheel(t, 300, 300);
+    const camera = t.editor.state.get().camera;
+    const slots = t.editor.getPageSlots();
+    const last = slotScreenRect(camera, slots[slots.length - 1]!);
+    expect(last.y + last.height).toBeCloseTo(800 - 128);
+    expect(last.x).toBe(300); // still centered across
+    for (let i = 0; i < 50; i++) wheel(t, -300, -300);
+    const first = slotScreenRect(t.editor.state.get().camera, t.editor.getPageSlots()[0]!);
+    expect(first.y).toBeCloseTo(PAGE_GAP_PX);
+  });
+
+  it('zooming out until everything fits centers it', () => {
+    const t = scrollSetup();
+    t.editor.zoomTo(0.2, { x: 0, y: 0 });
+    const camera = t.editor.state.get().camera;
+    const rects = t.editor.getPageSlots().map((s) => slotScreenRect(camera, s));
+    const top = rects[0]!.y;
+    const bottom = rects[rects.length - 1]!.y + rects[rects.length - 1]!.height;
+    expect(top - PAGE_GAP_PX).toBeCloseTo(800 - 128 - bottom);
+    expect(rects[0]!.x).toBeCloseTo((1000 - rects[0]!.width) / 2);
   });
 });

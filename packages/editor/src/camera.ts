@@ -54,6 +54,43 @@ export function fitBox(
   };
 }
 
+/** Screen space kept around the content (room for page headers and toolbars). */
+export interface CameraMargins {
+  top: number;
+  right: number;
+  bottom: number;
+  left: number;
+}
+
+/**
+ * Keeps the content (page space) in view, like Canva: on an axis where it fits
+ * the viewport (inside the margins) it stays centered and cannot be moved;
+ * where it is larger, it can be moved only until its edges reach the margins.
+ * So the pages can never be scrolled out of sight into empty space.
+ */
+export function clampCamera(
+  camera: Camera,
+  content: Box,
+  viewport: { width: number; height: number },
+  margins: CameraMargins,
+): Camera {
+  const axis = (offset: number, start: number, size: number, view: number, before: number, after: number) => {
+    const extent = size * camera.zoom;
+    const screenStart = offset + start * camera.zoom;
+    const room = view - before - after;
+    const wanted =
+      extent <= room
+        ? before + (room - extent) / 2
+        : Math.min(before, Math.max(view - after - extent, screenStart));
+    return offset + (wanted - screenStart);
+  };
+  return {
+    zoom: camera.zoom,
+    x: axis(camera.x, content.x, content.width, viewport.width, margins.left, margins.right),
+    y: axis(camera.y, content.y, content.height, viewport.height, margins.top, margins.bottom),
+  };
+}
+
 /** Visible page-space rectangle. */
 export function visiblePageRect(camera: Camera, viewport: { width: number; height: number }): Box {
   return {
