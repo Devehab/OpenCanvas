@@ -652,3 +652,20 @@ test('while nothing changes, it only checks the tiny change marker: no listing, 
   expect(checks).toBeGreaterThanOrEqual(1);
   expect(checks).toBeLessThanOrEqual(2);
 });
+
+test('leaving the tab uploads what waits at once, without waiting for the pause', async ({ page }) => {
+  const id = await createDesign(page);
+  await setTitle(page, 'Leaving now');
+  const status = page.getByTestId('cloud-status').first();
+  await expect(status).toHaveAttribute('data-shown', 'synced', { timeout: 20_000 });
+  await setTitle(page, 'Left the tab');
+  await expect(status).toHaveAttribute('data-shown', 'waiting');
+  const hiddenAt = Date.now();
+  await page.evaluate(() => {
+    Object.defineProperty(document, 'visibilityState', { value: 'hidden', configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  });
+  await expect.poll(async () => (await bucketRecord('designs', id))?.value.title).toBe('Left the tab');
+  // Well before the 3 seconds a pause in editing waits for.
+  expect(Date.now() - hiddenAt).toBeLessThan(2500);
+});

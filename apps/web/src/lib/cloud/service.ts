@@ -158,15 +158,22 @@ export class CloudSyncService {
     }
     const onOnline = () => void this.check('online');
     const onOffline = () => void this.refreshPending('offline');
+    // Leaving the tab (or closing the laptop) does not wait for the pause: what waits goes up now.
+    const uploadNow = () => {
+      if (this.dirtySince !== null) void this.check('local');
+    };
     const onVisible = () => {
       if (document.visibilityState === 'visible') this.later('poll', 500);
+      else uploadNow();
     };
     window.addEventListener('online', onOnline);
     window.addEventListener('offline', onOffline);
+    window.addEventListener('pagehide', uploadNow);
     document.addEventListener('visibilitychange', onVisible);
     this.cleanup.push(
       () => window.removeEventListener('online', onOnline),
       () => window.removeEventListener('offline', onOffline),
+      () => window.removeEventListener('pagehide', uploadNow),
       () => document.removeEventListener('visibilitychange', onVisible),
       // Changes saved by any tab, this one included.
       onAnyMessage((m) => {
@@ -192,6 +199,8 @@ export class CloudSyncService {
 
   /** Something was saved on this computer: show it as waiting, upload once editing pauses. */
   private localChange(m: ChannelMessage): void {
+    // This computer only: nothing to upload (turning the cloud on later compares everything).
+    if (this.status.mode === 'off') return;
     const now = Date.now();
     this.changeSeq++;
     this.lastChangeAt = now;
@@ -211,7 +220,11 @@ export class CloudSyncService {
   private scheduleUpload(): void {
     if (this.stopped || this.dirtySince === null) return;
     const now = Date.now();
-    const at = Math.min(this.lastChangeAt + IDLE_MS, this.dirtySince + MAX_WAIT_MS);
+    // In a hidden tab (the last save before leaving it), nobody is editing: no need to wait.
+    const at =
+      document.visibilityState === 'hidden'
+        ? now
+        : Math.min(this.lastChangeAt + IDLE_MS, this.dirtySince + MAX_WAIT_MS);
     clearTimeout(this.uploadTimer);
     this.uploadTimer = setTimeout(() => void this.check('local'), Math.max(0, at - now));
   }
