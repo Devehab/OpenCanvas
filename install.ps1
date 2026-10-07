@@ -115,7 +115,13 @@ function Install-OpenCanvas {
         if ($none) { throw "No version of OpenCanvas has been published yet, so there is nothing to download. Try again in a few minutes: https://github.com/$repo/releases" }
         throw "Could not download $source. Check your internet connection and try again. Releases: https://github.com/$repo/releases"
       }
-      try { $sum = (((Invoke-WebRequest -UseBasicParsing "$source.sha256").Content) -split '\s+')[0] } catch { $sum = '' }
+      # Saved to a file and read as text: GitHub serves it as binary, which
+      # Invoke-WebRequest would return as bytes.
+      $sumFile = Join-Path $tmp 'opencanvas.tar.gz.sha256'
+      try {
+        Invoke-WebRequest -UseBasicParsing "$source.sha256" -OutFile $sumFile
+        $sum = ((Get-Content $sumFile -Raw).Trim() -split '\s+')[0]
+      } catch { $sum = '' }
     }
     if ($sum -and ((Get-Sha256 $bundle) -ne $sum.ToLower())) { throw 'The OpenCanvas download is damaged (checksum mismatch). Please try again.' }
     $extract = Join-Path $tmp 'app'
