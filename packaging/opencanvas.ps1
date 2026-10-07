@@ -82,8 +82,14 @@ function Invoke-Start {
   }
   New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
   Write-Launcher
-  # Start with Windows: run the launcher when this user signs in.
-  Set-ItemProperty -Path $RunKey -Name 'OpenCanvas' -Value "wscript.exe `"$Launcher`""
+  # Start with Windows: run the launcher when this user signs in. A new
+  # account may not have the Run key yet.
+  try {
+    if (-not (Test-Path $RunKey)) { New-Item -Path $RunKey -Force | Out-Null }
+    Set-ItemProperty -Path $RunKey -Name 'OpenCanvas' -Value "wscript.exe `"$Launcher`""
+  } catch {
+    Say "Could not set OpenCanvas to start with Windows: $($_.Exception.Message)" Yellow
+  }
   if (-not (Test-Healthy) -and -not (Get-ServerProcess)) {
     Start-Process -FilePath 'wscript.exe' -ArgumentList "`"$Launcher`"" -WindowStyle Hidden
   }
