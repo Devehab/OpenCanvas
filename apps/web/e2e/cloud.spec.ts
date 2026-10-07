@@ -10,6 +10,7 @@
  * settings and device id, reaching S3 directly) is a second computer on
  * another network.
  */
+import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import net from 'node:net';
@@ -552,9 +553,10 @@ test('two computers, each with its own OpenCanvas, share everything (files byte 
     editor.addPage(editor.pageId);
   });
   await openPanel(page, 'uploads');
+  const photo = noisePng(640, 480);
   await page
     .getByTestId('upload-input')
-    .setInputFiles([{ name: 'big-photo.png', mimeType: 'image/png', buffer: noisePng(640, 480) }]);
+    .setInputFiles([{ name: 'big-photo.png', mimeType: 'image/png', buffer: photo }]);
   await expect.poll(async () => (await getNodes(page)).filter((n) => n.type === 'image').length).toBe(1);
   await waitForSaved(page);
   await expect(page.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
@@ -582,6 +584,17 @@ test('two computers, each with its own OpenCanvas, share everything (files byte 
       expect(right, `${store}/${byKey(record)}`).toEqual(left);
     }
   }
+  // The photo on computer B is the very file uploaded on A: same bytes, full resolution.
+  const photoOnB = (await localRecords(b, 'assets')).find((r) => r.name === 'big-photo.png')!;
+  expect(photoOnB).toMatchObject({
+    width: 640,
+    height: 480,
+    blob: {
+      file: createHash('sha256').update(photo).digest('hex'),
+      size: photo.byteLength,
+      type: 'image/png',
+    },
+  });
   await b.goto(`/design/${id}`);
   await waitForCanvasIdle(b);
   // Every page, every element (the photo included) is there.
