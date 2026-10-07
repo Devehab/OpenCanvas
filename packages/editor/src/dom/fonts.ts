@@ -57,6 +57,35 @@ export async function loadFonts(requests: readonly FontRequest[], timeoutMs = 80
 }
 
 /**
+ * Resolves once canvas text really uses the faces: their width differs from
+ * a fallback's. Firefox can go on drawing and measuring canvas text with the
+ * fallback for a while after document.fonts.load() resolved, and text
+ * measured then keeps the fallback's line breaks. Gives up after
+ * `timeoutMs` (a font that failed to load, or one metrically identical to
+ * the fallback).
+ */
+export async function waitForCanvasFonts(requests: readonly FontRequest[], timeoutMs = 4000): Promise<void> {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
+  const deadline = Date.now() + timeoutMs;
+  let pending = [...requests];
+  while (pending.length > 0) {
+    // A fresh context each time: contexts keep the face they resolved for a font string.
+    const ctx = document.createElement('canvas').getContext('2d');
+    if (!ctx) return;
+    pending = pending.filter((r) => {
+      const sample = `${r.sample}Aa`;
+      const font = (family: string) => `${r.style === 'italic' ? 'italic ' : ''}${r.weight} 48px ${family}`;
+      ctx.font = font(`"${r.family.replace(/["\\]/g, '')}", monospace`);
+      const withFace = ctx.measureText(sample).width;
+      ctx.font = font('monospace');
+      return Math.abs(withFace - ctx.measureText(sample).width) < 0.01;
+    });
+    if (pending.length === 0 || Date.now() > deadline) return;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
+
+/**
  * Watches the document for fonts that are not loaded yet and calls
  * `onLoaded` whenever new faces finish loading.
  */
@@ -93,6 +122,7 @@ export class FontWatcher {
         );
         if (missing.length === 0) continue;
         await loadFonts(missing);
+        await waitForCanvasFonts(missing);
         for (const r of missing) this.loaded.add(`${r.family}|${r.weight}|${r.style}`);
         this.onLoaded();
       } while (this.rerun);

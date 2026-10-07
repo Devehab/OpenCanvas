@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { collectFontRequests, FontWatcher } from '../src/dom/fonts';
+import { collectFontRequests, FontWatcher, waitForCanvasFonts } from '../src/dom/fonts';
 import { createTestEditor } from './helpers';
 
 type Load = (font: string, text?: string) => Promise<unknown[]>;
@@ -89,5 +89,33 @@ describe('font loading', () => {
     await watcher.check();
     expect(calls).toHaveLength(2);
     expect(onLoaded).toHaveBeenCalledTimes(2);
+  });
+
+  it('waits until canvas text really uses a loaded face (Firefox can lag behind fonts.load)', async () => {
+    let applied = false;
+    const ctx = {
+      font: '',
+      measureText: () => ({ width: ctx.font.includes('"Cairo"') && applied ? 100 : 80 }),
+    };
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => ctx }) });
+    let done = false;
+    const waiting = waitForCanvasFonts([
+      { family: 'Cairo', weight: 700, style: 'normal', sample: 'مرحبا' },
+    ]).then(() => {
+      done = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(done).toBe(false);
+    applied = true;
+    await waiting;
+    expect(done).toBe(true);
+  });
+
+  it('gives up waiting after the timeout (a font that never applies)', async () => {
+    const ctx = { font: '', measureText: () => ({ width: 80 }) };
+    vi.stubGlobal('document', { createElement: () => ({ getContext: () => ctx }) });
+    const start = Date.now();
+    await waitForCanvasFonts([{ family: 'Broken', weight: 400, style: 'normal', sample: 'x' }], 300);
+    expect(Date.now() - start).toBeLessThan(1000);
   });
 });

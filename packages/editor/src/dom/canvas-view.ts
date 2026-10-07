@@ -26,9 +26,6 @@ import { FontWatcher } from './fonts';
 import { toPointerInput } from './keys';
 import { TextEditorOverlay } from './text-editor';
 
-/** After fonts load, text is measured again after these delays (ms). */
-const SETTLE_DELAYS_MS = [250, 1000];
-
 export interface CanvasViewOptions {
   editor: Editor;
   container: HTMLElement;
@@ -64,10 +61,7 @@ export class CanvasView {
   private readonly touches = new Map<number, Vec>();
   private pinch: { distance: number; zoom: number; center: Vec } | null = null;
   private fontCheckTimer: ReturnType<typeof setTimeout> | undefined;
-  private fontsLoadedTimer: ReturnType<typeof setTimeout> | undefined;
-  private settleTimer: ReturnType<typeof setTimeout> | undefined;
-  /** Text is measured again shortly after fonts loaded (see fontsLoaded). */
-  private textSettling = false;
+
   private lastStoreVersion = -1;
   /** Milliseconds spent in the last scene render (for diagnostics and perf tests). */
   lastRenderMs = 0;
@@ -122,12 +116,8 @@ export class CanvasView {
     // never keeps the line breaks of a fallback font.
     if (typeof document !== 'undefined' && document.fonts && 'addEventListener' in document.fonts) {
       this.listen(document.fonts as unknown as EventTarget, 'loadingdone', () => {
-        this.fontCheckPending = true;
-        clearTimeout(this.fontsLoadedTimer);
-        this.fontsLoadedTimer = setTimeout(() => {
-          this.fontCheckPending = false;
-          this.fontsLoaded();
-        }, 50);
+        this.fontWatcher.forget();
+        this.scheduleFontCheck(50);
       });
     }
 
@@ -139,8 +129,6 @@ export class CanvasView {
   dispose(): void {
     cancelAnimationFrame(this.raf);
     clearTimeout(this.fontCheckTimer);
-    clearTimeout(this.fontsLoadedTimer);
-    clearTimeout(this.settleTimer);
     this.resizeObserver.disconnect();
     for (const c of this.cleanup.splice(0)) c();
     this.textEditor.dispose();
@@ -158,26 +146,8 @@ export class CanvasView {
     this.cleanup.push(() => target.removeEventListener(type, handler, options));
   }
 
-  /**
-   * Fonts finished loading: measure and draw text again with them, then once
-   * more a moment later. Firefox can go on measuring with the fallback face
-   * for a short while after a web font loaded (an Arabic heading then kept
-   * a second line); measuring unchanged text again changes nothing.
-   */
+  /** Fonts are loaded and in use by canvas text: measure and draw text again with them. */
   private fontsLoaded(): void {
-    this.remeasureText();
-    clearTimeout(this.settleTimer);
-    this.textSettling = true;
-    let step = 0;
-    const again = () => {
-      this.remeasureText();
-      if (++step < SETTLE_DELAYS_MS.length) this.settleTimer = setTimeout(again, SETTLE_DELAYS_MS[step]);
-      else this.textSettling = false;
-    };
-    this.settleTimer = setTimeout(again, SETTLE_DELAYS_MS[0]);
-  }
-
-  private remeasureText(): void {
     this.options.measurer.invalidate?.();
     this.options.renderer.invalidateText(this.options.measurer);
     this.editor.remeasureAllText();
@@ -227,9 +197,7 @@ export class CanvasView {
 
   /** True when no redraw, frame or font check is pending. */
   get idle(): boolean {
-    return (
-      this.raf === 0 && !this.sceneDirty && !this.overlayDirty && !this.fontCheckPending && !this.textSettling
-    );
+    return this.raf === 0 && !this.sceneDirty && !this.overlayDirty && !this.fontCheckPending;
   }
 
   private schedule(): void {
