@@ -3,12 +3,10 @@
 import { serializeDocument } from '@opencanvas/core';
 import { PACKAGE_EXTENSION, PACKAGE_MIME, safeFileName } from '@opencanvas/export';
 import {
+  AlertTriangle,
   ArrowDownToLine,
   BringToFront,
-  Check,
   ChevronDown,
-  Cloud,
-  CloudOff,
   Copy,
   FilePlus,
   FlipHorizontal2,
@@ -21,6 +19,9 @@ import {
   Loader2,
   Lock,
   Maximize,
+  Monitor,
+  MonitorCheck,
+  MonitorX,
   PanelBottom,
   Redo2,
   Rows3,
@@ -72,15 +73,18 @@ function MenuButton({ label }: { label: string }) {
 function SaveIndicator() {
   const { t } = useI18n();
   const status = useSaveStatus();
+  // Saving on this computer comes first (the cloud follows, see CloudStatusButton).
   const icon =
     status === 'saving' ? (
       <Loader2 className="size-4 animate-spin" />
-    ) : status === 'error' || status === 'conflict' ? (
-      <CloudOff className="size-4" />
+    ) : status === 'error' ? (
+      <MonitorX className="size-4" />
+    ) : status === 'conflict' ? (
+      <AlertTriangle className="size-4" />
     ) : status === 'unsaved' ? (
-      <Cloud className="size-4 opacity-70" />
+      <Monitor className="size-4 opacity-70" />
     ) : (
-      <Check className="size-4" />
+      <MonitorCheck className="size-4" />
     );
   return (
     <span
@@ -145,6 +149,7 @@ export function TopBar() {
   const router = useRouter();
   const toast = useToast();
   const { editor, session, setDialog } = useEditorContext();
+  const saveStatus = useSaveStatus();
   const fileInput = useRef<HTMLInputElement>(null);
   const { canUndo, canRedo, hasSelection, snapping, rulers, hasGuides, locked, isGroup, multi } =
     useEditorValue((e) => {
@@ -457,7 +462,7 @@ export function TopBar() {
         </IconButton>
         <div className="ms-2 flex items-center gap-1">
           <SaveIndicator />
-          <CloudStatusButton tone="dark" />
+          <CloudStatusButton tone="dark" localBusy={saveStatus !== 'saved'} />
         </div>
       </div>
       <div className="flex flex-1 justify-center" dir="auto">

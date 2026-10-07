@@ -3,7 +3,7 @@
  * server (/api/cloud/*), which holds the keys and signs the requests.
  */
 import { type CloudDoc, OfflineError, type RemoteSide } from './engine';
-import { blobPath } from './keys';
+import { blobPath, MARKER_PATH } from './keys';
 
 export const SYNC_HEADERS = { 'x-opencanvas-sync': '1' };
 
@@ -90,6 +90,18 @@ export class HttpRemote implements RemoteSide {
       body: blob,
     });
     if (!res.ok) return failure(res);
+  }
+
+  async touchMarker(condition: { ifMatch?: string; ifNoneMatch?: boolean } | null) {
+    const headers: Record<string, string> = { 'content-type': 'application/json' };
+    if (condition?.ifMatch) headers['x-opencanvas-if-match'] = condition.ifMatch;
+    if (condition?.ifNoneMatch) headers['x-opencanvas-if-none-match'] = '*';
+    // Different every time, so its version (ETag) always changes.
+    const body = JSON.stringify({ v: 1, at: Date.now(), nonce: crypto.randomUUID() });
+    const res = await call(objectUrl(MARKER_PATH), { method: 'PUT', headers, body });
+    if (res.status === 412) return { ok: false as const };
+    if (!res.ok) return failure(res);
+    return { ok: true as const, etag: ((await res.json()) as { etag: string }).etag };
   }
 
   async getBlob(hash: string, type: string): Promise<Blob> {

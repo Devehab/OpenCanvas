@@ -2,7 +2,7 @@
  * Cross-tab notifications (BroadcastChannel): lets the dashboard refresh and
  * lets two tabs editing the same design detect each other's saves.
  */
-export type ChannelMessage =
+type Message =
   | { type: 'design-saved'; designId: string; revision: number; tabId: string }
   | { type: 'designs-changed'; tabId: string }
   | { type: 'thumbnail-updated'; designId: string; tabId: string }
@@ -13,6 +13,9 @@ export type ChannelMessage =
   | { type: 'icons-changed'; tabId: string }
   | { type: 'plugins-changed'; tabId: string }
   | { type: 'cloud-synced'; tabId: string };
+
+/** `fromCloud`: the change was downloaded by cloud sync, not made on this computer. */
+export type ChannelMessage = Message & { fromCloud?: boolean };
 
 export const TAB_ID =
   typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Math.random());
@@ -25,11 +28,30 @@ function getChannel(): BroadcastChannel | null {
 }
 
 const localHandlers = new Set<(message: ChannelMessage) => void>();
+const observers = new Set<(message: ChannelMessage) => void>();
 
 /** Sends a message to other tabs; with `self`, this tab's listeners receive it too. */
 export function broadcast(message: ChannelMessage, options: { self?: boolean } = {}): void {
   getChannel()?.postMessage(message);
+  for (const observer of [...observers]) observer(message);
   if (options.self) for (const handler of [...localHandlers]) handler(message);
+}
+
+/**
+ * Every message, this tab's own included (whether sent with `self` or not):
+ * for cloud sync, which uploads what any tab saves.
+ */
+export function onAnyMessage(handler: (message: ChannelMessage) => void): () => void {
+  observers.add(handler);
+  const c = getChannel();
+  const listener = (e: MessageEvent<ChannelMessage>) => {
+    if (e.data && e.data.tabId !== TAB_ID) handler(e.data);
+  };
+  c?.addEventListener('message', listener);
+  return () => {
+    observers.delete(handler);
+    c?.removeEventListener('message', listener);
+  };
 }
 
 export function onChannelMessage(handler: (message: ChannelMessage) => void): () => void {

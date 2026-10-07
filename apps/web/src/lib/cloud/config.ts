@@ -234,8 +234,9 @@ export async function checkConnection(config: CloudConfig | Omit<CloudConfig, 'd
 export async function libraryInfo(client: S3Client, prefix: string): Promise<LibraryInfo> {
   const space = await client.get(`${prefix}space.json`);
   const records = await client.listAll(`${prefix}records/`);
-  // Deleted items stay as small markers; real designs are larger.
-  const designs = records.filter((o) => o.key.startsWith(`${prefix}records/designs/`) && o.size > 600).length;
+  // Deleted items stay as small markers (under 300 bytes); real designs are
+  // larger, compressed or not.
+  const designs = records.filter((o) => o.key.startsWith(`${prefix}records/designs/`) && o.size > 300).length;
   const files = records.filter((o) => o.key.startsWith(`${prefix}records/assets/`) && o.size > 300).length;
   let createdAt: number | null = null;
   if (space) {

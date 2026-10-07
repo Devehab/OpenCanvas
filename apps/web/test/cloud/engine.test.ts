@@ -6,6 +6,8 @@ import {
   type RemoteSide,
   recordId,
   SyncEngine,
+  type SyncOptions,
+  type SyncProgress,
   type SyncState,
 } from '@/lib/cloud/engine';
 import { changedAt, fingerprint } from '@/lib/cloud/fingerprint';
@@ -20,12 +22,17 @@ class FakeBucket implements RemoteSide {
   /** Runs before each put (to simulate another computer writing in between). */
   beforePut: ((path: string) => void) | null = null;
   puts = 0;
+  lists = 0;
+  /** The change marker (changes.json). */
+  marker: string | null = null;
+  markerWrites = 0;
 
   private check() {
     if (this.offline) throw new OfflineError();
   }
   async list() {
     this.check();
+    this.lists++;
     return new Map([...this.objects].map(([p, o]) => [p, o.etag]));
   }
   async get(path: string) {
@@ -57,6 +64,14 @@ class FakeBucket implements RemoteSide {
     const b = this.blobs.get(hash);
     if (!b) throw new Error(`missing blob ${hash}`);
     return new Blob([await b.arrayBuffer()], { type });
+  }
+  async touchMarker(c: { ifMatch?: string; ifNoneMatch?: boolean } | null) {
+    this.check();
+    if (c?.ifNoneMatch && this.marker !== null) return { ok: false as const };
+    if (c?.ifMatch && this.marker !== c.ifMatch) return { ok: false as const };
+    this.marker = `m${++this.n}`;
+    this.markerWrites++;
+    return { ok: true as const, etag: this.marker };
   }
 }
 
@@ -134,8 +149,8 @@ class FakeComputer implements LocalSide {
   async markBlobUploaded(hash: string) {
     this.uploaded.add(hash);
   }
-  sync() {
-    return this.engine.sync();
+  sync(options?: SyncOptions) {
+    return this.engine.sync(options);
   }
 }
 
@@ -452,5 +467,119 @@ describe('cloud sync engine', () => {
       fingerprint('designs', design('d', 'x', { updatedAt: 1, revision: 9 })),
     );
     expect(recordId('designs', 'd')).toBe('designs/d');
+  });
+  it('reports its progress: how many records, and whether they go up or down', async () => {
+    a.put('designs', 'd1', design('d1', 'One'));
+    a.put('designs', 'd2', design('d2', 'Two'));
+    const seen: SyncProgress[] = [];
+    await a.sync({ onProgress: (p) => seen.push(p) });
+    expect(seen).toEqual([
+      { done: 0, total: 2, direction: 'up' },
+      { done: 1, total: 2, direction: 'up' },
+      { done: 2, total: 2, direction: 'up' },
+    ]);
+    const down: SyncProgress[] = [];
+    await b.sync({ onProgress: (p) => down.push(p) });
+    expect(down.at(-1)).toEqual({ done: 2, total: 2, direction: 'down' });
+    // Nothing to do: no progress at all (the status stays "saved").
+    const none: SyncProgress[] = [];
+    await a.sync({ onProgress: (p) => none.push(p) });
+    expect(none).toEqual([]);
+  });
+
+  it('rewrites the change marker after uploading, and only then', async () => {
+    a.put('designs', 'd1', design('d1', 'One'));
+    const first = await a.sync({ marker: null });
+    expect(bucket.markerWrites).toBe(1);
+    // It knows the version it wrote: nothing new elsewhere.
+    expect(first.marker).toBe(bucket.marker);
+    // Downloading, or finding nothing to do, never rewrites it.
+    const got = await b.sync({ marker: bucket.marker });
+    expect(got.downloaded).toBe(1);
+    expect(got.marker).toBe(bucket.marker);
+    await a.sync({ marker: bucket.marker });
+    expect(bucket.markerWrites).toBe(1);
+  });
+
+  it('quick rounds upload local changes without listing the bucket', async () => {
+    a.put('designs', 'd1', design('d1', 'One'));
+    const full = await a.sync({ marker: null });
+    const lists = bucket.lists;
+    a.put('designs', 'd1', design('d1', 'One, edited'));
+    a.put('designs', 'd2', design('d2', 'Two'));
+    a.del('designs', 'd1');
+    a.put('designs', 'd1', design('d1', 'One, edited again'));
+    const quick = await a.sync({ marker: full.marker, quick: true });
+    expect(quick).toMatchObject({ full: false, uploaded: 2, refused: 0 });
+    expect(quick.pending.size).toBe(0);
+    expect(bucket.lists).toBe(lists);
+    expect(quick.marker).toBe(bucket.marker);
+    await b.sync();
+    expect(
+      b
+        .all('designs')
+        .map((d) => d.title)
+        .sort(),
+    ).toEqual(['One, edited again', 'Two']);
+  });
+
+  it('a quick round over a stale version is refused, and the next full round loses nothing', async () => {
+    a.put('designs', 'd1', design('d1', 'Base'));
+    const seen = (await a.sync({ marker: null })).marker;
+    await b.sync({ marker: bucket.marker });
+    // B uploads an edit; A has not looked since.
+    b.put('designs', 'd1', design('d1', 'B edit'));
+    await b.sync({ marker: bucket.marker });
+    expect(bucket.marker).not.toBe(seen);
+    // Even if A wrongly trusted its old marker, the conditional upload refuses.
+    a.put('designs', 'd1', design('d1', 'A edit'));
+    const quick = await a.sync({ marker: seen, quick: true });
+    expect(quick).toMatchObject({ uploaded: 0, refused: 1 });
+    expect(quick.pending.has('designs/d1')).toBe(true);
+    const full = await a.sync({ marker: bucket.marker });
+    expect(full.conflicts).toBe(1);
+    // The copy made while merging goes up on the following round.
+    expect(full.pending.size).toBe(1);
+    await a.sync();
+    await b.sync();
+    // A's edit is the newer one: it wins, and B's is kept as a copy.
+    for (const c of [a, b]) {
+      expect(
+        c
+          .all('designs')
+          .map((d) => d.title)
+          .sort(),
+      ).toEqual(['A edit', 'B edit (from another computer)']);
+    }
+  });
+
+  it('when another computer rewrote the marker meanwhile, it does not claim to have seen its changes', async () => {
+    a.put('designs', 'd1', design('d1', 'One'));
+    const before = bucket.marker;
+    // B uploads (and rewrites the marker) between A reading the marker and A's upload.
+    bucket.beforePut = () => {
+      bucket.beforePut = null;
+      void bucket.touchMarker(null);
+    };
+    const raced = await a.sync({ marker: before });
+    expect(raced.uploaded).toBe(1);
+    expect(raced.marker).toBeUndefined();
+    // A's own upload is still announced: the marker changed again after B's.
+    expect(bucket.markerWrites).toBe(2);
+  });
+
+  it('announces uploads made just before the connection dropped on the next round', async () => {
+    a.put('designs', 'd1', design('d1', 'One'));
+    const realTouch = bucket.touchMarker.bind(bucket);
+    bucket.touchMarker = async () => {
+      throw new OfflineError();
+    };
+    const cut = await a.sync({ marker: null });
+    expect(cut).toMatchObject({ uploaded: 1, offline: true, marker: undefined });
+    bucket.touchMarker = realTouch;
+    const next = await a.sync({ marker: null });
+    expect(next.uploaded).toBe(0);
+    expect(bucket.markerWrites).toBe(1);
+    expect(next.marker).toBe(bucket.marker);
   });
 });

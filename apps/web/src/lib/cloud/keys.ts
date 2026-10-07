@@ -3,8 +3,12 @@
  * local server). Everything lives under the configured prefix:
  *
  *   space.json                      marks the folder as an OpenCanvas library
- *   records/<store>/<key>.json      one record of a local store (or a deletion marker)
- *   blobs/<sha256>                  file contents, content-addressed and immutable
+ *   changes.json                    rewritten after every upload: other computers
+ *                                   only look for changes when it changed
+ *   records/<store>/<key>.json      one record of a local store (or a deletion marker),
+ *                                   gzip-compressed when larger than a few KB
+ *   blobs/<sha256>                  file contents, content-addressed and immutable:
+ *                                   each file is uploaded once, whatever uses it
  */
 
 /**
@@ -70,7 +74,10 @@ export function blobPath(hash: string): string {
   return `blobs/${hash}`;
 }
 
+/** The change marker: any computer that uploads rewrites it. */
+export const MARKER_PATH = 'changes.json';
+
 /** Paths the browser may read and write through the local server. */
 export function isAllowedPath(path: string): boolean {
-  return parseRecordPath(path) !== null || /^blobs\/[a-f0-9]{64}$/.test(path);
+  return parseRecordPath(path) !== null || /^blobs\/[a-f0-9]{64}$/.test(path) || path === MARKER_PATH;
 }

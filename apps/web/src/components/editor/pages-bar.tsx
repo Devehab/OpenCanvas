@@ -112,7 +112,14 @@ export const Thumbnail = memo(function Thumbnail({
     canvas.style.width = `${width / dpr}px`;
     canvas.getContext('2d')?.drawImage(raster as unknown as CanvasImageSource, 0, 0);
   }, [editor, session, pageId, version, height, maxWidth]);
-  return <canvas ref={ref} aria-hidden className="block h-auto max-w-full rounded-sm bg-white" />;
+  return (
+    <canvas
+      ref={ref}
+      aria-hidden
+      // A hairline outline, so a blank white page still reads as a page on a white bar.
+      className="block h-auto max-w-full rounded-sm bg-white shadow-[0_0_0_1px_rgb(15_23_42/0.16)]"
+    />
+  );
 });
 
 /** Drag and drop to reorder pages (thumbnail strip and grid view). */
@@ -215,7 +222,7 @@ function ThumbnailStrip() {
               <Thumbnail pageId={id} version={versions[id] ?? 0} />
             </button>
           </PageContextMenu>
-          <span className="pointer-events-none absolute -bottom-0.5 start-1 flex items-center gap-0.5 rounded bg-white/90 px-1 text-[10px] font-medium text-slate-600">
+          <span className="pointer-events-none absolute -bottom-0.5 start-1 flex items-center gap-0.5 rounded bg-white px-1 text-[11px] font-semibold text-slate-800 shadow-[0_0_0_1px_rgb(15_23_42/0.12)]">
             {formatNumber(i + 1)}
             {flags[i]?.includes('h') ? (
               <EyeOff className="size-2.5" aria-label={t('editor.pages.hidden')} />

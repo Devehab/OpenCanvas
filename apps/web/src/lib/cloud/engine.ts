@@ -18,6 +18,12 @@
  * record did not change since it was read. With no connection a round stops
  * at once, and everything changed meanwhile simply stays "pending" until a
  * later round can upload it.
+ *
+ * Every computer that uploads rewrites a small change marker (changes.json).
+ * While it is the version this computer saw after its last full round, nobody
+ * else uploaded anything: local changes then go up in a quick round, without
+ * listing the bucket (the conditional writes still refuse anything stale, and
+ * a refusal asks for a full round).
  */
 import { changedAt as recordChangedAt } from './fingerprint';
 import { parseRecordPath, recordPath, SYNC_STORES, type SyncStore } from './keys';
@@ -95,6 +101,13 @@ export interface RemoteSide {
   hasBlob(hash: string): Promise<boolean>;
   putBlob(hash: string, blob: Blob): Promise<void>;
   getBlob(hash: string, type: string): Promise<Blob>;
+  /**
+   * Rewrites the change marker: only over version `ifMatch`, only if absent
+   * (`ifNoneMatch`), or whatever it is (no condition).
+   */
+  touchMarker(
+    condition: { ifMatch?: string; ifNoneMatch?: boolean } | null,
+  ): Promise<{ ok: true; etag: string } | { ok: false }>;
 }
 
 /** The bucket (or this computer's link to it) cannot be reached. */
@@ -105,7 +118,33 @@ export class OfflineError extends Error {
   }
 }
 
+export interface SyncProgress {
+  /** Records done so far in this round. */
+  done: number;
+  /** Records this round has to upload, download or merge. */
+  total: number;
+  /** up: uploads only; down: downloads only; both: some of each (or merges). */
+  direction: 'up' | 'down' | 'both';
+}
+
+export interface SyncOptions {
+  /**
+   * The change marker's version as just read (null: absent; undefined:
+   * unknown). Uploads rewrite the marker over it.
+   */
+  marker?: string | null;
+  /**
+   * Only upload local changes, over the versions seen at the last sync,
+   * without listing the bucket. For when the marker shows that nobody else
+   * uploaded anything since this computer's last full round.
+   */
+  quick?: boolean;
+  onProgress?: (progress: SyncProgress) => void;
+}
+
 export interface RoundResult {
+  /** The bucket was listed and compared (not a quick round). */
+  full: boolean;
   offline: boolean;
   uploaded: number;
   downloaded: number;
@@ -117,6 +156,13 @@ export interface RoundResult {
   pulled: Map<SyncStore, Set<string>>;
   /** Records that failed for another reason (they are retried next round). */
   errors: Map<string, string>;
+  /** Uploads refused because the bucket had a newer version: a full round merges them. */
+  refused: number;
+  /**
+   * The change marker's version this computer has caught up with after the
+   * round (null: absent), or undefined when unknown (look again next time).
+   */
+  marker: string | null | undefined;
 }
 
 export interface EngineOptions {
@@ -132,6 +178,8 @@ const STORE_ORDER = new Map<string, number>(SYNC_STORES.map((s, i) => [s, i]));
 
 export class SyncEngine {
   private running: Promise<RoundResult> | null = null;
+  /** Uploads were made but the marker could not be rewritten yet (offline): do it next round. */
+  private markerOwed = false;
 
   constructor(
     private readonly local: LocalSide,
@@ -150,15 +198,16 @@ export class SyncEngine {
   }
 
   /** One sync round. Concurrent calls share the same round. */
-  sync(): Promise<RoundResult> {
-    this.running ??= this.round().finally(() => {
+  sync(options: SyncOptions = {}): Promise<RoundResult> {
+    this.running ??= this.round(options).finally(() => {
       this.running = null;
     });
     return this.running;
   }
 
-  private async round(): Promise<RoundResult> {
+  private async round(options: SyncOptions): Promise<RoundResult> {
     const result: RoundResult = {
+      full: !options.quick,
       offline: false,
       uploaded: 0,
       downloaded: 0,
@@ -166,22 +215,28 @@ export class SyncEngine {
       pending: new Set(),
       pulled: new Map(),
       errors: new Map(),
+      refused: 0,
+      marker: undefined,
     };
     const [entries, stateList] = await Promise.all([this.local.scan(), this.local.states()]);
     const local = new Map(entries.map((e) => [recordId(e.store, e.key), e]));
     const states = new Map(stateList.map((s) => [s.id, s]));
-    let remote: Map<string, string>;
-    try {
-      remote = new Map();
-      for (const [path, etag] of await this.remote.list()) {
-        const parsed = parseRecordPath(path);
-        if (parsed) remote.set(recordId(parsed.store, parsed.key), etag);
+    const remote = new Map<string, string>();
+    if (options.quick) {
+      // The bucket as it was at the last sync: only local changes show up as work.
+      for (const state of states.values()) if (state.remoteEtag) remote.set(state.id, state.remoteEtag);
+    } else {
+      try {
+        for (const [path, etag] of await this.remote.list()) {
+          const parsed = parseRecordPath(path);
+          if (parsed) remote.set(recordId(parsed.store, parsed.key), etag);
+        }
+      } catch (error) {
+        if (!(error instanceof OfflineError)) throw error;
+        result.offline = true;
+        result.pending = pendingOf(entries, states);
+        return result;
       }
-    } catch (error) {
-      if (!(error instanceof OfflineError)) throw error;
-      result.offline = true;
-      result.pending = pendingOf(entries, states);
-      return result;
     }
 
     const ids = [...new Set([...local.keys(), ...states.keys(), ...remote.keys()])].sort((a, b) => {
@@ -189,7 +244,23 @@ export class SyncEngine {
       const sb = STORE_ORDER.get(b.slice(0, b.indexOf('/'))) ?? 99;
       return sa - sb || (a < b ? -1 : 1);
     });
+    // Only records that changed somewhere: they make the round's progress.
+    const work: { id: string; direction: SyncProgress['direction'] }[] = [];
     for (const id of ids) {
+      const direction = directionOf(local.get(id) ?? null, states.get(id) ?? null, remote.get(id) ?? null);
+      if (direction) work.push({ id, direction });
+    }
+    const progress: SyncProgress = {
+      done: 0,
+      total: work.length,
+      direction: work.every((w) => w.direction === 'up')
+        ? 'up'
+        : work.every((w) => w.direction === 'down')
+          ? 'down'
+          : 'both',
+    };
+    if (work.length) options.onProgress?.({ ...progress });
+    for (const { id } of work) {
       const slash = id.indexOf('/');
       const store = id.slice(0, slash) as SyncStore;
       const key = id.slice(slash + 1);
@@ -209,9 +280,37 @@ export class SyncEngine {
         }
         result.errors.set(id, (error as Error).message);
       }
+      progress.done++;
+      options.onProgress?.({ ...progress });
     }
+    await this.announceUploads(options.marker, result);
     result.pending = await this.pending();
     return result;
+  }
+
+  /**
+   * Rewrites the change marker after uploading, so other computers know to
+   * look. Over the version read before the round: if someone else rewrote it
+   * meanwhile, their changes are not seen here yet (marker unknown: the next
+   * check does a full round), and the marker is rewritten anyway for ours.
+   */
+  private async announceUploads(seen: string | null | undefined, result: RoundResult): Promise<void> {
+    if (result.uploaded > 0) this.markerOwed = true;
+    if (result.offline) return;
+    if (!this.markerOwed) {
+      result.marker = seen;
+      return;
+    }
+    try {
+      const condition = seen === undefined ? null : seen === null ? { ifNoneMatch: true } : { ifMatch: seen };
+      const first = await this.remote.touchMarker(condition);
+      if (first.ok && condition) result.marker = first.etag;
+      else if (!first.ok) await this.remote.touchMarker(null);
+      this.markerOwed = false;
+    } catch (error) {
+      if (error instanceof OfflineError) result.offline = true;
+      else result.errors.set('changes.json', (error as Error).message);
+    }
   }
 
   private async syncOne(
@@ -280,7 +379,10 @@ export class SyncEngine {
       remoteEtag ? { ifMatch: remoteEtag } : { ifNoneMatch: true },
     );
     // Another computer wrote first: the next round sees its version and merges.
-    if (!put.ok) return;
+    if (!put.ok) {
+      result.refused++;
+      return;
+    }
     await this.local.setState({ id, store, key, localFp: record?.fp ?? null, remoteEtag: put.etag });
     result.uploaded++;
   }
@@ -363,6 +465,20 @@ export class SyncEngine {
     const copyTitle = this.options.conflictTitle?.(title) ?? `${title} (conflict copy)`;
     return { ...value, title: copyTitle, updatedAt: Math.max(recordChangedAt(value), 0) };
   }
+}
+
+/** Whether a record changed since its last sync, and where (null: unchanged). */
+function directionOf(
+  local: LocalEntry | null,
+  state: SyncState | null,
+  remoteEtag: string | null,
+): SyncProgress['direction'] | null {
+  const localChanged = state ? (local?.fp ?? null) !== state.localFp : local !== null;
+  const remoteChanged = state ? remoteEtag !== state.remoteEtag : remoteEtag !== null;
+  if (!localChanged && !remoteChanged) return null;
+  if (localChanged && !remoteChanged) return 'up';
+  if (!localChanged) return remoteEtag === null && local ? 'up' : 'down';
+  return 'both';
 }
 
 /** The key of the conflict copy of one version of a record. */

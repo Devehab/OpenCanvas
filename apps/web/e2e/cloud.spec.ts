@@ -6,24 +6,34 @@
  * Each browser context is a separate computer: it has its own IndexedDB.
  * "No internet" is simulated the way it happens: the bucket becomes
  * unreachable (a relay between the server and S3 is cut), while the
- * settings stay exactly the same.
+ * settings stay exactly the same. A second OpenCanvas server (its own
+ * settings and device id, reaching S3 directly) is a second computer on
+ * another network.
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
 import { type Browser, expect, type Page, test } from '@playwright/test';
+import { decodeRecord } from '../src/lib/cloud/codec';
 import { S3Client } from '../src/lib/cloud/s3';
 import {
   createDesign,
   getNodes,
   insertNodes,
+  noisePng,
   openPanel,
   samplePng,
   waitForCanvasIdle,
   waitForSaved,
 } from './support';
 
+const require = createRequire(import.meta.url);
+
 const home = process.env.E2E_CLOUD_HOME!;
+const homeB = process.env.E2E_CLOUD_HOME_B!;
+/** The second computer's OpenCanvas. */
+const urlB = process.env.E2E_CLOUD_URL_B!;
 const prefix = `e2e-${Date.now()}/`;
 
 interface S3Info {
@@ -37,10 +47,10 @@ function s3Info(): S3Info {
   return JSON.parse(readFileSync(process.env.E2E_S3_INFO!, 'utf8')) as S3Info;
 }
 
-function writeCloudJson(endpoint: string) {
+function writeCloudJson(endpoint: string, dir = home, deviceId = 'e2e') {
   const info = s3Info();
   writeFileSync(
-    path.join(home, 'cloud.json'),
+    path.join(dir, 'cloud.json'),
     JSON.stringify({
       version: 1,
       enabled: true,
@@ -52,7 +62,7 @@ function writeCloudJson(endpoint: string) {
       secretAccessKey: info.secretAccessKey,
       pathStyle: true,
       prefix,
-      deviceId: 'e2e',
+      deviceId,
       createdAt: Date.now(),
     }),
   );
@@ -97,7 +107,7 @@ interface BucketRecord {
 
 async function bucketRecord(store: string, key: string): Promise<BucketRecord | null> {
   const object = await bucket().get(`${prefix}records/${store}/${key}.json`);
-  return object ? (JSON.parse(new TextDecoder().decode(object.body)) as BucketRecord) : null;
+  return object ? (JSON.parse(new TextDecoder().decode(decodeRecord(object.body))) as BucketRecord) : null;
 }
 
 /** Clicks "Sync now" and waits for that round to finish. */
@@ -128,6 +138,8 @@ async function newComputer(browser: Browser): Promise<Page> {
 
 /** Renames the open design and waits until it is saved on this computer. */
 async function setTitle(page: Page, title: string) {
+  // Right after opening a design, the editor may still be loading.
+  await page.waitForFunction(() => !!window.__opencanvas?.editor);
   await page.evaluate((t) => {
     const { editor } = window.__opencanvas!;
     editor.execute('document.rename', { title: t });
@@ -146,6 +158,8 @@ test.beforeAll(async () => {
   }
   await goOnline();
   writeCloudJson(`http://127.0.0.1:${relayPort}`);
+  // The second computer is on another network: it reaches S3 directly.
+  writeCloudJson(s3Info().endpoint, homeB, 'computer-b');
 });
 
 test.afterAll(async () => {
@@ -378,4 +392,250 @@ test('the cloud API only answers OpenCanvas itself, never other websites', async
   );
   expect(status).not.toContain(s3Info().secretAccessKey);
   expect(status).not.toContain(s3Info().accessKeyId);
+});
+
+/** Every record of an IndexedDB store on a computer (a browser page). */
+async function localRecords(page: Page, store: string): Promise<Record<string, unknown>[]> {
+  return page.evaluate(async (name) => {
+    const db = await new Promise<IDBDatabase>((resolve) => {
+      const r = indexedDB.open('opencanvas');
+      r.onsuccess = () => resolve(r.result);
+    });
+    const all = await new Promise<Record<string, unknown>[]>((resolve) => {
+      const r = db.transaction(name).objectStore(name).getAll();
+      r.onsuccess = () => resolve(r.result);
+    });
+    db.close();
+    // Files become their size and SHA-256, to compare them across computers.
+    const digest = async (blob: Blob) =>
+      [...new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer()))]
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+    const plain = async (v: unknown): Promise<unknown> => {
+      if (v instanceof Blob) return { file: await digest(v), size: v.size, type: v.type };
+      if (Array.isArray(v)) return Promise.all(v.map(plain));
+      if (v && typeof v === 'object') {
+        const out: Record<string, unknown> = {};
+        for (const [k, x] of Object.entries(v)) out[k] = await plain(x);
+        return out;
+      }
+      return v;
+    };
+    return (await plain(all)) as Record<string, unknown>[];
+  }, store);
+}
+
+test('saves on this computer at once, uploads once editing pauses (one upload), and never while browsing pages', async ({
+  page,
+}) => {
+  const id = await createDesign(page);
+  await setTitle(page, 'Paused uploads');
+  await page.evaluate(() => {
+    const { editor } = window.__opencanvas!;
+    editor.addPage(editor.pageId);
+    editor.addPage(editor.pageId);
+  });
+  const [shapeId] = await insertNodes(page, [
+    { type: 'shape', shape: 'rect', x: 100, y: 100, width: 200, height: 200 },
+  ]);
+  await waitForSaved(page);
+  const status = page.getByTestId('cloud-status').first();
+  // Nothing to click: it reaches the cloud by itself once editing pauses.
+  await expect(status).toHaveAttribute('data-shown', 'synced', { timeout: 20_000 });
+
+  const uploads: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'PUT' && r.url().includes('/api/cloud/object'))
+      uploads.push(new URL(r.url()).searchParams.get('path')!);
+  });
+  // A burst of edits, each saved on this computer at once.
+  const shown: string[] = [];
+  for (let i = 1; i <= 8; i++) {
+    await page.evaluate(
+      ([nodeId, x]) => window.__opencanvas!.editor.execute('node.update', { ids: [nodeId], patch: { x } }),
+      [shapeId!, 100 + i * 10] as const,
+    );
+    await waitForSaved(page);
+    await expect(page.getByTestId('save-status')).toContainText('Saved on this computer');
+    shown.push((await status.getAttribute('data-shown'))!);
+    await page.waitForTimeout(400);
+  }
+  // Never "Saved to your cloud" while the last change is not up there, and nothing went up mid-burst.
+  expect(shown).not.toContain('synced');
+  await expect(status).toContainText('Waiting to upload');
+  expect(uploads).toEqual([]);
+
+  // Editing pauses: one upload of the design (and the small change marker).
+  await expect(status).toHaveAttribute('data-shown', 'synced', { timeout: 15_000 });
+  await expect(status).toContainText('Saved to your cloud');
+  expect(uploads.sort()).toEqual(['changes.json', `records/designs/${id}.json`]);
+  expect(JSON.stringify((await bucketRecord('designs', id))!.value)).toContain('"x":180');
+
+  // Browsing pages, scrolling and zooming change nothing: nothing goes up.
+  uploads.length = 0;
+  await page.evaluate(() => {
+    const { editor } = window.__opencanvas!;
+    for (const pageId of editor.store.getPageIds()) editor.setCurrentPage(pageId);
+    editor.setPageView('scroll');
+    editor.zoomTo(1.5);
+    editor.setCurrentPage(editor.store.getPageIds()[0]!);
+  });
+  await page.mouse.move(700, 450);
+  for (let i = 0; i < 6; i++) await page.mouse.wheel(0, 300);
+  await page.waitForTimeout(6000);
+  expect(uploads).toEqual([]);
+  await expect(status).toHaveAttribute('data-shown', 'synced');
+});
+
+test('large designs are stored compressed in the bucket and come back exactly', async ({ page, browser }) => {
+  const id = await createDesign(page);
+  await setTitle(page, 'Many shapes');
+  await insertNodes(
+    page,
+    Array.from({ length: 250 }, (_, i) => ({
+      type: 'shape' as const,
+      shape: 'rect' as const,
+      x: (i % 20) * 50,
+      y: Math.floor(i / 20) * 50,
+      width: 40,
+      height: 40,
+      fill: { type: 'solid' as const, color: '#7c3aed' },
+    })),
+    { center: false },
+  );
+  await waitForSaved(page);
+  await syncNow(page);
+  await expectSynced(page);
+  const stored = await bucket().head(`${prefix}records/designs/${id}.json`);
+  const json = JSON.stringify(await bucketRecord('designs', id));
+  // Five to ten times smaller to upload and to keep.
+  expect(stored!.size).toBeLessThan(json.length / 4);
+
+  const other = await newComputer(browser);
+  await other.goto('/');
+  await expect(other.getByTestId('design-card').filter({ hasText: 'Many shapes' })).toBeVisible();
+  await other.goto(`/design/${id}`);
+  await waitForCanvasIdle(other);
+  expect(await getNodes(other)).toEqual(await getNodes(page));
+  await other.context().close();
+});
+
+test('two computers, each with its own OpenCanvas, share everything (files byte for byte), both ways and by themselves', async ({
+  page,
+  browser,
+}) => {
+  // Computer A: a folder, a brand kit, an uploaded font, and a three-page design with a photo.
+  await page.goto('/designs');
+  await page.getByTestId('new-folder').click();
+  await page.getByTestId('folder-name').fill('Client work');
+  await page.getByTestId('save-folder').click();
+  await expect(page.getByTestId('folder-card')).toHaveCount(1);
+  await page.goto('/brand');
+  await page.getByTestId('new-brand').first().click();
+  await page.getByTestId('brand-kit-name').fill('Acme brand');
+  await page.getByTestId('create-brand').click();
+  await page.waitForURL(/\/brand\?id=/);
+  await page.goto('/settings');
+  await page.getByTestId('settings-font-input').setInputFiles([
+    {
+      name: 'AcmeScript-Regular.woff2',
+      mimeType: 'font/woff2',
+      buffer: readFileSync(require.resolve('@fontsource/pacifico/files/pacifico-latin-400-normal.woff2')),
+    },
+  ]);
+  await expect(page.getByTestId('custom-font')).toHaveCount(1);
+  const id = await createDesign(page);
+  await setTitle(page, 'Shared design');
+  await page.evaluate(() => {
+    const { editor } = window.__opencanvas!;
+    editor.addPage(editor.pageId);
+    editor.addPage(editor.pageId);
+  });
+  await openPanel(page, 'uploads');
+  await page
+    .getByTestId('upload-input')
+    .setInputFiles([{ name: 'big-photo.png', mimeType: 'image/png', buffer: noisePng(640, 480) }]);
+  await expect.poll(async () => (await getNodes(page)).filter((n) => n.type === 'image').length).toBe(1);
+  await waitForSaved(page);
+  await expect(page.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
+    timeout: 30_000,
+  });
+
+  // Computer B: its own OpenCanvas (another server and device), an empty browser.
+  const contextB = await browser.newContext({ baseURL: urlB, viewport: { width: 1440, height: 900 } });
+  const b = await contextB.newPage();
+  await b.goto('/');
+  await expect(b.getByTestId('design-card').filter({ hasText: 'Shared design' })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expectSynced(b);
+  for (const store of ['designs', 'assets', 'folders', 'brands', 'fonts']) {
+    const mine = await localRecords(page, store);
+    const theirs = await localRecords(b, store);
+    const byKey = (r: Record<string, unknown>) => String(r.id ?? r.hash);
+    // The same records, with the same content: files byte for byte.
+    expect(theirs.map(byKey).sort(), store).toEqual(mine.map(byKey).sort());
+    for (const record of mine) {
+      const other = theirs.find((r) => byKey(r) === byKey(record))!;
+      const { revision: _a, ...left } = record;
+      const { revision: _b, ...right } = other;
+      expect(right, `${store}/${byKey(record)}`).toEqual(left);
+    }
+  }
+  await b.goto(`/design/${id}`);
+  await waitForCanvasIdle(b);
+  // Every page, every element (the photo included) is there.
+  const everything = (p: Page) =>
+    p.evaluate(() => {
+      const { store } = window.__opencanvas!.editor;
+      return { pages: store.getPageIds(), nodes: store.getNodes().sort((x, y) => (x.id < y.id ? -1 : 1)) };
+    });
+  const onB = await everything(b);
+  expect(onB.pages).toHaveLength(3);
+  expect(onB.nodes.some((n) => n.type === 'image')).toBe(true);
+  expect(onB).toEqual(await everything(page));
+
+  // B edits: it goes up by itself, and A, already showing its designs, gets it by itself (no reload).
+  await page.goto('/');
+  await expectSynced(page);
+  await setTitle(b, 'Shared design, edited on B');
+  await expect(b.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
+    timeout: 20_000,
+  });
+  await expect(page.getByTestId('design-card').filter({ hasText: 'Shared design, edited on B' })).toBeVisible(
+    {
+      timeout: 45_000,
+    },
+  );
+
+  // And the other way round.
+  await b.goto('/');
+  await expectSynced(b);
+  await page.goto(`/design/${id}`);
+  await setTitle(page, 'Shared design, edited on A');
+  await expect(page.getByTestId('cloud-status').first()).toHaveAttribute('data-shown', 'synced', {
+    timeout: 20_000,
+  });
+  await expect(b.getByTestId('design-card').filter({ hasText: 'Shared design, edited on A' })).toBeVisible({
+    timeout: 45_000,
+  });
+  await contextB.close();
+});
+
+test('while nothing changes, it only checks the tiny change marker: no listing, no uploads', async ({
+  page,
+}) => {
+  await page.goto('/');
+  await expectSynced(page);
+  const calls: string[] = [];
+  page.on('request', (r) => {
+    if (r.url().includes('/api/cloud/')) calls.push(`${r.method()} ${new URL(r.url()).pathname}`);
+  });
+  await page.waitForTimeout(25_000);
+  expect(calls.filter((c) => c.includes('/api/cloud/records'))).toEqual([]);
+  expect(calls.filter((c) => !c.startsWith('GET'))).toEqual([]);
+  // One small check every 20 seconds.
+  const checks = calls.filter((c) => c === 'GET /api/cloud/status').length;
+  expect(checks).toBeGreaterThanOrEqual(1);
+  expect(checks).toBeLessThanOrEqual(2);
 });

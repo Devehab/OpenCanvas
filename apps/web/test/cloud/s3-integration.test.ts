@@ -4,6 +4,7 @@
  * to the JSON line that script prints.
  */
 import { describe, expect, it } from 'vitest';
+import { COMPRESS_FROM_BYTES, decodeRecord, encodeRecord } from '@/lib/cloud/codec';
 import { buildConfig, checkConnection, explainS3Error, libraryInfo } from '@/lib/cloud/config';
 import { S3Client } from '@/lib/cloud/s3';
 
@@ -56,6 +57,43 @@ describe.skipIf(!server)('S3 client against a real server', () => {
       reason: 'precondition',
     });
     expect((await client.get(key))!.body).toEqual(new Uint8Array([3]));
+  });
+
+  it('stores large records compressed, and every reader gets the JSON back', async () => {
+    const client = new S3Client(config());
+    const key = `${prefix}records/designs/big.json`;
+    const nodes = Array.from({ length: 400 }, (_, i) => ({
+      id: `node_${i.toString(36).padStart(8, 'x')}`,
+      type: 'shape',
+      x: i * 3,
+      y: i * 7,
+      width: 120,
+      height: 80,
+      fill: { type: 'solid', color: '#7c3aed' },
+    }));
+    const json = new TextEncoder().encode(JSON.stringify({ v: 1, store: 'designs', value: { nodes } }));
+    expect(json.byteLength).toBeGreaterThan(COMPRESS_FROM_BYTES);
+    const stored = encodeRecord(json);
+    expect(stored.contentEncoding).toBe('gzip');
+    const put = await client.put(key, stored.body, {
+      contentType: 'application/json',
+      contentEncoding: stored.contentEncoding,
+      ifNoneMatch: true,
+    });
+    expect(put.ok).toBe(true);
+    // Uploads and the bucket hold the small version.
+    const head = await client.head(key);
+    expect(head!.size).toBe(stored.body.byteLength);
+    expect(head!.size).toBeLessThan(json.byteLength / 4);
+    const listed = await client.listAll(`${prefix}records/`);
+    expect(listed.find((o) => o.key === key)?.etag).toBe(put.ok ? put.etag : '');
+    // This version's server decodes it…
+    const got = await client.get(key);
+    expect(new TextDecoder().decode(decodeRecord(got!.body))).toBe(new TextDecoder().decode(json));
+    // …and so does a plain HTTP client, like an older OpenCanvas (Content-Encoding).
+    expect(JSON.parse(new TextDecoder().decode(got!.body)).value.nodes).toHaveLength(400);
+    // Small records stay plain JSON.
+    expect(encodeRecord(new TextEncoder().encode('{"deleted":true}')).contentEncoding).toBeUndefined();
   });
 
   it('pages through long listings', async () => {

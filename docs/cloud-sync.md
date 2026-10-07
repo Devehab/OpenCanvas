@@ -3,7 +3,8 @@
 A local install can keep its work on the computer only (the default), or on the computer **and** in the person's own S3-compatible bucket: Cloudflare R2, Amazon S3, or any other service that speaks S3 (MinIO, Backblaze B2, Wasabi…).
 
 - Everything is saved on the computer first. The app never waits for the network.
-- With a connection, changes go up to the bucket within seconds; changes made elsewhere come down.
+- With a connection, changes go up to the bucket once editing pauses (3 seconds without a change); changes made elsewhere come down by themselves.
+- The editor shows both steps: **Saved on this computer**, then **Waiting to upload** → **Uploading 1 of 2…** → **Saved to your cloud**, which only shows once the cloud has the latest change.
 - Without a connection, work goes on. Records not uploaded yet show as **This computer only**, and go up by themselves when the bucket can be reached again.
 - Installing again (after removing OpenCanvas, or on a new computer) and choosing the same bucket brings the whole library back.
 
@@ -51,8 +52,9 @@ Without a terminal (or to automate), the answers can come from the environment: 
   | Path | Content |
   | --- | --- |
   | `space.json` | Marks the folder as an OpenCanvas library |
-  | `records/<store>/<key>.json` | One record: a design, an upload, a folder, a brand kit, a font, an icon pack, a plugin, or a deletion marker |
-  | `blobs/<sha256>` | File contents (photos, PDFs pages, fonts, plugin files), stored once and never changed |
+  | `changes.json` | A tiny change marker, rewritten by every computer after it uploads |
+  | `records/<store>/<key>.json` | One record: a design, an upload, a folder, a brand kit, a font, an icon pack, a plugin, or a deletion marker; gzip-compressed (`Content-Encoding: gzip`) when larger than 4 KB |
+  | `blobs/<sha256>` | File contents (photos, PDFs pages, fonts, plugin files), stored once, byte for byte, and never changed |
 
   Thumbnails are not synced: each computer redraws them.
 
@@ -73,15 +75,25 @@ Without a terminal (or to automate), the answers can come from the environment: 
 - **No overwrites between computers.** Uploads are conditional: `If-Match` on the version that was compared, `If-None-Match: *` for new records. If another computer wrote in between, the upload is refused and the next round merges.
 - **No overwrites of local edits.** A download only replaces a local record that has not changed since it was compared (checked inside the IndexedDB transaction). A design that is downloaded gets a new local revision, so an open editor loads it, or offers to keep its own edits as a copy.
 - **A new, empty computer never deletes anything.** Deletion markers are only written for records this computer had synced before.
-- **Offline is not an error.** When the bucket cannot be reached, a round stops at once; what changed stays pending, and the next round (every 20 seconds, 10 seconds while offline, at once when the browser goes back online, and a moment after every change) uploads it. Only one tab syncs at a time (Web Locks).
+- **Offline is not an error.** When the bucket cannot be reached, a round stops at once; what changed stays pending, and the next round (every 10 seconds while offline, and at once when the browser goes back online) uploads it. Only one tab syncs at a time (Web Locks).
 - **Changing the bucket** (or the folder) starts afresh: the bookkeeping is cleared and everything is compared and uploaded again.
+
+### Few, small requests
+
+R2 and S3 bill by the request (listing and writing cost the most), and a slow connection pays for every byte, so `apps/web/src/lib/cloud/service.ts` keeps both down:
+
+- **Uploads wait for a pause.** Each change is saved on the computer at once; the upload starts 3 seconds after the last change (at the latest a minute after the first one), so a burst of edits is one upload per changed design, not one per edit. Switching pages, scrolling, zooming or selecting is not a change and uploads nothing.
+- **Files go up once.** Photos, fonts and other files are stored by their SHA-256: one copy, whatever designs use it, uploaded once and never again.
+- **Designs are compressed.** A design is one record; above 4 KB it is stored gzip-compressed, typically five to ten times smaller. Because it is stored with `Content-Encoding: gzip`, every HTTP client (older OpenCanvas versions included) reads it back as plain JSON.
+- **Looking for changes is one tiny request.** Every 20 seconds (a minute in a background tab) the server checks the version of `changes.json` (a `HEAD`, the cheapest kind of request). Only when it changed (another computer uploaded something), or every 5 minutes to be sure, is the bucket listed and compared. While nobody else changed anything, uploads skip the listing too: they go straight up, still conditional, and a refusal triggers a full comparison.
+- An idle open editor therefore makes about three `HEAD` requests a minute, and a pause in editing one `PUT` for the design plus one for the marker.
 
 ## Tests
 
 - `apps/web/test/cloud/engine.test.ts`: two fake computers and a fake bucket: restore, offline, a connection dropping mid-round, both kinds of conflicts, deletions, races, convergence.
 - `apps/web/test/cloud/s3.test.ts`: the signature against the examples of the AWS documentation, URLs, XML, errors.
 - `apps/web/test/cloud/s3-integration.test.ts`: the client against a real S3 server with authentication (`scripts/s3-test-server.py`, moto), including conditional writes and wrong keys.
-- `apps/web/e2e/cloud.spec.ts` (`playwright.cloud.config.ts`): in the browser, against that server: upload, offline with "This computer only" then automatic upload, restore on a new computer, an open editor following a change, two computers editing the same design, deletions, and that other websites cannot use the API or see the keys.
+- `apps/web/e2e/cloud.spec.ts` (`playwright.cloud.config.ts`): in the browser, against that server and two OpenCanvas servers (two computers, each with its own settings): upload, offline with "This computer only" then automatic upload, restore on a new computer (designs, files byte for byte, folders, brand kits, fonts), edits flowing both ways by themselves, an open editor following a change, two computers editing the same design, deletions, one upload per pause in editing (none while browsing pages), compression, no listing while nothing changes, and that other websites cannot use the API or see the keys.
 - `scripts/test-install-cloud.sh` / `.ps1` (Install test workflow, macOS, Linux, Windows): the installer with wrong keys, right keys, and a reinstall that finds the library.
 
 ---
@@ -93,7 +105,9 @@ Without a terminal (or to automate), the answers can come from the environment: 
 عند التثبيت يسألك OpenCanvas: هل تحفظ عملك على هذا الجهاز فقط (الخيار الافتراضي)، أم على الجهاز وفي تخزينك السحابي الخاص أيضًا (Cloudflare R2 أو Amazon S3 أو أي خدمة متوافقة مع S3)؟
 
 - **يُحفَظ كل شيء على جهازك أولًا،** فلا ينتظر التطبيق الإنترنت أبدًا.
-- **عند وجود الاتصال** تُرفع التعديلات إلى حاويتك خلال ثوانٍ، وتنزل التعديلات القادمة من أجهزتك الأخرى.
+- **عند وجود الاتصال** تُرفع التعديلات إلى حاويتك بعد ثلاث ثوانٍ من توقفك عن التعديل، دفعةً واحدة لكل تصميم تغيّر، وتنزل التعديلات القادمة من أجهزتك الأخرى تلقائيًا.
+- **يعرض المحرر الخطوتين:** «محفوظ على هذا الجهاز»، ثم «بانتظار الرفع» ← «جارٍ الرفع 1 من 2…» ← «محفوظ في سحابتك»، ولا تظهر العبارة الأخيرة إلا بعد أن يصل آخر تعديل فعلًا.
+- **طلبات قليلة وصغيرة:** تُرفع الصور والملفات مرة واحدة فقط مهما استُخدمت، وتُضغط التصاميم فيصغر حجمها خمس إلى عشر مرات. ولمعرفة ما تغيّر على الأجهزة الأخرى يكفي طلب صغير جدًا كل 20 ثانية، ولا يتصفح التطبيق الحاوية كاملة إلا عند وجود تغيير فعلي. أما التنقل بين الصفحات والتكبير والتمرير فلا يرفع شيئًا.
 - **دون اتصال** تتابع عملك، ويظهر ما لم يُرفع بعد بعلامة «على هذا الجهاز فقط»، ثم يُرفع تلقائيًا حين يعود الاتصال.
 - **بعد إعادة التثبيت أو على جهاز جديد** اختر الحاوية نفسها فتعود مكتبتك كاملة: التصاميم والصور والملفات وحزم الهوية والخطوط والإضافات.
 

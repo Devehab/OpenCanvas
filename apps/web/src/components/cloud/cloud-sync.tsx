@@ -5,7 +5,15 @@
  * status button (dashboard and editor) and the "on this computer only"
  * badge of designs waiting to upload. Nothing shows when cloud sync is off.
  */
-import { AlertTriangle, Cloud, CloudOff, Loader2, RefreshCw } from 'lucide-react';
+import {
+  AlertTriangle,
+  CloudCheck,
+  CloudDownload,
+  CloudOff,
+  CloudUpload,
+  Loader2,
+  RefreshCw,
+} from 'lucide-react';
 import { Popover } from 'radix-ui';
 import { createContext, type ReactNode, useContext, useEffect, useState, useSyncExternalStore } from 'react';
 import { useI18n } from '@/i18n';
@@ -30,6 +38,7 @@ const OFF: CloudStatus = {
   mode: 'unknown',
   state: 'idle',
   pending: new Set(),
+  progress: null,
   lastSyncedAt: null,
   error: null,
   provider: null,
@@ -71,62 +80,111 @@ export function LocalOnlyBadge({ designId, className }: { designId: string; clas
   );
 }
 
-function label(status: CloudStatus, t: ReturnType<typeof useI18n>['t']): string {
-  if (status.state === 'syncing') return t('cloud.syncing');
-  if (status.state === 'offline') return t('cloud.offline');
-  if (status.state === 'error') return t('cloud.error');
-  if (status.pending.size > 0) return t('cloud.waiting', { count: status.pending.size });
+type Shown = 'synced' | 'waiting' | 'syncing' | 'offline' | 'error';
+
+/**
+ * What the status shows. "Saved to your cloud" only when the cloud has the
+ * latest change: while the editor still has unsaved edits, or anything is
+ * waiting to go up, it says so instead.
+ */
+function shownState(status: CloudStatus, localBusy: boolean): Shown {
+  if (status.state === 'offline' || status.state === 'error' || status.state === 'syncing')
+    return status.state;
+  if (localBusy || status.state === 'waiting' || status.pending.size > 0) return 'waiting';
+  return 'synced';
+}
+
+function label(status: CloudStatus, shown: Shown, t: ReturnType<typeof useI18n>['t']): string {
+  if (shown === 'offline') return t('cloud.offline');
+  if (shown === 'error') return t('cloud.error');
+  if (shown === 'syncing') {
+    const p = status.progress;
+    if (!p || p.total === 0) return t('cloud.syncing');
+    const n = { current: Math.min(p.done + 1, p.total), total: p.total };
+    return t(
+      p.direction === 'up'
+        ? 'cloud.uploading'
+        : p.direction === 'down'
+          ? 'cloud.downloading'
+          : 'cloud.syncingCount',
+      n,
+    );
+  }
+  if (shown === 'waiting')
+    return status.pending.size > 1
+      ? t('cloud.waitingMany', { count: status.pending.size })
+      : t('cloud.waiting');
   return t('cloud.synced');
 }
 
-/** The sync status, with details and "Sync now" in a popover. */
-export function CloudStatusButton({ tone = 'light' }: { tone?: 'light' | 'dark' }) {
+/**
+ * The cloud status, with details and "Sync now" in a popover. `localBusy`:
+ * the editor has edits not yet saved on this computer.
+ */
+export function CloudStatusButton({
+  tone = 'light',
+  localBusy = false,
+}: {
+  tone?: 'light' | 'dark';
+  localBusy?: boolean;
+}) {
   const { t, formatRelative } = useI18n();
   const service = useContext(ServiceContext);
   const status = useCloudStatus();
   if (status.mode !== 'cloud') return null;
-  const waiting = status.pending.size > 0;
+  const shown = shownState(status, localBusy);
   const icon =
-    status.state === 'syncing' ? (
-      <Loader2 className="size-4 animate-spin" />
-    ) : status.state === 'offline' ? (
+    shown === 'syncing' ? (
+      status.progress?.direction === 'down' ? (
+        <CloudDownload className="size-4 animate-pulse" />
+      ) : status.progress ? (
+        <CloudUpload className="size-4 animate-pulse" />
+      ) : (
+        <Loader2 className="size-4 animate-spin" />
+      )
+    ) : shown === 'offline' ? (
       <CloudOff className="size-4" />
-    ) : status.state === 'error' ? (
+    ) : shown === 'error' ? (
       <AlertTriangle className="size-4" />
-    ) : waiting ? (
-      <RefreshCw className="size-4" />
+    ) : shown === 'waiting' ? (
+      <CloudUpload className="size-4 opacity-70" />
     ) : (
-      <Cloud className="size-4" />
+      <CloudCheck className="size-4" />
     );
   const hint =
-    status.state === 'offline'
+    shown === 'offline'
       ? t('cloud.offlineHint')
-      : status.state === 'error'
+      : shown === 'error'
         ? t('cloud.errorHint')
-        : waiting
-          ? t('cloud.offlineHint')
+        : shown === 'waiting' || shown === 'syncing'
+          ? t('cloud.waitingHint')
           : t('cloud.syncedHint');
+  const last = status.lastSyncedAt
+    ? t('cloud.lastSynced', { time: formatRelative(status.lastSyncedAt) })
+    : t('cloud.neverSynced');
   return (
     <Popover.Root>
       <Popover.Trigger
         className={cn(
           'flex h-8 max-w-full items-center gap-1.5 rounded-md px-2 text-xs font-medium',
           tone === 'dark' ? 'text-white/85 hover:bg-white/15' : 'text-slate-600 hover:bg-slate-100',
-          status.state === 'offline' && (tone === 'dark' ? 'text-amber-200' : 'text-amber-700'),
-          status.state === 'error' && (tone === 'dark' ? 'text-red-200' : 'text-red-700'),
+          shown === 'offline' && (tone === 'dark' ? 'text-amber-200' : 'text-amber-700'),
+          shown === 'error' && (tone === 'dark' ? 'text-red-200' : 'text-red-700'),
         )}
+        title={`${label(status, shown, t)} · ${last}`}
         data-testid="cloud-status"
         data-state={status.state}
+        data-shown={shown}
         data-pending={status.pending.size}
         data-rounds={status.rounds}
       >
         {icon}
         <span
-          className={cn('truncate', tone === 'dark' && 'max-lg:sr-only')}
+          className={cn('truncate tabular-nums', tone === 'dark' && 'max-lg:sr-only')}
           role="status"
           aria-live="polite"
         >
-          {label(status, t)}
+          {label(status, shown, t)}
         </span>
       </Popover.Trigger>
       <Popover.Portal>
@@ -146,20 +204,30 @@ export function CloudStatusButton({ tone = 'light' }: { tone?: 'light' | 'dark' 
               bucket: status.bucket ?? '',
             })}
           </p>
-          <p className="text-slate-700">{label(status, t)}</p>
+          <p className="text-slate-700">{label(status, shown, t)}</p>
+          {shown === 'syncing' && status.progress && status.progress.total > 0 ? (
+            <div
+              className="h-1.5 overflow-hidden rounded-full bg-slate-100"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={status.progress.total}
+              aria-valuenow={status.progress.done}
+            >
+              <div
+                className="h-full rounded-full bg-brand-500 transition-[width]"
+                style={{ width: `${(status.progress.done / status.progress.total) * 100}%` }}
+              />
+            </div>
+          ) : null}
           <p className="text-xs leading-relaxed text-slate-500">{hint}</p>
-          {status.error && status.state === 'error' ? (
+          {status.error && shown === 'error' ? (
             <p className="rounded-md bg-red-50 px-2 py-1 text-xs text-red-700">{status.error}</p>
           ) : null}
           <div className="flex items-center justify-between gap-2 pt-1">
-            <span className="text-xs text-slate-400">
-              {status.lastSyncedAt
-                ? t('cloud.lastSynced', { time: formatRelative(status.lastSyncedAt) })
-                : t('cloud.neverSynced')}
-            </span>
+            <span className="text-xs text-slate-400">{last}</span>
             <button
               type="button"
-              className="flex h-8 items-center gap-1.5 rounded-md bg-brand-600 px-3 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+              className="flex h-8 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-md bg-brand-600 px-3 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-60"
               disabled={status.state === 'syncing'}
               onClick={() => void service?.syncNow()}
               data-testid="cloud-sync-now"

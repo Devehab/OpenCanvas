@@ -246,11 +246,12 @@ export class S3Client {
   async put(
     key: string,
     body: Uint8Array,
-    options: { contentType?: string; ifMatch?: string; ifNoneMatch?: boolean } = {},
+    options: { contentType?: string; contentEncoding?: string; ifMatch?: string; ifNoneMatch?: boolean } = {},
   ): Promise<{ ok: true; etag: string } | { ok: false; reason: 'precondition' }> {
     const headers: Record<string, string> = {
       'content-type': options.contentType ?? 'application/octet-stream',
     };
+    if (options.contentEncoding) headers['content-encoding'] = options.contentEncoding;
     const conditional = this.conditionalWrites && (options.ifMatch || options.ifNoneMatch);
     if (conditional && options.ifMatch) headers['if-match'] = `"${normalizeEtag(options.ifMatch)}"`;
     if (conditional && options.ifNoneMatch) headers['if-none-match'] = '*';

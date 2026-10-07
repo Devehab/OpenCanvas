@@ -228,12 +228,12 @@ export const en = {
       flipVertical: 'Flip vertical',
     },
     status: {
-      saved: 'Saved',
+      saved: 'Saved on this computer',
       saving: 'Saving…',
       unsaved: 'Unsaved changes',
       error: 'Could not save',
       conflict: 'Changed in another tab',
-      savedHint: 'All changes are saved on this device',
+      savedHint: 'Every change is saved on this computer as you work',
     },
     download: 'Download',
     tools: {
@@ -961,9 +961,15 @@ export const en = {
   cloud: {
     synced: 'Saved to your cloud',
     syncing: 'Syncing…',
+    uploading: 'Uploading {current} of {total}…',
+    downloading: 'Downloading {current} of {total}…',
+    syncingCount: 'Syncing {current} of {total}…',
     offline: 'Offline: saved on this computer',
     error: 'Cloud sync needs attention',
-    waiting: '{count} waiting to upload',
+    waiting: 'Waiting to upload',
+    waitingMany: '{count} waiting to upload',
+    waitingHint:
+      'Saved on this computer. It goes up to your cloud a few seconds after you stop editing, in one small upload.',
     title: 'Cloud sync',
     where: '{provider} · bucket {bucket}',
     lastSynced: 'Last synced {time}',
