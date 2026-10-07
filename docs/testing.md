@@ -52,8 +52,11 @@ pnpm test:e2e --grep @smoke                                           # smoke su
 pnpm --filter @opencanvas/web test:e2e:update                         # refresh visual baselines (review them!)
 E2E_BASE_URL=http://localhost:3000 pnpm test:e2e                      # against a running server
 E2E_BROWSERS=all pnpm test:e2e                                        # + Firefox, WebKit, mobile
+E2E_BROWSERS=all pnpm test:e2e --project=firefox -g text               # one browser, some tests
 PERF_BUDGET_SCALE=1.5 pnpm test:e2e --grep @perf                      # slower machine
 ```
+
+Specs import `test` and `expect` from `e2e/fixtures.ts`. It runs WebKit in a persistent profile, because WebKit's default ephemeral sessions (like Safari private windows) cannot store files in IndexedDB.
 
 Visual baselines are Chromium/Linux (the CI platform). Performance specs run with tracing disabled, and every timed frame includes rasterization, so the numbers reflect what users see.
 
@@ -72,4 +75,4 @@ Visual baselines are Chromium/Linux (the CI platform). Performance specs run wit
 | Security: upload validation, SVG sanitization, XSS (plain-text paste, CSP), malicious packages | `e2e/uploads.spec.ts`, `e2e/dashboard.spec.ts`, `packages/export/test` |
 | Security: authentication, authorization, CSRF, rate limiting, SQL injection, signed URLs, tenant isolation | Phase 2 (with the backend) |
 | Accessibility | `e2e/a11y.spec.ts` |
-| Browser matrix | CI `browsers` job (weekly and on demand): Chromium, Firefox, WebKit, Pixel 7, iPhone 15 |
+| Browser matrix | CI `browsers` job (weekly and on demand): Chromium, Firefox, WebKit, Pixel 7, iPhone 15. Running the workflow by hand with `browsers-filter` (for example `--project=firefox -g text`) runs part of it |

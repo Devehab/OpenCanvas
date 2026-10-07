@@ -34,8 +34,9 @@ Scope from the spec: canvas, objects, text, images, layers, pages, undo/redo, sa
 ### Known limitations of Phase 1
 
 - **PDF export is raster** (150 or 300 DPI images per page). It prints well but text is not selectable; a vector PDF writer with embedded fonts is planned for Phase 2.
-- **Designs live in the browser** (IndexedDB) until accounts and server sync arrive in Phase 2. Use "Save as .opencanvas" to move designs between browsers.
-- **Cross-browser coverage**: the end-to-end suite runs on Chromium on every change; the Firefox, WebKit and mobile matrix runs weekly in CI and has not yet been through a full triage.
+- **Designs live in the browser** (IndexedDB). Cloud sync (your own R2 or S3 bucket, see [cloud-sync.md](cloud-sync.md)) keeps several computers in step; without it, use "Save as .opencanvas" to move designs between browsers. Accounts arrive in Phase 2.
+- **Cross-browser coverage**: the end-to-end suite runs on Chromium on every change and on Firefox, WebKit and mobile weekly and on demand; the whole matrix passes.
+- **Safari private windows** cannot keep uploaded images (WebKit does not store files in IndexedDB there); the app says so instead of failing silently. Normal Safari windows are not affected.
 - Very large pages (1000+ elements) drag at about 24 FPS in headless CI; layer caching is planned.
 
 ### Spec items not yet covered by Phase 1
