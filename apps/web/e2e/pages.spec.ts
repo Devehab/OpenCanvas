@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createDesign, getNodes, openPanel, waitForCanvasIdle } from './support';
 
 const pageIds = (page: import('@playwright/test').Page) =>

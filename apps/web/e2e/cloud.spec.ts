@@ -15,9 +15,9 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import net from 'node:net';
 import path from 'node:path';
-import { type Browser, expect, type Page, test } from '@playwright/test';
 import { decodeRecord } from '../src/lib/cloud/codec';
 import { S3Client } from '../src/lib/cloud/s3';
+import { type Browser, expect, type Page, test } from './fixtures';
 import {
   createDesign,
   getNodes,

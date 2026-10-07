@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createDesign, exportDesign, getNodes, insertNodes, samplePng } from './support';
 
 const require = createRequire(import.meta.url);

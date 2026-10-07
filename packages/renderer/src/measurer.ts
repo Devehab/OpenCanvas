@@ -15,6 +15,23 @@ import { type Context2D, context2d, type RenderPlatform } from './platform';
 /** Fallback fonts appended to every family so Arabic always has a glyph source. */
 export const DEFAULT_FONT_FALLBACKS = ['Noto Sans Arabic', 'Noto Sans', 'sans-serif'];
 
+/**
+ * A context to measure with. In a page it is a <canvas> element's: it resolves
+ * web fonts exactly like the on-screen canvas that draws the text (Firefox's
+ * OffscreenCanvas can still measure with a fallback face for a font the page
+ * has already loaded, so text would wrap differently from how it is drawn).
+ */
+function measuringContext(platform: RenderPlatform): Context2D & { letterSpacing?: string } {
+  if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 8;
+    canvas.height = 8;
+    const ctx = canvas.getContext('2d');
+    if (ctx) return ctx as unknown as Context2D;
+  }
+  return context2d(platform.createCanvas(8, 8));
+}
+
 export class CanvasTextMeasurer implements TextMeasurer {
   private ctx: Context2D & { letterSpacing?: string };
   private readonly metricsCache = new Map<string, FontMetrics>();
@@ -23,7 +40,7 @@ export class CanvasTextMeasurer implements TextMeasurer {
     private readonly platform: RenderPlatform,
     private readonly fallbacks: readonly string[] = DEFAULT_FONT_FALLBACKS,
   ) {
-    this.ctx = context2d(platform.createCanvas(8, 8));
+    this.ctx = measuringContext(platform);
   }
 
   fontString(font: FontDescriptor): string {
@@ -72,7 +89,7 @@ export class CanvasTextMeasurer implements TextMeasurer {
    */
   invalidate(): void {
     this.metricsCache.clear();
-    this.ctx = context2d(this.platform.createCanvas(8, 8));
+    this.ctx = measuringContext(this.platform);
   }
 }
 

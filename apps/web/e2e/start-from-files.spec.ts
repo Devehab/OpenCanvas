@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { samplePdf, samplePng, waitForEditor } from './support';
 
 const designRecords = (page: import('@playwright/test').Page) =>
@@ -56,17 +56,20 @@ test('open a PDF: one editable page per PDF page, same sizes', async ({ page }) 
     { width: 816, height: 1056, image: { type: 'image', width: 816, height: 1056, locked: true } },
     { width: 1056, height: 816, image: { type: 'image', width: 1056, height: 816, locked: true } },
   ]);
-  // The rendered page shows the PDF's content.
-  const color = await page.evaluate(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-layer="scene"]')!;
-    const { editor } = window.__opencanvas!;
-    const p = editor.pageToScreen({ x: 408, y: 528 });
-    const r = canvas.getBoundingClientRect();
-    const s = canvas.width / r.width;
-    return [...canvas.getContext('2d')!.getImageData(Math.round(p.x * s), Math.round(p.y * s), 1, 1).data];
-  });
-  expect(color[0]).toBeGreaterThan(180);
-  expect(color[2]).toBeLessThan(90);
+  // The rendered page shows the PDF's content (once the layout settled and the page image is drawn).
+  const center = () =>
+    page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>('canvas[data-layer="scene"]')!;
+      const { editor } = window.__opencanvas!;
+      const p = editor.pageToScreen({ x: 408, y: 528 });
+      const r = canvas.getBoundingClientRect();
+      const s = canvas.width / r.width;
+      const [red, , blue] = canvas
+        .getContext('2d')!
+        .getImageData(Math.round(p.x * s), Math.round(p.y * s), 1, 1).data;
+      return red! > 180 && blue! < 90 ? 'red' : `rgb ${red} … ${blue}`;
+    });
+  await expect.poll(center).toBe('red');
 });
 
 test('files that are neither images nor PDFs are refused with a message', async ({ page }) => {

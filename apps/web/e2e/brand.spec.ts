@@ -1,5 +1,5 @@
-import { expect, test } from '@playwright/test';
 import { PNG } from 'pngjs';
+import { expect, test } from './fixtures';
 import { createDesign, getNodes, insertNodes, openPanel, samplePng } from './support';
 
 test('brand kit: create, edit, and use it in the editor', async ({ page }) => {

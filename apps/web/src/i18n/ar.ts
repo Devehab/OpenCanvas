@@ -321,6 +321,8 @@ export const ar: Dictionary = {
         corrupt: 'يبدو أن الملف «{name}» تالف.',
         empty: 'الملف «{name}» فارغ.',
         decode: 'تعذّرت قراءة الملف «{name}».',
+        storage:
+          'تعذّر على نافذة المتصفح هذه حفظ «{name}». النوافذ الخاصة في Safari لا تحفظ الملفات، فافتح OpenCanvas في نافذة عادية.',
       },
       dropHint: 'اسحب الملفات إلى هنا أو انقر للرفع',
       dropToUpload: 'أفلِت الملفات لرفعها',

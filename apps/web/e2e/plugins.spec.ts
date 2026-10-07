@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { expect, type Page, test } from '@playwright/test';
 import { strToU8, zipSync } from 'fflate';
+import { expect, type Page, test } from './fixtures';
 import {
   createDesign,
   getNodes,

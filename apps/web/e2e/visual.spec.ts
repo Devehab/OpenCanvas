@@ -1,5 +1,5 @@
 import type { AnyNodeProps } from '@opencanvas/core';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import { createDesign, exportDesign, insertNodes, waitForCanvasIdle } from './support';
 
 /**

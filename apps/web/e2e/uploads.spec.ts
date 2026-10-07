@@ -1,5 +1,5 @@
 import type { ImageNode } from '@opencanvas/core';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import {
   createDesign,
   getNodes,

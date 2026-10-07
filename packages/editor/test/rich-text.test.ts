@@ -3,6 +3,7 @@
 import { DEFAULT_TEXT_STYLE, type TextContent } from '@opencanvas/core';
 import { describe, expect, it } from 'vitest';
 import { htmlToTextContent, textContentToHtml } from '../src/dom/rich-text';
+import { caretAtEnd } from '../src/dom/text-editor';
 
 const base = { ...DEFAULT_TEXT_STYLE };
 
@@ -59,5 +60,40 @@ describe('rich text DOM conversion', () => {
     const el = document.createElement('div');
     el.textContent = 'typed';
     expect(htmlToTextContent(el, base).paragraphs[0]!.runs[0]!.text).toBe('typed');
+  });
+});
+
+describe('caret when the text editor opens', () => {
+  const paragraph = (text: string, style = {}) => ({
+    runs: [{ text, style }],
+    list: 'none' as const,
+    indent: 0,
+  });
+
+  it('goes inside an empty paragraph, before its placeholder (so typing never adds a line)', () => {
+    const el = document.createElement('div');
+    el.innerHTML = textContentToHtml({ paragraphs: [paragraph('')] });
+    const { node, offset } = caretAtEnd(el);
+    expect(node).toBe(el.firstChild);
+    expect(offset).toBe(0);
+    // What the browser types there stays in that paragraph.
+    (node as HTMLElement).insertBefore(document.createTextNode('مرحبا'), node.childNodes[offset] ?? null);
+    expect(htmlToTextContent(el, base).paragraphs.map((p) => p.runs.map((r) => r.text).join(''))).toEqual([
+      'مرحبا',
+    ]);
+  });
+
+  it('goes to the end of the last run of the last paragraph', () => {
+    const el = document.createElement('div');
+    el.innerHTML = textContentToHtml({
+      paragraphs: [
+        paragraph('One'),
+        { ...paragraph('Two '), runs: [{ text: 'bold', style: { fontWeight: 700 } }] },
+      ],
+    });
+    const { node, offset } = caretAtEnd(el);
+    expect(node.nodeType).toBe(Node.TEXT_NODE);
+    expect(node.nodeValue).toBe('bold');
+    expect(offset).toBe(4);
   });
 });

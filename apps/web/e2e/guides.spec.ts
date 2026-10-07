@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import { createDesign, dragMouse, getNodes, insertNodes, nodeCenter, waitForCanvasIdle } from './support';
 
 const guides = (page: Page) =>

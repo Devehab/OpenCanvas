@@ -1,5 +1,5 @@
 import type { NodeRecord, TextNode } from '@opencanvas/core';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import { createDesign, getNodes, insertNodes, openPanel, toScreen, waitForCanvasIdle } from './support';
 
 const paragraphs = (node: NodeRecord | undefined) =>
@@ -73,6 +73,7 @@ test.describe('text', () => {
     await page.keyboard.press('t');
     const at = await toScreen(page, { x: 150, y: 300 });
     await page.mouse.click(at.x, at.y);
+    await expect(page.locator('.oc-text-editor')).toBeFocused();
     await page.keyboard.type('Hello world');
     for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowLeft');
     await page.keyboard.press('ControlOrMeta+b');
@@ -122,7 +123,10 @@ test.describe('text', () => {
     await page.evaluate(() => {
       const data = new DataTransfer();
       data.setData('text/plain', 'نص ملصوق من الحافظة');
-      document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true }));
+      // A real paste carries its clipboardData; Firefox ignores it in the constructor of a synthetic one.
+      const event = new ClipboardEvent('paste', { bubbles: true });
+      Object.defineProperty(event, 'clipboardData', { value: data });
+      document.dispatchEvent(event);
     });
     const [node] = (await getNodes(page)) as TextNode[];
     expect(paragraphs(node)).toEqual(['نص ملصوق من الحافظة']);

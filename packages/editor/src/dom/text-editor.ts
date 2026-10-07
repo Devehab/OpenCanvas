@@ -21,6 +21,24 @@ export interface TextEditorOptions {
   fallbacks: readonly string[];
 }
 
+/**
+ * Where the caret goes to continue the text: the end of the last text, or
+ * before the placeholder <br> of an empty paragraph. Never after the last
+ * paragraph's element: Firefox would type there, outside any paragraph
+ * (an extra empty line before the new text).
+ */
+export function caretAtEnd(root: HTMLElement): { node: Node; offset: number } {
+  let node: Node = root;
+  while (node.lastChild) {
+    const last = node.lastChild;
+    if (last.nodeName === 'BR') return { node, offset: node.childNodes.length - 1 };
+    node = last;
+  }
+  return node.nodeType === Node.TEXT_NODE
+    ? { node, offset: node.nodeValue?.length ?? 0 }
+    : { node, offset: node.childNodes.length };
+}
+
 export class TextEditorOverlay {
   private element: HTMLDivElement | null = null;
   private nodeId: string | null = null;
@@ -78,10 +96,11 @@ export class TextEditorOverlay {
     this.applyStyles(node);
     this.position();
     el.focus({ preventScroll: true });
-    // Place the caret at the end of the text.
+    // Place the caret at the end of the text, inside its last paragraph (and run).
+    const end = caretAtEnd(el);
     const range = document.createRange();
-    range.selectNodeContents(el);
-    range.collapse(false);
+    range.setStart(end.node, end.offset);
+    range.collapse(true);
     const sel = window.getSelection();
     sel?.removeAllRanges();
     sel?.addRange(range);

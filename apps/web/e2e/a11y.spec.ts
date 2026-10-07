@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import { createDesign, insertNodes, openPanel } from './support';
 
 /** Fails on WCAG 2.1 A/AA violations of serious or critical impact. */

@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import {
   createDesign,
   dragMouse,
@@ -213,7 +213,9 @@ test.describe('editor', () => {
     expect((await getNodes(page)).map((n) => n.id)).toEqual([id]);
   });
 
-  test('copy and paste through the clipboard', async ({ page, context }) => {
+  test('copy and paste through the clipboard', async ({ page, context, browserName }) => {
+    // Only Chromium lets a test grant clipboard access (the app uses the same events everywhere).
+    test.skip(browserName !== 'chromium', 'Clipboard permissions can only be granted in Chromium');
     await context.grantPermissions(['clipboard-read', 'clipboard-write']);
     const [id] = await insertNodes(page, [rect(300, 300)], { center: false });
     await page.evaluate((nodeId) => window.__opencanvas!.editor.select([nodeId]), id!);

@@ -10,7 +10,7 @@ import type { DrawableImage } from '@opencanvas/renderer';
 import DOMPurify from 'dompurify';
 import { assetRecordFor, putAssetBlob } from './storage/assets';
 
-export type UploadError = Exclude<UploadCheck, { ok: true }>['reason'] | 'decode';
+export type UploadError = Exclude<UploadCheck, { ok: true }>['reason'] | 'decode' | 'storage';
 
 export type PreparedImage =
   | { ok: true; asset: AssetRecord; image: DrawableImage }
@@ -60,7 +60,12 @@ export async function prepareImage(file: Blob, name: string): Promise<PreparedIm
   const hash = await contentHash(bytes);
   const width = image.width || 512;
   const height = image.height || 512;
-  await putAssetBlob({ hash, blob, mimeType, width, height, name });
+  try {
+    await putAssetBlob({ hash, blob, mimeType, width, height, name });
+  } catch {
+    // The browser refused to keep the file (Safari private windows cannot store files).
+    return { ok: false, reason: 'storage', name };
+  }
   return {
     ok: true,
     asset: assetRecordFor({ hash, mimeType, width, height, name, size: bytes.length }),

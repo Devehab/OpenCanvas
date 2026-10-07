@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createDesign, getNodes, getRecords, insertNodes, waitForEditor, waitForSaved } from './support';
 
 const scene = [

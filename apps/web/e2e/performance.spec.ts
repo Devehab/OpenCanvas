@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AnyNodeProps } from '@opencanvas/core';
-import { expect, type Page, test } from '@playwright/test';
+import { expect, type Page, test } from './fixtures';
 import {
   createDesign,
   decodePng,
@@ -132,20 +132,26 @@ async function measure(page: Page) {
     const undoMs = performance.now() - t0;
 
     // Real frame rate while dragging: one pointer move per animation frame,
-    // drawn by the view's own requestAnimationFrame loop.
+    // drawn by the view's own requestAnimationFrame loop. The first frames
+    // only warm up (code compiled, caches filled); the rate comes from the
+    // median frame interval, so a single hitch from another process (other
+    // tests run in parallel) does not count, while steady slowness does.
     const fps = await new Promise<number>((resolve) => {
+      const warmup = 20;
       const total = 60;
       let frame = 0;
-      let first = 0;
+      let last = 0;
+      const intervals: number[] = [];
       editor.pointerDown(input(start.x, start.y));
       const tick = (time: number) => {
-        if (frame === 0) first = time;
-        else editor.pointerMove(input(start.x + frame * 2, start.y + frame));
+        if (frame > warmup) intervals.push(time - last);
+        last = time;
+        if (frame > 0) editor.pointerMove(input(start.x + (frame % 40) * 2, start.y + (frame % 40)));
         flush();
-        if (frame++ < total) requestAnimationFrame(tick);
+        if (frame++ < warmup + total) requestAnimationFrame(tick);
         else {
-          editor.pointerUp(input(start.x + total * 2, start.y + total));
-          resolve((total * 1000) / (time - first));
+          editor.pointerUp(input(start.x, start.y));
+          resolve(1000 / median(intervals));
         }
       };
       requestAnimationFrame(tick);

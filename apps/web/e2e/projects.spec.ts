@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { createDesign, waitForSaved } from './support';
 
 test('projects: folders, moving designs (menu and drag) and stars', async ({ page }) => {

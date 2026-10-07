@@ -320,6 +320,8 @@ export const en = {
         corrupt: '“{name}” appears to be damaged.',
         empty: '“{name}” is empty.',
         decode: '“{name}” could not be read.',
+        storage:
+          'This browser window could not keep “{name}”. Private windows (Safari) cannot store files: open OpenCanvas in a normal window.',
       },
       dropHint: 'Drag files here or click to upload',
       dropToUpload: 'Drop to upload',
