@@ -31,15 +31,22 @@ export async function waitForEditor(page: Page): Promise<void> {
   await waitForCanvasIdle(page);
 }
 
-/** Waits until fonts and images are loaded and no redraw is pending (two frames in a row). */
+/**
+ * Waits until fonts and images are loaded and no redraw or font check is
+ * pending, for three animation frames in a row. (The predicate must stay
+ * synchronous: waitForFunction treats a returned promise as truthy.)
+ */
 export async function waitForCanvasIdle(page: Page): Promise<void> {
-  await page.waitForFunction(async () => {
+  await page.evaluate(() => {
+    (window as unknown as { __ocIdleFrames: number }).__ocIdleFrames = 0;
+  });
+  await page.waitForFunction(() => {
     const oc = window.__opencanvas;
-    if (!oc) return false;
-    const ready = () => oc.view.idle && oc.session.images.pending === 0 && document.fonts.status === 'loaded';
-    if (!ready()) return false;
-    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    return ready();
+    const w = window as unknown as { __ocIdleFrames?: number };
+    const ready =
+      !!oc && oc.view.idle && oc.session.images.pending === 0 && document.fonts.status === 'loaded';
+    w.__ocIdleFrames = ready ? (w.__ocIdleFrames ?? 0) + 1 : 0;
+    return w.__ocIdleFrames >= 3;
   });
 }
 

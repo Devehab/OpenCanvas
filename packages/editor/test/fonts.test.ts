@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { collectFontRequests, FontWatcher, waitForCanvasFonts } from '../src/dom/fonts';
+import { collectFontRequests, FontWatcher, parseUnicodeRange, waitForCanvasFonts } from '../src/dom/fonts';
 import { createTestEditor } from './helpers';
 
 type Load = (font: string, text?: string) => Promise<unknown[]>;
@@ -91,13 +91,24 @@ describe('font loading', () => {
     expect(onLoaded).toHaveBeenCalledTimes(2);
   });
 
-  it('waits until canvas text really uses a loaded face (Firefox can lag behind fonts.load)', async () => {
-    let applied = false;
+  // A fake 2D context: characters the face draws are 10 wide; characters that
+  // fall back take the fallback's width (monospace 12, serif 9).
+  function fakeCanvas(drawnByFace: (char: string) => boolean) {
     const ctx = {
       font: '',
-      measureText: () => ({ width: ctx.font.includes('"Cairo"') && applied ? 100 : 80 }),
+      measureText: (sample: string) => ({
+        width: [...sample].reduce(
+          (sum, c) => sum + (drawnByFace(c) ? 10 : ctx.font.endsWith('monospace') ? 12 : 9),
+          0,
+        ),
+      }),
     };
     vi.stubGlobal('document', { createElement: () => ({ getContext: () => ctx }) });
+  }
+
+  it('waits until canvas text really uses a loaded face (Firefox can lag behind fonts.load)', async () => {
+    let applied = false;
+    fakeCanvas(() => applied);
     let done = false;
     const waiting = waitForCanvasFonts([
       { family: 'Cairo', weight: 700, style: 'normal', sample: 'مرحبا' },
@@ -111,9 +122,43 @@ describe('font loading', () => {
     expect(done).toBe(true);
   });
 
+  it('keeps waiting while some characters still fall back (Arabic arriving after Latin)', async () => {
+    let arabic = false;
+    fakeCanvas((c) => /[A-Za-z ]/.test(c) || arabic);
+    let done = false;
+    const waiting = waitForCanvasFonts([
+      { family: 'Cairo', weight: 700, style: 'normal', sample: 'مرحبا بكم في OpenCanvas' },
+    ]).then(() => {
+      done = true;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    expect(done).toBe(false);
+    arabic = true;
+    await waiting;
+    expect(done).toBe(true);
+  });
+
+  it('ignores characters no face of the family covers (emoji, other scripts)', async () => {
+    // Only the Latin face is loaded: the emoji always falls back, but the check does not wait for it.
+    fakeCanvas((c) => /[A-Za-z]/.test(c));
+    Object.assign(document, {
+      fonts: [{ family: '"Inter"', status: 'loaded', unicodeRange: 'U+0000-00FF, U+0131' }],
+    });
+    const start = Date.now();
+    await waitForCanvasFonts([{ family: 'Inter', weight: 400, style: 'normal', sample: 'Hello 🎨' }], 2000);
+    expect(Date.now() - start).toBeLessThan(500);
+  });
+
+  it('parses unicode ranges', () => {
+    expect(parseUnicodeRange('U+0600-06FF, U+200C, U+4??')).toEqual([
+      [0x600, 0x6ff],
+      [0x200c, 0x200c],
+      [0x400, 0x4ff],
+    ]);
+  });
+
   it('gives up waiting after the timeout (a font that never applies)', async () => {
-    const ctx = { font: '', measureText: () => ({ width: 80 }) };
-    vi.stubGlobal('document', { createElement: () => ({ getContext: () => ctx }) });
+    fakeCanvas(() => false);
     const start = Date.now();
     await waitForCanvasFonts([{ family: 'Broken', weight: 400, style: 'normal', sample: 'x' }], 300);
     expect(Date.now() - start).toBeLessThan(1000);

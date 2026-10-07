@@ -56,29 +56,73 @@ export async function loadFonts(requests: readonly FontRequest[], timeoutMs = 80
   return result === 'ok';
 }
 
+/** Parses a CSS unicode-range ("U+0600-06FF, U+4??") into code point ranges. */
+export function parseUnicodeRange(value: string): [number, number][] {
+  const ranges: [number, number][] = [];
+  for (const part of value.split(',')) {
+    const m = /^\s*U\+([0-9a-f?]{1,6})(?:-([0-9a-f]{1,6}))?\s*$/i.exec(part);
+    if (!m) continue;
+    const start = m[1]!;
+    if (start.includes('?')) {
+      ranges.push([parseInt(start.replace(/\?/g, '0'), 16), parseInt(start.replace(/\?/g, 'f'), 16)]);
+    } else {
+      const from = parseInt(start, 16);
+      ranges.push([from, m[2] ? parseInt(m[2], 16) : from]);
+    }
+  }
+  return ranges;
+}
+
 /**
- * Resolves once canvas text really uses the faces: their width differs from
- * a fallback's. Firefox can go on drawing and measuring canvas text with the
- * fallback for a while after document.fonts.load() resolved, and text
- * measured then keeps the fallback's line breaks. Gives up after
- * `timeoutMs` (a font that failed to load, or one metrically identical to
- * the fallback).
+ * The characters of `request.sample` that a loaded face of the family can
+ * draw, by the faces' unicode-range. Characters no face covers always fall
+ * back, so they are left out of the check. Without face information (no
+ * CSS Font Loading API), the whole sample.
  */
-export async function waitForCanvasFonts(requests: readonly FontRequest[], timeoutMs = 4000): Promise<void> {
+function coveredSample(request: FontRequest): string {
+  const fonts = document.fonts as (FontFaceSet & Iterable<FontFace>) | undefined;
+  if (!fonts || typeof (fonts as Partial<Iterable<FontFace>>)[Symbol.iterator] !== 'function')
+    return request.sample;
+  const ranges: [number, number][] = [];
+  for (const face of fonts) {
+    if (face.status !== 'loaded' || face.family.replace(/["']/g, '') !== request.family) continue;
+    ranges.push(...parseUnicodeRange(face.unicodeRange || 'U+0-10FFFF'));
+  }
+  if (ranges.length === 0) return request.sample;
+  return [...request.sample]
+    .filter((c) => {
+      const code = c.codePointAt(0)!;
+      return ranges.some(([from, to]) => code >= from && code <= to);
+    })
+    .join('');
+}
+
+/**
+ * Resolves once canvas text really draws the sample with the faces. Firefox
+ * can go on measuring canvas text with a fallback for a while after
+ * document.fonts.load() resolved (one unicode-range subset, Arabic for
+ * example, often arrives after the Latin one), and text measured then keeps
+ * the fallback's line breaks. The sample is measured with two different
+ * fallbacks behind the face: the widths only match when no character fell
+ * back. Gives up after `timeoutMs` (a font that failed to load).
+ */
+export async function waitForCanvasFonts(requests: readonly FontRequest[], timeoutMs = 3000): Promise<void> {
   if (typeof document === 'undefined' || typeof document.createElement !== 'function') return;
   const deadline = Date.now() + timeoutMs;
-  let pending = [...requests];
+  let pending = requests
+    .map((r) => ({ ...r, sample: coveredSample(r).replace(/\s+/g, '') }))
+    .filter((r) => r.sample.length > 0);
   while (pending.length > 0) {
     // A fresh context each time: contexts keep the face they resolved for a font string.
     const ctx = document.createElement('canvas').getContext('2d');
     if (!ctx) return;
     pending = pending.filter((r) => {
-      const sample = `${r.sample}Aa`;
-      const font = (family: string) => `${r.style === 'italic' ? 'italic ' : ''}${r.weight} 48px ${family}`;
-      ctx.font = font(`"${r.family.replace(/["\\]/g, '')}", monospace`);
-      const withFace = ctx.measureText(sample).width;
-      ctx.font = font('monospace');
-      return Math.abs(withFace - ctx.measureText(sample).width) < 0.01;
+      const family = `"${r.family.replace(/["\\]/g, '')}"`;
+      const width = (fallback: string) => {
+        ctx.font = `${r.style === 'italic' ? 'italic ' : ''}${r.weight} 48px ${family}, ${fallback}`;
+        return ctx.measureText(r.sample).width;
+      };
+      return Math.abs(width('monospace') - width('serif')) >= 0.01;
     });
     if (pending.length === 0 || Date.now() > deadline) return;
     await new Promise((resolve) => setTimeout(resolve, 100));

@@ -68,6 +68,7 @@ export class CanvasView {
   /** Number of scene redraws so far (diagnostics, tests and benchmarks). */
   sceneRenders = 0;
   private fontCheckPending = false;
+  private fontCheckRequest = 0;
 
   constructor(private readonly options: CanvasViewOptions) {
     this.editor = options.editor;
@@ -188,9 +189,13 @@ export class CanvasView {
   private scheduleFontCheck(delay: number): void {
     clearTimeout(this.fontCheckTimer);
     this.fontCheckPending = true;
+    // Only the latest request clears the flag: a check that finishes while
+    // another one is scheduled (its re-measure changed the document, or a
+    // font finished loading meanwhile) leaves the view busy.
+    const request = ++this.fontCheckRequest;
     this.fontCheckTimer = setTimeout(() => {
       void this.fontWatcher.check().finally(() => {
-        this.fontCheckPending = false;
+        if (request === this.fontCheckRequest) this.fontCheckPending = false;
       });
     }, delay);
   }
