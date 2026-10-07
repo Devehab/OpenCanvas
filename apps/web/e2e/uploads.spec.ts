@@ -138,8 +138,16 @@ test.describe('uploads', () => {
     const nodes = await getNodes(page);
     expect(nodes[1]!.parentId).toBe(frame!.id);
 
-    // Details: rename. The menu opens from the keyboard here: after a drag and drop,
-    // Playwright's WebKit keeps the mouse in its drag state (menus open on pointer down).
+    // After a drag and drop, Playwright's WebKit can keep the mouse in its drag state,
+    // and later clicks then miss. Reloading ends it (and shows the photo stayed in its frame).
+    await waitForSaved(page);
+    await page.reload();
+    await waitForEditor(page);
+    expect((await getNodes(page)).map((n) => n.type)).toEqual(['frame', 'image']);
+    await openPanel(page, 'uploads');
+    await expect(page.getByTestId('upload-item')).toHaveCount(1);
+
+    // Details: rename (menus opened from the keyboard).
     await page.getByTestId('upload-menu').first().focus();
     await page.keyboard.press('Enter');
     await page.getByRole('menuitem', { name: 'Details' }).click();
@@ -150,8 +158,7 @@ test.describe('uploads', () => {
       'Sunset',
     );
 
-    // Delete: gone from the library, the design keeps its image. From the keyboard
-    // too, for the same reason as above (the mouse may still be dragging in WebKit).
+    // Delete: gone from the library, the design keeps its image.
     await page.getByTestId('upload-menu').first().focus();
     await page.keyboard.press('Enter');
     await page.getByRole('menuitem', { name: 'Delete' }).focus();
