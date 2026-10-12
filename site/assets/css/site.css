@@ -1,39 +1,12 @@
 /* OpenCanvas landing page. Plain CSS, no build step. */
 
+/* Inter as one variable font: every weight from a single file. */
 @font-face {
   font-family: "Inter";
   font-style: normal;
   font-display: swap;
-  font-weight: 400;
-  src: url(../fonts/inter-latin-400-normal.woff2) format("woff2");
-}
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 500;
-  src: url(../fonts/inter-latin-500-normal.woff2) format("woff2");
-}
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 600;
-  src: url(../fonts/inter-latin-600-normal.woff2) format("woff2");
-}
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 700;
-  src: url(../fonts/inter-latin-700-normal.woff2) format("woff2");
-}
-@font-face {
-  font-family: "Inter";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 800;
-  src: url(../fonts/inter-latin-800-normal.woff2) format("woff2");
+  font-weight: 100 900;
+  src: url(../fonts/inter-latin-wght-normal.woff2) format("woff2");
 }
 /* The Arabic subset only; Latin characters fall through to Inter. */
 @font-face {
@@ -104,12 +77,6 @@
   --gutter: 20px;
   --header: 68px;
   color-scheme: light;
-}
-
-/* ---------- Language switching ---------- */
-html[lang="en"] [data-l="ar"],
-html[lang="ar"] [data-l="en"] {
-  display: none !important;
 }
 
 /* ---------- Base ---------- */
@@ -690,6 +657,19 @@ html[lang="ar"] .hero h1 {
   object-fit: cover;
 }
 
+.stage-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.stage-poster[hidden],
+html:not(.js) .stage-poster {
+  display: none;
+}
+
 .play {
   position: absolute;
   inset: 0;
@@ -717,6 +697,8 @@ html[lang="ar"] .hero h1 {
 }
 
 .play-icon {
+  position: relative;
+  isolation: isolate;
   display: grid;
   place-items: center;
   width: 92px;
@@ -724,9 +706,7 @@ html[lang="ar"] .hero h1 {
   border-radius: 50%;
   background: rgb(255 255 255 / 95%);
   color: var(--brand-600);
-  box-shadow:
-    0 0 0 12px rgb(255 255 255 / 14%),
-    0 20px 50px rgb(0 0 0 / 40%);
+  box-shadow: 0 20px 50px rgb(0 0 0 / 40%);
 }
 
 .play-icon svg {
@@ -764,8 +744,17 @@ html[dir="rtl"] .play-icon svg {
   transform: scale(1.06);
 }
 
+.play-icon::before {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 14%);
+  z-index: -1;
+}
+
 @media (prefers-reduced-motion: no-preference) {
-  .play-icon {
+  .play-icon::before {
     animation: pulse 2.4s ease-in-out infinite;
   }
 }
@@ -773,15 +762,13 @@ html[dir="rtl"] .play-icon svg {
 @keyframes pulse {
   0%,
   100% {
-    box-shadow:
-      0 0 0 12px rgb(255 255 255 / 14%),
-      0 20px 50px rgb(0 0 0 / 40%);
+    transform: scale(1);
+    opacity: 1;
   }
 
   50% {
-    box-shadow:
-      0 0 0 22px rgb(255 255 255 / 6%),
-      0 20px 50px rgb(0 0 0 / 40%);
+    transform: scale(1.12);
+    opacity: 0.45;
   }
 }
 

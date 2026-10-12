@@ -125,7 +125,7 @@ Contributions are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md) and 
 
 ‏OpenCanvas منصّة مفتوحة المصدر للتصميم المرئي، مبنيّة على محرّك تصاميم حقيقي: يبقى كل عنصر قابلًا للتعديل — النصوص والصور والأشكال والإطارات والطبقات — ولا يُحفَظ التصميم صورةً مسطّحة أبدًا.
 
-**الموقع:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/?lang=ar)، وفيه جولة مصوّرة بالعربية في دقيقة واحدة.
+**الموقع:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/ar/)، وفيه جولة مصوّرة بالعربية في دقيقة واحدة.
 
 ### ما يميّزها
 

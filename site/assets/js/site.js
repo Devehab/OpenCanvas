@@ -1,34 +1,15 @@
-// OpenCanvas landing page: language switch, mobile menu, the video, the
+// OpenCanvas landing page: language links, mobile menu, the video, the
 // feature showcase, install tabs, copy buttons and scroll reveals. No
-// dependencies, no network requests.
+// dependencies, no network requests. Each language is its own page (built by
+// scripts/site/build.mjs), so nothing here translates the page.
 (() => {
   const root = document.documentElement;
   const STORAGE_KEY = 'oc-site-lang';
 
   const TEXT = {
-    en: {
-      title: 'OpenCanvas — The free, open-source design editor you own',
-      description:
-        'OpenCanvas is a free, open-source alternative to paid online design tools: photo frames, crop, about 2,900 icons, brand kits, multi-page designs and pro exports. Host it yourself; your designs stay on your device.',
-      copy: 'Copy',
-      copied: 'Copied to the clipboard',
-      tabs: 'Operating system',
-      features: 'Features',
-      stats: 'OpenCanvas in numbers',
-      switched: 'The page is now in English',
-    },
-    ar: {
-      title: 'OpenCanvas — محرّر تصاميم مجاني ومفتوح المصدر تملكه أنت',
-      description:
-        'OpenCanvas بديل مجاني ومفتوح المصدر لأدوات التصميم المدفوعة: إطارات الصور، والقصّ، ونحو 2900 أيقونة، وحزم الهوية، والتصاميم متعددة الصفحات، والتصدير الاحترافي. استضِفه بنفسك، وتبقى تصاميمك على جهازك.',
-      copy: 'نسخ',
-      copied: 'نُسِخ إلى الحافظة',
-      tabs: 'نظام التشغيل',
-      features: 'الميزات',
-      stats: 'OpenCanvas بالأرقام',
-      switched: 'أصبحت الصفحة بالعربية',
-    },
-  };
+    en: { copy: 'Copy', copied: 'Copied to the clipboard' },
+    ar: { copy: 'نسخ', copied: 'نُسِخ إلى الحافظة' },
+  }[root.lang === 'ar' ? 'ar' : 'en'];
 
   const live = document.querySelector('[data-live]');
   const announce = (message) => {
@@ -39,50 +20,22 @@
     }, 50);
   };
 
-  // Media whose description has an Arabic variant keep the English one aside.
-  const altMedia = [...document.querySelectorAll('[data-alt-ar]')];
-  const altAttr = (el) => (el.tagName === 'IMG' ? 'alt' : 'aria-label');
-  for (const el of altMedia) el.dataset.altEn = el.getAttribute(altAttr(el));
-
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  /** The element of a pair shown in the current language. */
-  const visible = (list) => list.find((el) => !el.dataset.l || el.dataset.l === root.lang) ?? list[0];
-
-  function applyLanguage(lang) {
-    const t = TEXT[lang];
-    root.lang = lang;
-    root.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    document.title = t.title;
-    document.querySelector('meta[name="description"]')?.setAttribute('content', t.description);
-    for (const el of altMedia)
-      el.setAttribute(altAttr(el), lang === 'ar' ? el.dataset.altAr : el.dataset.altEn);
-    for (const button of document.querySelectorAll('.copy')) button.setAttribute('aria-label', t.copy);
-    document.querySelector('[data-tabs] [role="tablist"]')?.setAttribute('aria-label', t.tabs);
-    document.querySelector('[data-showcase] [role="tablist"]')?.setAttribute('aria-label', t.features);
-    document.querySelector('.stats')?.setAttribute('aria-label', t.stats);
-    resetStage();
-    playShowcase();
-  }
 
   // ---------- The video ----------
   const stage = document.querySelector('[data-stage]');
   const playButton = stage?.querySelector('[data-play]');
-  const stageVideos = stage ? [...stage.querySelectorAll('video')] : [];
+  const stageVideo = stage?.querySelector('video');
+  const stagePoster = stage?.querySelector('[data-stage-poster]');
   // With JavaScript the poster carries a big play button; without it, the
   // browser's own controls stay.
-  for (const video of stageVideos) video.controls = false;
+  if (stageVideo) stageVideo.controls = false;
   if (playButton) playButton.hidden = false;
-  function resetStage() {
-    for (const video of stageVideos) {
-      if (!video.paused) video.pause();
-      video.controls = false;
-    }
-    if (playButton) playButton.hidden = false;
-  }
   function playStage() {
-    const video = visible(stageVideos);
+    const video = stageVideo;
     if (!video) return;
     playButton.hidden = true;
+    if (stagePoster) stagePoster.hidden = true;
     video.controls = true;
     video.play().catch(() => {
       // Autoplay rules or a missing file: the controls are there to retry.
@@ -99,23 +52,17 @@
     });
   }
 
-  // ---------- Language toggle ----------
-  for (const toggle of document.querySelectorAll('[data-lang-toggle]')) {
-    toggle.addEventListener('click', () => {
-      const next = root.lang === 'ar' ? 'en' : 'ar';
+  // ---------- Language link ----------
+  // The other language is another page. Remember the choice (the English
+  // page sends returning Arabic readers to theirs) and keep the place.
+  for (const link of document.querySelectorAll('[data-lang-toggle]')) {
+    link.addEventListener('click', () => {
       try {
-        localStorage.setItem(STORAGE_KEY, next);
+        localStorage.setItem(STORAGE_KEY, link.hreflang === 'ar' ? 'ar' : 'en');
       } catch {
-        // Storage can be unavailable (private mode); the switch still works.
+        // Storage can be unavailable (private mode); the link still works.
       }
-      // Drop an explicit ?lang= so a reload keeps the visitor's choice.
-      const url = new URL(window.location.href);
-      if (url.searchParams.has('lang')) {
-        url.searchParams.delete('lang');
-        history.replaceState(null, '', url);
-      }
-      applyLanguage(next);
-      announce(TEXT[next].switched);
+      link.hash = window.location.hash;
     });
   }
 
@@ -141,22 +88,26 @@
   const featureTabs = showcase ? [...showcase.querySelectorAll('[role="tab"]')] : [];
   const panelOf = (tab) => document.getElementById(tab.getAttribute('aria-controls'));
   let showcaseSeen = false;
-  /** Plays the clip of the selected feature (in the page language), pauses the rest. */
+  let showcaseNear = false;
+  /** Gives the selected clip its poster once the showcase is close to the screen. */
+  function showPoster(video) {
+    if (showcaseNear && video && !video.poster && video.dataset.poster) video.poster = video.dataset.poster;
+  }
+  /** Plays the clip of the selected feature, pauses the rest. */
   function playShowcase() {
     if (!showcase) return;
     for (const tab of featureTabs) {
       const selected = tab.getAttribute('aria-selected') === 'true';
-      const videos = [...panelOf(tab).querySelectorAll('video')];
-      const current = visible(videos);
-      for (const video of videos) {
-        const play = selected && video === current && showcaseSeen;
-        if (play && !video.src) {
-          video.src = video.dataset.src;
-          if (reducedMotion) video.controls = true;
-        }
-        if (play && !reducedMotion) video.play().catch(() => {});
-        else if (!video.paused) video.pause();
+      const video = panelOf(tab).querySelector('video');
+      if (!video) continue;
+      if (selected) showPoster(video);
+      const play = selected && showcaseSeen;
+      if (play && !video.src) {
+        video.src = video.dataset.src;
+        if (reducedMotion) video.controls = true;
       }
+      if (play && !reducedMotion) video.play().catch(() => {});
+      else if (!video.paused) video.pause();
     }
   }
   function selectFeature(tab, focus = false) {
@@ -169,7 +120,7 @@
     if (focus) tab.focus();
     // Keep the chosen tab in view in the horizontal list (small screens).
     tab.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: reducedMotion ? 'auto' : 'smooth' });
-    const video = visible([...panelOf(tab).querySelectorAll('video')]);
+    const video = panelOf(tab).querySelector('video');
     if (video && video.src) video.currentTime = 0;
     playShowcase();
   }
@@ -188,9 +139,19 @@
       event.preventDefault();
       selectFeature(featureTabs[(next + featureTabs.length) % featureTabs.length], true);
     });
-    // Load and play clips only once the showcase is on screen, and pause them
-    // when it scrolls away.
+    // Load the first poster when the showcase comes close, play clips only
+    // once it is on screen, and pause them when it scrolls away.
     if ('IntersectionObserver' in window) {
+      const near = new IntersectionObserver(
+        (entries) => {
+          if (!entries.some((entry) => entry.isIntersecting)) return;
+          showcaseNear = true;
+          near.disconnect();
+          playShowcase();
+        },
+        { rootMargin: '600px 0px' },
+      );
+      near.observe(showcase);
       new IntersectionObserver(
         (entries) => {
           const on = entries.some((entry) => entry.isIntersecting);
@@ -201,6 +162,7 @@
         { threshold: 0.15 },
       ).observe(showcase);
     } else {
+      showcaseNear = true;
       showcaseSeen = true;
       playShowcase();
     }
@@ -262,7 +224,7 @@
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'copy';
-    button.setAttribute('aria-label', TEXT[root.lang === 'ar' ? 'ar' : 'en'].copy);
+    button.setAttribute('aria-label', TEXT.copy);
     button.innerHTML = COPY_ICON;
     button.addEventListener('click', async () => {
       // Copy the commands without the explanatory comments.
@@ -283,7 +245,7 @@
         selection.removeAllRanges();
       }
       button.classList.add('done');
-      announce(TEXT[root.lang === 'ar' ? 'ar' : 'en'].copied);
+      announce(TEXT.copied);
       window.setTimeout(() => button.classList.remove('done'), 1600);
     });
     block.appendChild(button);
@@ -307,5 +269,5 @@
     for (const el of revealed) el.classList.add('in');
   }
 
-  applyLanguage(root.lang === 'ar' ? 'ar' : 'en');
+  playShowcase();
 })();

@@ -1,12 +1,14 @@
 name: Landing page
 
-# Publishes the static site in site/ to GitHub Pages.
+# Builds the landing page (site/ → _site/, one page per language) and
+# publishes it to GitHub Pages.
 # One-time setup: Settings → Pages → Build and deployment → Source: GitHub Actions.
 
 on:
   push:
     paths:
       - 'site/**'
+      - 'scripts/site/**'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -38,9 +40,17 @@ jobs:
             echo "::error title=GitHub Pages is not enabled::Open the repository's Settings → Pages, set Source to 'GitHub Actions', then re-run this workflow."
             exit 1
           fi
-      - uses: actions/configure-pages@v5
+      - id: pages
+        uses: actions/configure-pages@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+      - name: Build the site
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}/
+        run: node scripts/site/build.mjs
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: site
+          path: _site
       - id: deployment
         uses: actions/deploy-pages@v4

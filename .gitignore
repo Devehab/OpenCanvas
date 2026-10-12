@@ -27,3 +27,4 @@ blob-report/
 .vscode/*
 !.vscode/extensions.json
 *.log
+/_site/

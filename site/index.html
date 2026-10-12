@@ -3,85 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <script>
-      // Pick the language before anything renders: the visitor's own choice,
-      // then ?lang=, then the device languages, then the time zone (a
-      // privacy-friendly stand-in for the country; no location lookup).
-      (() => {
-        const ARAB_TIME_ZONES = [
-          'Asia/Riyadh', 'Asia/Dubai', 'Asia/Qatar', 'Asia/Bahrain', 'Asia/Kuwait', 'Asia/Muscat',
-          'Asia/Aden', 'Asia/Baghdad', 'Asia/Damascus', 'Asia/Amman', 'Asia/Beirut', 'Asia/Gaza',
-          'Asia/Hebron', 'Africa/Cairo', 'Africa/Tripoli', 'Africa/Tunis', 'Africa/Algiers',
-          'Africa/Casablanca', 'Africa/El_Aaiun', 'Africa/Khartoum', 'Africa/Nouakchott',
-          'Africa/Mogadishu', 'Africa/Djibouti', 'Indian/Comoro',
-        ];
-        const valid = (value) => (value === 'ar' || value === 'en' ? value : null);
-        const fromQuery = () => {
-          try {
-            return valid(new URLSearchParams(location.search).get('lang'));
-          } catch {
-            return null;
-          }
-        };
-        const fromStorage = () => {
-          try {
-            return valid(localStorage.getItem('oc-site-lang'));
-          } catch {
-            return null;
-          }
-        };
-        const fromDevice = () => {
-          const list = navigator.languages?.length ? navigator.languages : [navigator.language || ''];
-          for (const tag of list) {
-            const match = valid(String(tag).slice(0, 2).toLowerCase());
-            if (match) return match;
-          }
-          return null;
-        };
-        const fromTimeZone = () => {
-          try {
-            return ARAB_TIME_ZONES.includes(Intl.DateTimeFormat().resolvedOptions().timeZone) ? 'ar' : null;
-          } catch {
-            return null;
-          }
-        };
-        const lang = fromQuery() || fromStorage() || fromDevice() || fromTimeZone() || 'en';
-        const root = document.documentElement;
-        root.lang = lang;
-        root.dir = lang === 'ar' ? 'rtl' : 'ltr';
-        root.classList.add('js');
-        if (lang === 'ar') document.title = 'OpenCanvas — محرّر تصاميم مجاني ومفتوح المصدر تملكه أنت';
-      })();
-    </script>
-    <title>OpenCanvas — The free, open-source design editor you own</title>
-    <meta
-      name="description"
-      content="OpenCanvas is a free, open-source alternative to paid online design tools: photo frames, crop, about 2,900 icons, brand kits, multi-page designs and pro exports. Host it yourself; your designs stay on your device."
-    />
+    <!--
+      This is the template of the landing page, in both languages: every text has an
+      English and an Arabic version (data-l="en" / data-l="ar", and data-ar-<attribute>
+      for attributes). scripts/site/build.mjs makes the English page (/) and the Arabic
+      page (/ar/) from it, with their own title, description, links and structured data.
+      Preview: node scripts/site/build.mjs --serve
+    -->
+    <!-- build:head -->
     <meta name="theme-color" content="#0b0a1f" />
     <meta name="color-scheme" content="light" />
-    <link rel="canonical" href="https://devehab.github.io/OpenCanvas/" />
-    <link rel="alternate" hreflang="en" href="https://devehab.github.io/OpenCanvas/?lang=en" />
-    <link rel="alternate" hreflang="ar" href="https://devehab.github.io/OpenCanvas/?lang=ar" />
-    <link rel="alternate" hreflang="x-default" href="https://devehab.github.io/OpenCanvas/" />
     <link rel="icon" href="assets/img/logo.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
-    <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="OpenCanvas" />
-    <meta property="og:title" content="OpenCanvas — The free, open-source design editor you own" />
-    <meta
-      property="og:description"
-      content="Everything the paid design platforms do: free, self-hosted, and your designs never leave your device. English and Arabic."
-    />
-    <meta property="og:url" content="https://devehab.github.io/OpenCanvas/" />
-    <meta property="og:image" content="https://devehab.github.io/OpenCanvas/assets/img/og.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:locale" content="en_US" />
-    <meta property="og:locale:alternate" content="ar_AR" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <link rel="preload" href="assets/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin />
-    <link rel="preload" href="assets/fonts/inter-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="assets/css/site.css" />
     <script src="assets/js/site.js" defer></script>
   </head>
@@ -166,10 +99,10 @@
           <li><a href="#faq"><span data-l="en">FAQ</span><span data-l="ar">الأسئلة الشائعة</span></a></li>
         </ul>
         <div class="nav-actions">
-          <button type="button" class="lang-toggle" data-lang-toggle>
+          <a class="lang-toggle" href="ar/" hreflang="ar" data-ar-href="../" data-ar-hreflang="en" data-lang-toggle>
             <svg class="i"><use href="#i-languages" /></svg>
             <span data-l="en" lang="ar">العربية</span><span data-l="ar" lang="en">English</span>
-          </button>
+          </a>
           <a class="gh-link" href="https://github.com/Devehab/OpenCanvas" aria-label="GitHub">
             <svg class="i gh"><use href="#i-github" /></svg>
             <span class="label">GitHub</span>
@@ -264,7 +197,6 @@
                 playsinline
                 width="1920"
                 height="1080"
-                poster="assets/media/promo-en.jpg"
                 aria-label="OpenCanvas in one minute: a video tour of the editor"
               >
                 <source src="assets/media/opencanvas-en.mp4" type="video/mp4" />
@@ -277,12 +209,14 @@
                 playsinline
                 width="1920"
                 height="1080"
-                poster="assets/media/promo-ar.jpg"
                 aria-label="OpenCanvas في دقيقة: جولة مصوّرة في المحرّر"
               >
                 <source src="assets/media/opencanvas-ar.mp4" type="video/mp4" />
                 <track kind="captions" srclang="ar" label="العربية" src="assets/media/opencanvas-ar.vtt" default />
               </video>
+              <!-- The poster is an image so phones get a smaller one. -->
+              <img class="stage-poster" data-l="en" src="assets/media/promo-en.webp" srcset="assets/media/promo-en-960.webp 960w, assets/media/promo-en-1280.webp 1280w, assets/media/promo-en.webp 1920w" sizes="(max-width: 1120px) calc(100vw - 40px), 1080px" width="1920" height="1080" alt="" decoding="async" data-stage-poster />
+              <img class="stage-poster" data-l="ar" src="assets/media/promo-ar.webp" srcset="assets/media/promo-ar-960.webp 960w, assets/media/promo-ar-1280.webp 1280w, assets/media/promo-ar.webp 1920w" sizes="(max-width: 1120px) calc(100vw - 40px), 1080px" width="1920" height="1080" alt="" decoding="async" data-stage-poster />
               <button type="button" class="play" data-play hidden>
                 <span class="play-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg></span>
                 <span class="play-label">
@@ -296,7 +230,7 @@
       </section>
 
       <!-- ============ Stats ============ -->
-      <section class="stats" aria-label="OpenCanvas in numbers">
+      <section class="stats" aria-label="OpenCanvas in numbers" data-ar-aria-label="OpenCanvas بالأرقام">
         <div class="container">
           <ul>
             <li>
@@ -458,7 +392,7 @@
           </div>
 
           <div class="showcase reveal" data-showcase>
-            <div class="showcase-tabs" role="tablist" aria-label="Features" aria-orientation="vertical">
+            <div class="showcase-tabs" role="tablist" aria-label="Features" data-ar-aria-label="الميزات" aria-orientation="vertical">
             <button type="button" class="showcase-tab" role="tab" id="ft-templates" aria-controls="fp-templates" aria-selected="true">
               <span class="icon-badge"><svg class="i"><use href="#i-layout-template" /></svg></span>
               <span data-l="en">Templates</span><span data-l="ar">القوالب</span>
@@ -511,10 +445,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/templates</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/templates-en.webp" data-src="assets/media/templates-en.mp4"
+                    data-poster="assets/media/templates-en.webp" data-src="assets/media/templates-en.mp4"
                     aria-label="The Templates page with starter templates; one opens as a new design in the editor"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/templates-ar.webp" data-src="assets/media/templates-ar.mp4"
+                    data-poster="assets/media/templates-ar.webp" data-src="assets/media/templates-ar.mp4"
                     aria-label="صفحة القوالب وفيها القوالب الجاهزة، ويُفتح أحدها تصميمًا جديدًا في المحرّر"></video>
                 </div>
               </div>
@@ -551,10 +485,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/frames-en.webp" data-src="assets/media/frames-en.mp4"
+                    data-poster="assets/media/frames-en.webp" data-src="assets/media/frames-en.mp4"
                     aria-label="Dragging photos into a heart frame and a circle frame in the OpenCanvas editor"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/frames-ar.webp" data-src="assets/media/frames-ar.mp4"
+                    data-poster="assets/media/frames-ar.webp" data-src="assets/media/frames-ar.mp4"
                     aria-label="سحب صور إلى إطار على شكل قلب وإطار دائري في محرّر OpenCanvas"></video>
                 </div>
               </div>
@@ -592,10 +526,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/crop-en.webp" data-src="assets/media/crop-en.mp4"
+                    data-poster="assets/media/crop-en.webp" data-src="assets/media/crop-en.mp4"
                     aria-label="Cropping a sunset photo: panning it inside the crop box and scaling it from a corner"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/crop-ar.webp" data-src="assets/media/crop-ar.mp4"
+                    data-poster="assets/media/crop-ar.webp" data-src="assets/media/crop-ar.mp4"
                     aria-label="قصّ صورة غروب: تحريكها داخل مربع القصّ وتكبيرها من إحدى الزوايا"></video>
                 </div>
               </div>
@@ -633,10 +567,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/elements-en.webp" data-src="assets/media/elements-en.mp4"
+                    data-poster="assets/media/elements-en.webp" data-src="assets/media/elements-en.mp4"
                     aria-label="Adding a star, a burst and a dashed line, then searching the icon library and adding icons"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/elements-ar.webp" data-src="assets/media/elements-ar.mp4"
+                    data-poster="assets/media/elements-ar.webp" data-src="assets/media/elements-ar.mp4"
                     aria-label="إضافة نجمة وشارة وخط متقطّع، ثم البحث في مكتبة الأيقونات وإضافة أيقونات"></video>
                 </div>
               </div>
@@ -645,7 +579,7 @@
               <h3><span data-l="en">Shapes, lines and ~2,900 icons</span><span data-l="ar">أشكال وخطوط ونحو 2900 أيقونة</span></h3>
               <p data-l="en">
                 Pick from 33 shapes, stars and badges, 12 line styles and the complete Lucide and Tabler icon sets. Search in
-                English or Arabic: “rocket” and “صاروخ” both work.
+                English or Arabic: “rocket” and “<span lang="ar">صاروخ</span>” both work.
               </p>
               <p data-l="ar">
                 اختر من بين 33 شكلًا ونجومًا وشارات و12 نمطًا للخطوط، ومكتبتَي Lucide وTabler كاملتين. وابحث بالعربية أو
@@ -674,10 +608,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/effects-en.webp" data-src="assets/media/effects-en.mp4"
+                    data-poster="assets/media/effects-en.webp" data-src="assets/media/effects-en.mp4"
                     aria-label="Dragging the hue and vignette sliders to change a lake photo live"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/effects-ar.webp" data-src="assets/media/effects-ar.mp4"
+                    data-poster="assets/media/effects-ar.webp" data-src="assets/media/effects-ar.mp4"
                     aria-label="سحب منزلقَي درجة اللون والتعتيم الطرفي لتغيير صورة بحيرة مباشرةً"></video>
                 </div>
               </div>
@@ -714,10 +648,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/pages-en.webp" data-src="assets/media/pages-en.mp4"
+                    data-poster="assets/media/pages-en.webp" data-src="assets/media/pages-en.mp4"
                     aria-label="Moving between the slides of a presentation, adding a page, then showing every page as a grid"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/pages-ar.webp" data-src="assets/media/pages-ar.mp4"
+                    data-poster="assets/media/pages-ar.webp" data-src="assets/media/pages-ar.mp4"
                     aria-label="التنقّل بين شرائح عرض تقديمي، وإضافة صفحة، ثم عرض كل الصفحات شبكةً"></video>
                 </div>
               </div>
@@ -755,10 +689,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/brand-en.webp" data-src="assets/media/brand-en.mp4"
+                    data-poster="assets/media/brand-en.webp" data-src="assets/media/brand-en.mp4"
                     aria-label="Applying a brand kit: adding the logo, recoloring shapes with brand colors and adding a brand heading"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/brand-ar.webp" data-src="assets/media/brand-ar.mp4"
+                    data-poster="assets/media/brand-ar.webp" data-src="assets/media/brand-ar.mp4"
                     aria-label="تطبيق حزمة هوية: إضافة الشعار، وتلوين الأشكال بألوان العلامة، وإضافة عنوان بخطّها"></video>
                 </div>
               </div>
@@ -796,10 +730,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/export-en.webp" data-src="assets/media/export-en.mp4"
+                    data-poster="assets/media/export-en.webp" data-src="assets/media/export-en.mp4"
                     aria-label="The Download dialog: choosing PNG, setting the size, then compressed and size-limited files"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/export-ar.webp" data-src="assets/media/export-ar.mp4"
+                    data-poster="assets/media/export-ar.webp" data-src="assets/media/export-ar.mp4"
                     aria-label="نافذة التنزيل: اختيار PNG وتحديد الحجم، ثم الملف المضغوط والحدّ الأقصى للحجم"></video>
                 </div>
               </div>
@@ -837,10 +771,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/guides-en.webp" data-src="assets/media/guides-en.mp4"
+                    data-poster="assets/media/guides-en.webp" data-src="assets/media/guides-en.mp4"
                     aria-label="Adding a 3×3 guide grid, dragging a circle until it snaps to the guides, and pulling a new guide from the ruler"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/guides-ar.webp" data-src="assets/media/guides-ar.mp4"
+                    data-poster="assets/media/guides-ar.webp" data-src="assets/media/guides-ar.mp4"
                     aria-label="إضافة شبكة أدلة 3×3، وسحب دائرة حتى تلتصق بالأدلة، وسحب دليل جديد من المسطرة"></video>
                 </div>
               </div>
@@ -878,10 +812,10 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/</span></div>
                 <div class="clip">
                   <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/formats-en.webp" data-src="assets/media/formats-en.mp4"
+                    data-poster="assets/media/formats-en.webp" data-src="assets/media/formats-en.mp4"
                     aria-label="The Create a design dialog: browsing social media, presentation and print formats"></video>
                   <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/formats-ar.webp" data-src="assets/media/formats-ar.mp4"
+                    data-poster="assets/media/formats-ar.webp" data-src="assets/media/formats-ar.mp4"
                     aria-label="نافذة إنشاء تصميم: تصفّح مقاسات التواصل الاجتماعي والعروض التقديمية والطباعة"></video>
                 </div>
               </div>
@@ -919,8 +853,8 @@
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
                 <div class="clip">
                   <video muted loop playsinline preload="none" width="1280" height="1000"
-                    poster="assets/media/arabic-ar.webp" data-src="assets/media/arabic-ar.mp4"
-                    aria-label="Typing an Arabic headline with English words in the right-to-left Arabic interface" data-alt-ar="كتابة عنوان عربي فيه كلمات إنجليزية في الواجهة العربية من اليمين إلى اليسار"></video>
+                    data-poster="assets/media/arabic-ar.webp" data-src="assets/media/arabic-ar.mp4"
+                    aria-label="Typing an Arabic headline with English words in the right-to-left Arabic interface" data-ar-aria-label="كتابة عنوان عربي فيه كلمات إنجليزية في الواجهة العربية من اليمين إلى اليسار"></video>
                 </div>
               </div>
             </figure>
@@ -1067,8 +1001,8 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790</span></div>
-                <img data-l="en" src="assets/media/dashboard-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas home screen with recent designs and the Create a design button" />
-                <img data-l="ar" src="assets/media/dashboard-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="الشاشة الرئيسية في OpenCanvas وفيها التصاميم الأخيرة وزر إنشاء تصميم" />
+                <img data-l="en" src="assets/media/dashboard-en.webp" srcset="assets/media/dashboard-en-1440.webp 1440w, assets/media/dashboard-en.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas home screen with recent designs and the Create a design button" />
+                <img data-l="ar" src="assets/media/dashboard-ar.webp" srcset="assets/media/dashboard-ar-1440.webp 1440w, assets/media/dashboard-ar.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="الشاشة الرئيسية في OpenCanvas وفيها التصاميم الأخيرة وزر إنشاء تصميم" />
               </div>
               <figcaption>
                 <span data-l="en">Your designs, folders and uploads, all stored locally.</span>
@@ -1078,8 +1012,8 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/templates</span></div>
-                <img data-l="en" src="assets/media/templates-page-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The Templates page with template folders and starter templates" />
-                <img data-l="ar" src="assets/media/templates-page-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة القوالب وفيها مجلدات القوالب والقوالب الجاهزة" />
+                <img data-l="en" src="assets/media/templates-page-en.webp" srcset="assets/media/templates-page-en-1440.webp 1440w, assets/media/templates-page-en.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="The Templates page with template folders and starter templates" />
+                <img data-l="ar" src="assets/media/templates-page-ar.webp" srcset="assets/media/templates-page-ar-1440.webp 1440w, assets/media/templates-page-ar.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة القوالب وفيها مجلدات القوالب والقوالب الجاهزة" />
               </div>
               <figcaption>
                 <span data-l="en">Templates: folders with icons and starter templates.</span>
@@ -1089,8 +1023,8 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/brand</span></div>
-                <img data-l="en" src="assets/media/brand-kit-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="A brand kit page with a logo, colors from the logo and brand colors" />
-                <img data-l="ar" src="assets/media/brand-kit-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة حزمة هوية فيها شعار وألوان مستخرجة منه وألوان العلامة" />
+                <img data-l="en" src="assets/media/brand-kit-en.webp" srcset="assets/media/brand-kit-en-1440.webp 1440w, assets/media/brand-kit-en.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="A brand kit page with a logo, colors from the logo and brand colors" />
+                <img data-l="ar" src="assets/media/brand-kit-ar.webp" srcset="assets/media/brand-kit-ar-1440.webp 1440w, assets/media/brand-kit-ar.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة حزمة هوية فيها شعار وألوان مستخرجة منه وألوان العلامة" />
               </div>
               <figcaption>
                 <span data-l="en">Brand kits with logos, colors and fonts.</span>
@@ -1100,8 +1034,8 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
-                <img data-l="en" src="assets/media/editor-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas editor with a poster: a desert sunset in a heart frame" />
-                <img data-l="ar" src="assets/media/editor-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="محرّر OpenCanvas وفيه ملصق: غروب صحراوي داخل إطار على شكل قلب" />
+                <img data-l="en" src="assets/media/editor-en.webp" srcset="assets/media/editor-en-1440.webp 1440w, assets/media/editor-en.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas editor with a poster: a desert sunset in a heart frame" />
+                <img data-l="ar" src="assets/media/editor-ar.webp" srcset="assets/media/editor-ar-1440.webp 1440w, assets/media/editor-ar.webp 2880w" sizes="(max-width: 760px) calc(100vw - 40px), 590px" width="2880" height="1800" loading="lazy" decoding="async" alt="محرّر OpenCanvas وفيه ملصق: غروب صحراوي داخل إطار على شكل قلب" />
               </div>
               <figcaption>
                 <span data-l="en">The editor, with every tool one click away.</span>
@@ -1122,7 +1056,7 @@
               <span data-l="ar">لماذا تدفع ثمن ما يمكنك امتلاكه؟</span>
             </h2>
           </div>
-          <section class="compare-wrap reveal" tabindex="0" aria-labelledby="compare-title">
+          <section class="compare-wrap reveal" tabindex="0" aria-label="Comparison table" data-ar-aria-label="جدول المقارنة">
             <table class="compare">
               <thead>
                 <tr>
@@ -1410,7 +1344,7 @@ Choose 1-2: 2
             </div>
 
             <div class="tabs reveal" data-tabs>
-              <div class="tablist" role="tablist" aria-label="Operating system">
+              <div class="tablist" role="tablist" aria-label="Operating system" data-ar-aria-label="نظام التشغيل">
                 <button type="button" role="tab" id="tab-macos" aria-controls="panel-macos" aria-selected="true" data-os="macos">
                   <svg class="i"><use href="#i-laptop" /></svg>macOS
                 </button>
