@@ -18,6 +18,11 @@ describe('brand kits', () => {
     expect(b.fonts.heading.weight).toBeGreaterThan(b.fonts.body.weight);
   });
 
+  it('names the first palette in the language of the interface', () => {
+    expect(defaultBrand('Acme').palettes[0]!.name).toBe('Brand colors');
+    expect(defaultBrand('نخلة', 'ألوان الهوية').palettes[0]!.name).toBe('ألوان الهوية');
+  });
+
   it('sanitizes colors, fonts, images and voice', () => {
     const b = sanitizeBrand(
       brand({

@@ -23,7 +23,7 @@ function BrandList() {
   const [name, setName] = useState('');
   const logos = useAssetUrls((brands ?? []).flatMap((b) => (b.logos[0] ? [b.logos[0].hash] : [])));
   const create = async () => {
-    const brand = await createBrand(name || t('brand.defaultName'));
+    const brand = await createBrand(name || t('brand.defaultName'), t('color.brandColors'));
     brandsChanged();
     setCreating(false);
     setName('');

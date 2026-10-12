@@ -40,6 +40,7 @@ import { getAssetBlob } from '@/lib/storage/assets';
 import {
   type BrandImageSection,
   type BrandRecord,
+  DEFAULT_PALETTE_NAME,
   deleteBrand,
   MAX_PALETTE_COLORS,
   updateBrand,
@@ -381,6 +382,8 @@ function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
         ],
       };
     });
+  /** Kits made before palette names were translated keep the English default. */
+  const paletteName = (name: string) => (name === DEFAULT_PALETTE_NAME ? t('color.brandColors') : name);
   const patchPalette = (
     id: string,
     fn: (colors: string[], name: string) => { colors?: string[]; name?: string },
@@ -453,11 +456,12 @@ function ColorsSection({ brand, save }: { brand: BrandRecord; save: Save }) {
           <div key={p.id} className="space-y-2" data-testid="brand-palette">
             <div className="flex items-center gap-2">
               <input
-                defaultValue={p.name}
+                defaultValue={paletteName(p.name)}
                 key={p.name}
                 aria-label={t('brand.paletteName')}
                 onBlur={(e) =>
-                  e.target.value !== p.name && void patchPalette(p.id, () => ({ name: e.target.value }))
+                  e.target.value !== paletteName(p.name) &&
+                  void patchPalette(p.id, () => ({ name: e.target.value }))
                 }
                 className="min-w-0 flex-1 rounded-md px-1.5 py-1 text-sm font-medium text-slate-800 outline-none hover:bg-slate-50 focus:bg-white focus:ring-2 focus:ring-brand-100"
               />

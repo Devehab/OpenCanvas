@@ -15,10 +15,16 @@ export const BRAND_IMAGE_SECTIONS: readonly BrandImageSection[] = ['logos', 'pho
 export const MAX_BRAND_IMAGES = 200;
 export const MAX_PALETTE_COLORS = 24;
 
-export function defaultBrand(name: string): Omit<BrandRecord, 'id' | 'createdAt' | 'updatedAt'> {
+/** Name of the first palette of a new kit (stored; the interface translates it). */
+export const DEFAULT_PALETTE_NAME = 'Brand colors';
+
+export function defaultBrand(
+  name: string,
+  paletteName = DEFAULT_PALETTE_NAME,
+): Omit<BrandRecord, 'id' | 'createdAt' | 'updatedAt'> {
   return {
     name: name.trim().slice(0, 100) || 'Brand kit',
-    palettes: [{ id: newId('palette'), name: 'Brand colors', colors: ['#7c6cf8', '#111827', '#f8fafc'] }],
+    palettes: [{ id: newId('palette'), name: paletteName, colors: ['#7c6cf8', '#111827', '#f8fafc'] }],
     fonts: {
       heading: { family: 'Inter', weight: 700, size: 64 },
       subheading: { family: 'Inter', weight: 600, size: 36 },
@@ -42,9 +48,14 @@ export async function getBrand(id: string): Promise<BrandRecord | undefined> {
   return (await getDB()).get('brands', id);
 }
 
-export async function createBrand(name: string): Promise<BrandRecord> {
+export async function createBrand(name: string, paletteName?: string): Promise<BrandRecord> {
   const now = Date.now();
-  const brand: BrandRecord = { id: newId('brand'), ...defaultBrand(name), createdAt: now, updatedAt: now };
+  const brand: BrandRecord = {
+    id: newId('brand'),
+    ...defaultBrand(name, paletteName),
+    createdAt: now,
+    updatedAt: now,
+  };
   await (await getDB()).put('brands', brand);
   return brand;
 }
