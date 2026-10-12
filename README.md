@@ -2,7 +2,7 @@
 
 **An open-source visual creation platform built on a real design engine.** Every element stays editable — text, images, shapes, frames and layers — and Arabic is supported properly from day one.
 
-**Website:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/) (English and Arabic, with recorded demos of every feature)
+**Website:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/) (English and Arabic, with a one-minute video tour and recorded demos of every feature)
 
 ![The OpenCanvas editor](docs/images/editor.png)
 
@@ -124,6 +124,8 @@ Contributions are welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md) and 
 ## بالعربية
 
 ‏OpenCanvas منصّة مفتوحة المصدر للتصميم المرئي، مبنيّة على محرّك تصاميم حقيقي: يبقى كل عنصر قابلًا للتعديل — النصوص والصور والأشكال والإطارات والطبقات — ولا يُحفَظ التصميم صورةً مسطّحة أبدًا.
+
+**الموقع:** [devehab.github.io/OpenCanvas](https://devehab.github.io/OpenCanvas/?lang=ar)، وفيه جولة مصوّرة بالعربية في دقيقة واحدة.
 
 ### ما يميّزها
 

@@ -90,6 +90,7 @@
       <defs>
         <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
         <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+        <symbol id="i-play" viewBox="0 0 24 24"><path d="M6 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L7.5 3.64A1 1 0 0 0 6 4.5z"/></symbol>
         <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
         <symbol id="i-languages" viewBox="0 0 24 24"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></symbol>
         <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 5h16"/><path d="M4 12h16"/><path d="M4 19h16"/></symbol>
@@ -169,7 +170,7 @@
             <svg class="i"><use href="#i-languages" /></svg>
             <span data-l="en" lang="ar">العربية</span><span data-l="ar" lang="en">English</span>
           </button>
-          <a class="gh-link" href="https://github.com/Devehab/OpenCanvas">
+          <a class="gh-link" href="https://github.com/Devehab/OpenCanvas" aria-label="GitHub">
             <svg class="i gh"><use href="#i-github" /></svg>
             <span class="label">GitHub</span>
           </a>
@@ -215,9 +216,9 @@
                 <span data-l="en">Get started in 2 minutes</span><span data-l="ar">ابدأ خلال دقيقتين</span>
                 <svg class="i flip"><use href="#i-arrow-right" /></svg>
               </a>
-              <a class="btn btn-ghost" href="https://github.com/Devehab/OpenCanvas">
-                <svg class="i gh"><use href="#i-github" /></svg>
-                <span data-l="en">View on GitHub</span><span data-l="ar">المشروع على GitHub</span>
+              <a class="btn btn-ghost" href="#watch" data-watch>
+                <svg class="i"><use href="#i-play" /></svg>
+                <span data-l="en">Watch the 1-minute tour</span><span data-l="ar">شاهد الجولة في دقيقة</span>
               </a>
             </div>
             <ul class="hero-meta">
@@ -244,8 +245,8 @@
             <div class="float-chip chip-a" aria-hidden="true">
               <span class="dot" style="background: #dcfce7; color: #15803d"><svg class="i"><use href="#i-save" /></svg></span>
               <span>
-                <span data-l="en">Saved on this device</span><span data-l="ar">محفوظ على جهازك</span>
-                <small><span data-l="en">No cloud, no account</span><span data-l="ar">بلا سحابة ولا حساب</span></small>
+                <span data-l="en">Saved on this computer</span><span data-l="ar">محفوظ على هذا الجهاز</span>
+                <small><span data-l="en">Or in your own cloud</span><span data-l="ar">أو في سحابتك الخاصة</span></small>
               </span>
             </div>
             <div class="float-chip chip-b" aria-hidden="true">
@@ -255,26 +256,40 @@
                 <small><span data-l="en">Every feature unlocked</span><span data-l="ar">كل الميزات مفتوحة</span></small>
               </span>
             </div>
-            <div class="window">
-              <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
-              <img
+            <div class="stage" id="watch" data-stage>
+              <video
                 data-l="en"
-                src="assets/media/editor-en.webp"
-                width="2880"
-                height="1800"
-                alt="The OpenCanvas editor with an Instagram post design: a desert sunset inside a heart frame, Arabic and English headlines, the elements panel and the properties panel"
-                fetchpriority="high"
-                loading="lazy"
-              />
-              <img
+                controls
+                preload="none"
+                playsinline
+                width="1920"
+                height="1080"
+                poster="assets/media/promo-en.jpg"
+                aria-label="OpenCanvas in one minute: a video tour of the editor"
+              >
+                <source src="assets/media/opencanvas-en.mp4" type="video/mp4" />
+                <track kind="captions" srclang="en" label="English" src="assets/media/opencanvas-en.vtt" default />
+              </video>
+              <video
                 data-l="ar"
-                src="assets/media/editor-ar.webp"
-                width="2880"
-                height="1800"
-                alt="محرّر OpenCanvas بالواجهة العربية وفيه تصميم منشور إنستغرام: صورة داخل إطار على شكل قلب وعناوين بالعربية والإنجليزية"
-                fetchpriority="high"
-                loading="lazy"
-              />
+                controls
+                preload="none"
+                playsinline
+                width="1920"
+                height="1080"
+                poster="assets/media/promo-ar.jpg"
+                aria-label="OpenCanvas في دقيقة: جولة مصوّرة في المحرّر"
+              >
+                <source src="assets/media/opencanvas-ar.mp4" type="video/mp4" />
+                <track kind="captions" srclang="ar" label="العربية" src="assets/media/opencanvas-ar.vtt" default />
+              </video>
+              <button type="button" class="play" data-play hidden>
+                <span class="play-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M8 5.5v13l11-6.5z" /></svg></span>
+                <span class="play-label">
+                  <span data-l="en">Watch the video</span><span data-l="ar">شاهد الفيديو</span>
+                  <small><span data-l="en">1 minute, with sound</span><span data-l="ar">دقيقة واحدة، مع الصوت</span></small>
+                </span>
+              </button>
             </div>
           </div>
         </div>
@@ -438,14 +453,113 @@
               <span data-l="en">Real features, recorded from the real app.</span>
               <span data-l="ar">ميزات حقيقية، مسجّلة من التطبيق نفسه.</span>
             </h2>
-            <p data-l="en">Every animation below is a screen recording of OpenCanvas running in a browser. No mockups.</p>
-            <p data-l="ar">كل صورة متحركة أدناه تسجيلٌ للشاشة من OpenCanvas وهو يعمل في المتصفح، لا تصاميم وهمية.</p>
+            <p data-l="en">Pick a feature: every clip is recorded from OpenCanvas running in a browser. No mockups.</p>
+            <p data-l="ar">اختر ميزة: كل مقطع مسجّل من OpenCanvas وهو يعمل في المتصفح، لا تصاميم وهمية.</p>
           </div>
 
-          <!-- Frames -->
-          <article class="feature">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-frame" /></svg></span></span>
+          <div class="showcase reveal" data-showcase>
+            <div class="showcase-tabs" role="tablist" aria-label="Features" aria-orientation="vertical">
+            <button type="button" class="showcase-tab" role="tab" id="ft-templates" aria-controls="fp-templates" aria-selected="true">
+              <span class="icon-badge"><svg class="i"><use href="#i-layout-template" /></svg></span>
+              <span data-l="en">Templates</span><span data-l="ar">القوالب</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-frames" aria-controls="fp-frames" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-frame" /></svg></span>
+              <span data-l="en">Photo frames</span><span data-l="ar">إطارات الصور</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-crop" aria-controls="fp-crop" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-crop" /></svg></span>
+              <span data-l="en">Crop</span><span data-l="ar">القصّ</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-elements" aria-controls="fp-elements" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-shapes" /></svg></span>
+              <span data-l="en">Shapes and icons</span><span data-l="ar">أشكال وأيقونات</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-effects" aria-controls="fp-effects" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-blend" /></svg></span>
+              <span data-l="en">Effects</span><span data-l="ar">التأثيرات</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-pages" aria-controls="fp-pages" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-layout-grid" /></svg></span>
+              <span data-l="en">Pages</span><span data-l="ar">الصفحات</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-brand" aria-controls="fp-brand" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-palette" /></svg></span>
+              <span data-l="en">Brand kits</span><span data-l="ar">حزم الهوية</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-export" aria-controls="fp-export" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-file-down" /></svg></span>
+              <span data-l="en">Exports</span><span data-l="ar">التصدير</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-guides" aria-controls="fp-guides" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-ruler" /></svg></span>
+              <span data-l="en">Rulers and guides</span><span data-l="ar">المساطر والأدلة</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-formats" aria-controls="fp-formats" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-layout-template" /></svg></span>
+              <span data-l="en">70 formats</span><span data-l="ar">70 مقاسًا</span>
+            </button>
+            <button type="button" class="showcase-tab" role="tab" id="ft-arabic" aria-controls="fp-arabic" aria-selected="false" tabindex="-1">
+              <span class="icon-badge"><svg class="i"><use href="#i-languages" /></svg></span>
+              <span data-l="en">Arabic</span><span data-l="ar">العربية</span>
+            </button>
+            </div>
+            <div class="showcase-panels">
+          <div class="showcase-panel" role="tabpanel" id="fp-templates" aria-labelledby="ft-templates">
+            <figure class="media">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/templates</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/templates-en.webp" data-src="assets/media/templates-en.mp4"
+                    aria-label="The Templates page with starter templates; one opens as a new design in the editor"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/templates-ar.webp" data-src="assets/media/templates-ar.mp4"
+                    aria-label="صفحة القوالب وفيها القوالب الجاهزة، ويُفتح أحدها تصميمًا جديدًا في المحرّر"></video>
+                </div>
+              </div>
+            </figure>
+            <div class="feature-text">
+              <h3><span data-l="en">Templates that stay untouched</span><span data-l="ar">قوالب لا يتغيّر أصلها</span></h3>
+              <p data-l="en">
+                Start from bilingual starter templates, or save any design as a template and file it in folders with their own
+                icons. Using a template opens a copy in a new tab, so the original never changes.
+              </p>
+              <p data-l="ar">
+                ابدأ من قوالب جاهزة بالعربية والإنجليزية، أو احفظ أي تصميم قالبًا ورتّبه في مجلدات لكلٍّ منها أيقونتها. ويفتح
+                استخدام القالب نسخةً منه في تبويب جديد، فلا يتغيّر الأصل أبدًا.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Folders with 16 icons and colors; drag templates between them</span>
+                  <span data-l="ar">مجلدات بـ16 أيقونة وألوان، واسحب القوالب بينها</span>
+                </li>
+                <li>
+                  <span data-l="en">Save as template from any design or from the editor's File menu</span>
+                  <span data-l="ar">«حفظ كقالب» من أي تصميم أو من قائمة «ملف» في المحرّر</span>
+                </li>
+                <li>
+                  <span data-l="en">Synced to your own cloud with everything else</span>
+                  <span data-l="ar">تُزامَن مع سحابتك الخاصة كبقية أعمالك</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-frames" aria-labelledby="ft-frames" data-hidden>
+            <figure class="media">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/frames-en.webp" data-src="assets/media/frames-en.mp4"
+                    aria-label="Dragging photos into a heart frame and a circle frame in the OpenCanvas editor"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/frames-ar.webp" data-src="assets/media/frames-ar.mp4"
+                    aria-label="سحب صور إلى إطار على شكل قلب وإطار دائري في محرّر OpenCanvas"></video>
+                </div>
+              </div>
+            </figure>
+            <div class="feature-text">
               <h3><span data-l="en">Photo frames</span><span data-l="ar">إطارات الصور</span></h3>
               <p data-l="en">
                 Drag a photo onto a heart, a circle, a Polaroid, a film strip or a phone mockup and it takes the frame's shape
@@ -469,27 +583,24 @@
                   <span data-l="ar">ارفع الصور بالسحب والإفلات، ونظّمها في مجلدات</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-crop" aria-labelledby="ft-crop" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/frames.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Dragging photos into a heart frame and a circle frame in the OpenCanvas editor"
-                  data-alt-ar="سحب صور إلى إطار على شكل قلب وإطار دائري في محرّر OpenCanvas"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/crop-en.webp" data-src="assets/media/crop-en.mp4"
+                    aria-label="Cropping a sunset photo: panning it inside the crop box and scaling it from a corner"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/crop-ar.webp" data-src="assets/media/crop-ar.mp4"
+                    aria-label="قصّ صورة غروب: تحريكها داخل مربع القصّ وتكبيرها من إحدى الزوايا"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Crop -->
-          <article class="feature reverse">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-crop" /></svg></span></span>
+            <div class="feature-text">
               <h3><span data-l="en">Crop like a pro</span><span data-l="ar">قصّ احترافي للصور</span></h3>
               <p data-l="en">
                 Double-click a photo to crop it: drag the image inside its frame, scale it from the corners and press Done.
@@ -513,27 +624,24 @@
                   <span data-l="ar">أنهِ القصّ بنقرة مزدوجة أو بمفتاح Enter</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-elements" aria-labelledby="ft-elements" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/crop.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Cropping a sunset photo: panning it inside the crop box and scaling it from a corner"
-                  data-alt-ar="قصّ صورة غروب: تحريكها داخل مربع القصّ وتكبيرها من إحدى الزوايا"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/elements-en.webp" data-src="assets/media/elements-en.mp4"
+                    aria-label="Adding a star, a burst and a dashed line, then searching the icon library and adding icons"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/elements-ar.webp" data-src="assets/media/elements-ar.mp4"
+                    aria-label="إضافة نجمة وشارة وخط متقطّع، ثم البحث في مكتبة الأيقونات وإضافة أيقونات"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Elements -->
-          <article class="feature">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-shapes" /></svg></span></span>
+            <div class="feature-text">
               <h3><span data-l="en">Shapes, lines and ~2,900 icons</span><span data-l="ar">أشكال وخطوط ونحو 2900 أيقونة</span></h3>
               <p data-l="en">
                 Pick from 33 shapes, stars and badges, 12 line styles and the complete Lucide and Tabler icon sets. Search in
@@ -557,27 +665,64 @@
                   <span data-l="ar">الأسهم وفقاعات الكلام والإطارات في اللوحة نفسها</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-effects" aria-labelledby="ft-effects" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/elements.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Adding a star and a badge from the Elements panel, then searching for and inserting a rocket icon"
-                  data-alt-ar="إضافة نجمة وشارة من لوحة العناصر، ثم البحث عن أيقونة صاروخ وإدراجها"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/effects-en.webp" data-src="assets/media/effects-en.mp4"
+                    aria-label="Dragging the hue and vignette sliders to change a lake photo live"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/effects-ar.webp" data-src="assets/media/effects-ar.mp4"
+                    aria-label="سحب منزلقَي درجة اللون والتعتيم الطرفي لتغيير صورة بحيرة مباشرةً"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Pages -->
-          <article class="feature reverse">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-layout-grid" /></svg></span></span>
+            <div class="feature-text">
+              <h3><span data-l="en">Effects and adjustments</span><span data-l="ar">تأثيرات وتعديلات</span></h3>
+              <p data-l="en">
+                Tune photos live with brightness, contrast, saturation, hue, warmth, black and white, sepia and vignette, and give
+                any element gradients, strokes, shadows, blur and 16 blend modes.
+              </p>
+              <p data-l="ar">
+                عدّل صورك مباشرةً: السطوع والتباين والتشبّع ودرجة اللون والدفء والأبيض والأسود والبنّي العتيق والتعتيم الطرفي،
+                وأضف إلى أي عنصر تدرّجات وحدودًا وظلالًا وتمويهًا و16 وضعًا للمزج.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Live sliders: see every change as you drag</span>
+                  <span data-l="ar">منزلقات مباشرة: ترى كل تغيير وأنت تسحب</span>
+                </li>
+                <li>
+                  <span data-l="en">Non-destructive: the original photo is always kept</span>
+                  <span data-l="ar">تعديل غير إتلافي: تبقى الصورة الأصلية محفوظة دائمًا</span>
+                </li>
+                <li>
+                  <span data-l="en">Exports look exactly like the canvas</span>
+                  <span data-l="ar">يطابق التصدير ما تراه على اللوحة تمامًا</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-pages" aria-labelledby="ft-pages" data-hidden>
+            <figure class="media">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/pages-en.webp" data-src="assets/media/pages-en.mp4"
+                    aria-label="Moving between the slides of a presentation, adding a page, then showing every page as a grid"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/pages-ar.webp" data-src="assets/media/pages-ar.mp4"
+                    aria-label="التنقّل بين شرائح عرض تقديمي، وإضافة صفحة، ثم عرض كل الصفحات شبكةً"></video>
+                </div>
+              </div>
+            </figure>
+            <div class="feature-text">
               <h3><span data-l="en">Multi-page designs</span><span data-l="ar">تصاميم متعددة الصفحات</span></h3>
               <p data-l="en">
                 Build presentations, carousels and documents. Switch between a single page, thumbnails, continuous scroll and a
@@ -601,72 +746,24 @@
                   <span data-l="ar">تُستثنى الصفحات المخفية عند التصدير</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-brand" aria-labelledby="ft-brand" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/pages.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="A four-page presentation shown as thumbnails, then in scroll view, then as a grid of all pages"
-                  data-alt-ar="عرض تقديمي من أربع صفحات يظهر بالصور المصغّرة، ثم بالتمرير المتواصل، ثم شبكةً لكل الصفحات"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/brand-en.webp" data-src="assets/media/brand-en.mp4"
+                    aria-label="Applying a brand kit: adding the logo, recoloring shapes with brand colors and adding a brand heading"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/brand-ar.webp" data-src="assets/media/brand-ar.mp4"
+                    aria-label="تطبيق حزمة هوية: إضافة الشعار، وتلوين الأشكال بألوان العلامة، وإضافة عنوان بخطّها"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Download -->
-          <article class="feature">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-file-down" /></svg></span></span>
-              <h3><span data-l="en">Pro exports, no paywall</span><span data-l="ar">تصدير احترافي بلا جدار دفع</span></h3>
-              <p data-l="en">
-                PNG, JPEG and WebP at any size, transparent backgrounds, compressed PNGs or a maximum file size; SVG with
-                embedded fonts; PDF and print PDF; and multi-page ZIPs. The features others charge for are simply there.
-              </p>
-              <p data-l="ar">
-                ملفات PNG وJPEG وWebP بأي مقاس، وخلفيات شفافة، وملفات PNG مضغوطة أو بحجم أقصى تحدّده، وSVG مع تضمين الخطوط،
-                وPDF عادي وPDF للطباعة، وملفات ZIP للتصاميم متعددة الصفحات. ما يتقاضى الآخرون ثمنه موجود هنا ببساطة.
-              </p>
-              <ul class="checks">
-                <li>
-                  <span data-l="en">Export every page or pick the ones you need</span>
-                  <span data-l="ar">صدّر كل الصفحات أو اختر ما تحتاج منها</span>
-                </li>
-                <li>
-                  <span data-l="en">Save as .opencanvas to keep everything editable</span>
-                  <span data-l="ar">احفظ بصيغة <bdi>.opencanvas</bdi> ليبقى كل شيء قابلًا للتعديل</span>
-                </li>
-                <li>
-                  <span data-l="en">Rendered on your device; nothing is uploaded</span>
-                  <span data-l="ar">يجري التصدير على جهازك، ولا يُرفَع شيء</span>
-                </li>
-              </ul>
-            </div>
-            <figure class="media reveal">
-              <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/download.gif"
-                  width="720"
-                  height="655"
-                  loading="lazy"
-                  decoding="async"
-                  style="--ratio: 720 / 655"
-                  alt="The Download dialog: choosing PNG, a compressed file, a size limit and the current page"
-                  data-alt-ar="نافذة التنزيل: اختيار PNG وملف مضغوط وحدّ أقصى للحجم والصفحة الحالية"
-                />
-              </div>
-            </figure>
-          </article>
-
-          <!-- Brand kits -->
-          <article class="feature reverse">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-palette" /></svg></span></span>
+            <div class="feature-text">
               <h3><span data-l="en">Brand kits</span><span data-l="ar">حزم الهوية</span></h3>
               <p data-l="en">
                 Keep your logos, colors and fonts in one place and apply them in a click. Create as many brand kits as you need:
@@ -690,27 +787,65 @@
                   <span data-l="ar">مجلدات لتنظيم التصاميم والصور المرفوعة</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-export" aria-labelledby="ft-export" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/brand.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Applying a brand kit: adding the logo, recoloring shapes with brand colors and adding a brand heading"
-                  data-alt-ar="تطبيق حزمة هوية: إضافة الشعار، وتلوين الأشكال بألوان العلامة، وإضافة عنوان بخطّها"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/export-en.webp" data-src="assets/media/export-en.mp4"
+                    aria-label="The Download dialog: choosing PNG, setting the size, then compressed and size-limited files"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/export-ar.webp" data-src="assets/media/export-ar.mp4"
+                    aria-label="نافذة التنزيل: اختيار PNG وتحديد الحجم، ثم الملف المضغوط والحدّ الأقصى للحجم"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Guides -->
-          <article class="feature">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-ruler" /></svg></span></span>
+            <div class="feature-text">
+              <h3><span data-l="en">Pro exports, no paywall</span><span data-l="ar">تصدير احترافي بلا جدار دفع</span></h3>
+              <p data-l="en">
+                PNG, JPEG and WebP at any size, transparent backgrounds, compressed PNGs or a maximum file size; SVG with
+                embedded fonts; PDF and print PDF; and multi-page ZIPs. The features others charge for are simply there.
+              </p>
+              <p data-l="ar">
+                ملفات PNG وJPEG وWebP بأي مقاس، وخلفيات شفافة، وملفات PNG مضغوطة أو بحجم أقصى تحدّده، وSVG مع تضمين الخطوط،
+                وPDF عادي وPDF للطباعة، وملفات ZIP للتصاميم متعددة الصفحات. ما يتقاضى الآخرون ثمنه موجود هنا ببساطة.
+              </p>
+              <ul class="checks">
+                <li>
+                  <span data-l="en">Export every page or pick the ones you need</span>
+                  <span data-l="ar">صدّر كل الصفحات أو اختر ما تحتاج منها</span>
+                </li>
+                <li>
+                  <span data-l="en">Save as .opencanvas to keep everything editable</span>
+                  <span data-l="ar">احفظ بصيغة <bdi>.opencanvas</bdi> ليبقى كل شيء قابلًا للتعديل</span>
+                </li>
+                <li>
+                  <span data-l="en">Rendered on your device; nothing is uploaded</span>
+                  <span data-l="ar">يجري التصدير على جهازك، ولا يُرفَع شيء</span>
+                </li>
+              </ul>
+            
+            </div>
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-guides" aria-labelledby="ft-guides" data-hidden>
+            <figure class="media">
+              <div class="window light">
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/guides-en.webp" data-src="assets/media/guides-en.mp4"
+                    aria-label="Adding a 3×3 guide grid, dragging a circle until it snaps to the guides, and pulling a new guide from the ruler"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/guides-ar.webp" data-src="assets/media/guides-ar.mp4"
+                    aria-label="إضافة شبكة أدلة 3×3، وسحب دائرة حتى تلتصق بالأدلة، وسحب دليل جديد من المسطرة"></video>
+                </div>
+              </div>
+            </figure>
+            <div class="feature-text">
               <h3><span data-l="en">Rulers, guides and snapping</span><span data-l="ar">مساطر وأدلة ومحاذاة تلقائية</span></h3>
               <p data-l="en">
                 Add a 3×3 grid of guides in one click, drag new guides straight from the rulers, and watch elements snap into
@@ -734,27 +869,24 @@
                   <span data-l="ar">تُحفَظ الأدلة مع كل صفحة</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-formats" aria-labelledby="ft-formats" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/guides.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Adding a 3×3 guide grid, dragging a circle until it snaps to the guides, and pulling a new guide from the ruler"
-                  data-alt-ar="إضافة شبكة أدلة 3×3، وسحب دائرة حتى تلتصق بالأدلة، وسحب دليل جديد من المسطرة"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/</span></div>
+                <div class="clip">
+                  <video data-l="en" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/formats-en.webp" data-src="assets/media/formats-en.mp4"
+                    aria-label="The Create a design dialog: browsing social media, presentation and print formats"></video>
+                  <video data-l="ar" muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/formats-ar.webp" data-src="assets/media/formats-ar.mp4"
+                    aria-label="نافذة إنشاء تصميم: تصفّح مقاسات التواصل الاجتماعي والعروض التقديمية والطباعة"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Create -->
-          <article class="feature reverse">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-layout-template" /></svg></span></span>
+            <div class="feature-text">
               <h3><span data-l="en">70 formats, ready to go</span><span data-l="ar">70 مقاسًا جاهزًا</span></h3>
               <p data-l="en">
                 Instagram posts and stories, TikTok, YouTube thumbnails, presentations, A4 and US Letter documents, posters,
@@ -778,28 +910,21 @@
                   <span data-l="ar">تُصدَّر مقاسات الطباعة بأبعاد دقيقة بدقة 300 DPI</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
+          </div>
+          <div class="showcase-panel" role="tabpanel" id="fp-arabic" aria-labelledby="ft-arabic" data-hidden>
+            <figure class="media">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/create.gif"
-                  width="800"
-                  height="500"
-                  loading="lazy"
-                  decoding="async"
-                  style="--ratio: 800 / 500"
-                  alt="The Create a design dialog: browsing social formats by platform, print and whiteboard sizes, and searching for YouTube"
-                  data-alt-ar="نافذة إنشاء تصميم: تصفّح مقاسات التواصل الاجتماعي حسب المنصة ومقاسات الطباعة والسبورة، والبحث عن YouTube"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
+                <div class="clip">
+                  <video muted loop playsinline preload="none" width="1280" height="1000"
+                    poster="assets/media/arabic-ar.webp" data-src="assets/media/arabic-ar.mp4"
+                    aria-label="Typing an Arabic headline with English words in the right-to-left Arabic interface" data-alt-ar="كتابة عنوان عربي فيه كلمات إنجليزية في الواجهة العربية من اليمين إلى اليسار"></video>
+                </div>
               </div>
             </figure>
-          </article>
-
-          <!-- Arabic -->
-          <article class="feature">
-            <div class="feature-text reveal">
-              <span class="feature-num"><span class="icon-badge"><svg class="i"><use href="#i-languages" /></svg></span></span>
+            <div class="feature-text">
               <h3><span data-l="en">Arabic, done properly</span><span data-l="ar">عربية كما يجب</span></h3>
               <p data-l="en">
                 A fully mirrored right-to-left interface, correct letter shaping, Arabic, English and numbers mixed on the same
@@ -823,22 +948,11 @@
                   <span data-l="ar">بحث عن الأيقونات بالعربية</span>
                 </li>
               </ul>
+            
             </div>
-            <figure class="media reveal">
-              <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>OpenCanvas</span></div>
-                <img
-                  src="assets/media/arabic.gif"
-                  width="800"
-                  height="645"
-                  loading="lazy"
-                  decoding="async"
-                  alt="Typing an Arabic headline with mixed English and numbers in the right-to-left Arabic interface"
-                  data-alt-ar="كتابة عنوان عربي يمزج الإنجليزية والأرقام في الواجهة العربية من اليمين إلى اليسار"
-                />
-              </div>
-            </figure>
-          </article>
+          </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -953,24 +1067,8 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790</span></div>
-                <img
-                  data-l="en"
-                  src="assets/media/dashboard-en.webp"
-                  width="2880"
-                  height="1800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="The OpenCanvas home screen with recent designs, folders and the Create a design button"
-                />
-                <img
-                  data-l="ar"
-                  src="assets/media/dashboard-ar.webp"
-                  width="2880"
-                  height="1800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="الشاشة الرئيسية في OpenCanvas بالعربية وفيها التصاميم الأخيرة والمجلدات وزر إنشاء تصميم"
-                />
+                <img data-l="en" src="assets/media/dashboard-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas home screen with recent designs and the Create a design button" />
+                <img data-l="ar" src="assets/media/dashboard-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="الشاشة الرئيسية في OpenCanvas وفيها التصاميم الأخيرة وزر إنشاء تصميم" />
               </div>
               <figcaption>
                 <span data-l="en">Your designs, folders and uploads, all stored locally.</span>
@@ -979,34 +1077,20 @@
             </figure>
             <figure class="reveal">
               <div class="window light">
-                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790</span></div>
-                <img
-                  src="assets/media/create-dialog-en.webp"
-                  width="2880"
-                  height="1800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="The Create a design dialog with format categories and platform filters"
-                  data-alt-ar="نافذة إنشاء تصميم بفئات المقاسات وفلاتر المنصات"
-                />
+                <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/templates</span></div>
+                <img data-l="en" src="assets/media/templates-page-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The Templates page with template folders and starter templates" />
+                <img data-l="ar" src="assets/media/templates-page-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة القوالب وفيها مجلدات القوالب والقوالب الجاهزة" />
               </div>
               <figcaption>
-                <span data-l="en">Create a design: 70 formats by category and platform.</span>
-                <span data-l="ar">إنشاء تصميم: 70 مقاسًا مصنّفة حسب الفئة والمنصة.</span>
+                <span data-l="en">Templates: folders with icons and starter templates.</span>
+                <span data-l="ar">القوالب: مجلدات بأيقونات وقوالب جاهزة.</span>
               </figcaption>
             </figure>
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/brand</span></div>
-                <img
-                  src="assets/media/brand-kit-en.webp"
-                  width="1280"
-                  height="800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="A brand kit page with a logo, color palettes and brand fonts"
-                  data-alt-ar="صفحة حزمة هوية فيها شعار ولوحات ألوان وخطوط العلامة"
-                />
+                <img data-l="en" src="assets/media/brand-kit-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="A brand kit page with a logo, colors from the logo and brand colors" />
+                <img data-l="ar" src="assets/media/brand-kit-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="صفحة حزمة هوية فيها شعار وألوان مستخرجة منه وألوان العلامة" />
               </div>
               <figcaption>
                 <span data-l="en">Brand kits with logos, colors and fonts.</span>
@@ -1016,28 +1100,12 @@
             <figure class="reveal">
               <div class="window light">
                 <div class="window-bar" aria-hidden="true"><i></i><i></i><i></i><span>localhost:4790/design</span></div>
-                <img
-                  data-l="en"
-                  src="assets/media/editor-ar.webp"
-                  width="2880"
-                  height="1800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="The same editor with the Arabic right-to-left interface"
-                />
-                <img
-                  data-l="ar"
-                  src="assets/media/editor-en.webp"
-                  width="2880"
-                  height="1800"
-                  loading="lazy"
-                  decoding="async"
-                  alt="المحرّر نفسه بالواجهة الإنجليزية"
-                />
+                <img data-l="en" src="assets/media/editor-en.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="The OpenCanvas editor with a poster: a desert sunset in a heart frame" />
+                <img data-l="ar" src="assets/media/editor-ar.webp" width="2880" height="1800" loading="lazy" decoding="async" alt="محرّر OpenCanvas وفيه ملصق: غروب صحراوي داخل إطار على شكل قلب" />
               </div>
               <figcaption>
-                <span data-l="en">The same editor in Arabic, fully right-to-left.</span>
-                <span data-l="ar">المحرّر نفسه بالواجهة الإنجليزية.</span>
+                <span data-l="en">The editor, with every tool one click away.</span>
+                <span data-l="ar">المحرّر، وكل أداة على بُعد نقرة.</span>
               </figcaption>
             </figure>
           </div>
@@ -1220,9 +1288,13 @@
               <span class="icon-badge"><svg class="i"><use href="#i-wifi-off" /></svg></span>
               <h3><span data-l="en">No internet? Keep working</span><span data-l="ar">انقطع الإنترنت؟ تابع عملك</span></h3>
               <p data-l="en">
-                What is not uploaded yet is marked “This computer only”, and goes up by itself when the connection is back.
+                One status tells you where your work is: “Offline: saved on this computer”, then “Saved to your cloud” once
+                the connection is back and the upload is done, all by itself.
               </p>
-              <p data-l="ar">يظهر ما لم يُرفع بعد بعلامة «على هذا الجهاز فقط»، ويُرفع تلقائيًا حين يعود الاتصال.</p>
+              <p data-l="ar">
+                حالة واحدة تخبرك أين عملك: «دون اتصال: محفوظ على هذا الجهاز»، ثم «محفوظ في سحابتك» حين يعود الاتصال ويكتمل
+                الرفع، تلقائيًا.
+              </p>
             </article>
             <article class="card reveal">
               <span class="icon-badge"><svg class="i"><use href="#i-undo-2" /></svg></span>
@@ -1622,7 +1694,7 @@ pnpm dev</code></pre></div>
                 التصاميم مستندات منظَّمة، وكل تعديل أمرٌ موثّق يمكن التراجع عنه، ومحرّك رسم واحد يرسم المحرّر وكل عمليات التصدير
                 واختبارات الخادم. وعلى هذا الأساس نفسه سيُبنى التعاون والذكاء الاصطناعي.
               </p>
-              <pre class="flow" role="img" aria-label="The UI dispatches commands, which become atomic transactions on the document store, which the renderer draws"><b>UI</b> <i>─▶</i> <b>Commands</b> <i>─▶</i> <b>Transactions</b> <i>─▶</i> <b>Store</b> <i>─▶</i> <b>Renderer</b>
+              <pre class="flow" tabindex="0" role="img" aria-label="The UI dispatches commands, which become atomic transactions on the document store, which the renderer draws"><b>UI</b> <i>─▶</i> <b>Commands</b> <i>─▶</i> <b>Transactions</b> <i>─▶</i> <b>Store</b> <i>─▶</i> <b>Renderer</b>
 <i>React validated   atomic          records  Canvas2D</i></pre>
               <ul class="stack" aria-label="Technology">
                 <li>TypeScript</li>
@@ -1690,8 +1762,8 @@ pnpm dev</code></pre></div>
             <li class="reveal">
               <span class="phase"><span data-l="en">Phase 2</span><span data-l="ar">المرحلة 2</span></span>
               <h3><span data-l="en">Design platform</span><span data-l="ar">منصّة التصميم</span></h3>
-              <p data-l="en">Optional accounts and sync, sharing, templates, font upload and vector PDF.</p>
-              <p data-l="ar">حسابات ومزامنة اختيارية، ومشاركة، وقوالب، ورفع الخطوط، وPDF متجهي.</p>
+              <p data-l="en">Done: templates, font upload and sync to your own cloud. Next: sharing and vector PDF.</p>
+              <p data-l="ar">أُنجز: القوالب، ورفع الخطوط، والمزامنة مع سحابتك الخاصة. التالي: المشاركة وملفات PDF المتجهية.</p>
             </li>
             <li class="reveal">
               <span class="phase"><span data-l="en">Phase 3</span><span data-l="ar">المرحلة 3</span></span>
