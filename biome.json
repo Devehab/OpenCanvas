@@ -64,7 +64,7 @@
   },
   "overrides": [
     {
-      "includes": ["site/**"],
+      "includes": ["site/**", "scripts/promo-video/composition/**"],
       "linter": {
         "rules": {
           "style": {

@@ -1,0 +1,935 @@
+/* Promo video composition: a 1920×1080 stage drawn frame by frame. */
+:root {
+  --ink: #0b0a1a;
+  --ink-2: #14112b;
+  --violet: #8f7cff;
+  --indigo: #4b37d1;
+  --fuchsia: #d946ef;
+  --pink: #ec4899;
+  --yellow: #ffde59;
+  --mint: #34d399;
+  --white: #ffffff;
+  --muted: rgba(255, 255, 255, 0.62);
+  --grad: linear-gradient(100deg, #b6a8ff 0%, #8f7cff 25%, #d946ef 62%, #ffb86b 100%);
+  --sans: "Inter", "IBM Plex Sans Arabic", sans-serif;
+  --display: "Inter", "Readex Pro", sans-serif;
+  --arabic: "Readex Pro", "IBM Plex Sans Arabic", sans-serif;
+  --mono: "Inter", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+#stage {
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--ink);
+  color: var(--white);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+
+.ar #stage {
+  font-family: var(--arabic);
+}
+
+.abs {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.layer {
+  position: absolute;
+  inset: 0;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  perspective: 2200px;
+  perspective-origin: 50% 45%;
+}
+
+.p3d {
+  transform-style: preserve-3d;
+}
+
+/* ---------- Background ---------- */
+#bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 120%, #1d1640 0%, var(--ink) 55%);
+  overflow: hidden;
+}
+
+.blob {
+  position: absolute;
+  width: 1200px;
+  height: 1200px;
+  border-radius: 50%;
+  left: -600px;
+  top: -600px;
+}
+
+.grid {
+  position: absolute;
+  inset: -200px;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mask-image: radial-gradient(60% 60% at 50% 50%, #000 0%, transparent 100%);
+}
+
+#vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(75% 75% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+  pointer-events: none;
+}
+
+#grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+#flash {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+}
+
+#dim {
+  position: absolute;
+  inset: 0;
+  background: #05040d;
+  opacity: 0;
+}
+
+/* ---------- Text ---------- */
+.line {
+  position: absolute;
+  white-space: nowrap;
+  line-height: 1.12;
+}
+
+/* Room above and below for Arabic marks (hamza, dots) inside the mask. */
+.w {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: bottom;
+  padding: 0.2em 0.04em 0.34em;
+  margin: -0.2em -0.04em -0.34em;
+}
+
+.wi {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* Gradient text: the background must cover marks above and below the line. */
+.grad {
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  padding: 0.2em 0.04em 0.34em;
+  margin: -0.2em -0.04em -0.34em;
+}
+
+.h-xl {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 150px;
+  letter-spacing: -0.045em;
+}
+
+.h-l {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 108px;
+  letter-spacing: -0.04em;
+}
+
+.h-m {
+  font-family: var(--display);
+  font-weight: 750;
+  font-size: 76px;
+  letter-spacing: -0.03em;
+}
+
+.h-s {
+  font-weight: 600;
+  font-size: 44px;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+
+.ar .h-xl,
+.ar .h-l,
+.ar .h-m {
+  font-family: var(--arabic);
+  letter-spacing: 0;
+  font-weight: 700;
+}
+
+.ar .h-xl {
+  font-size: 140px;
+}
+
+.eyebrow {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+
+.ar .eyebrow {
+  letter-spacing: 0;
+  font-size: 38px;
+}
+
+.caret {
+  display: inline-block;
+  width: 5px;
+  height: 0.95em;
+  margin-inline-start: 8px;
+  vertical-align: -0.1em;
+  background: var(--violet);
+  border-radius: 3px;
+}
+
+/* ---------- Pills, badges, chips ---------- */
+.pill {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 30px 18px 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 20px 50px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  font-size: 34px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.ar .pill {
+  padding: 18px 22px 18px 30px;
+  font-weight: 600;
+}
+
+.pill.light {
+  background: #fff;
+  color: #1b1640;
+  border-color: transparent;
+}
+
+.pill .ico {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.pill.light .ico {
+  background: #f1efff;
+}
+
+.ico svg {
+  width: 28px;
+  height: 28px;
+}
+
+.strike {
+  position: absolute;
+  inset: 0;
+}
+
+.badge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 24px;
+  border-radius: 20px;
+  background: #fff;
+  color: #1b1640;
+  font-size: 30px;
+  font-weight: 700;
+  box-shadow: 0 30px 60px rgba(9, 6, 30, 0.45);
+  white-space: nowrap;
+}
+
+.badge small {
+  display: block;
+  font-size: 20px;
+  font-weight: 500;
+  color: #6b6790;
+}
+
+.badge .ico {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #8f7cff, #d946ef);
+  color: #fff;
+}
+
+.badge .ico svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* App status chip, like the editor's top bar. */
+.status {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 28px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #6d5cf6, #c026d3);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 24px 60px rgba(109, 92, 246, 0.45);
+}
+
+.status svg {
+  width: 32px;
+  height: 32px;
+}
+
+/* ---------- App window ---------- */
+.window {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1440px;
+  height: 944px;
+  border-radius: 18px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.14),
+    0 60px 120px rgba(4, 2, 20, 0.6),
+    0 20px 40px rgba(4, 2, 20, 0.35);
+}
+
+.window .chrome {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  height: 44px;
+  background: #f3f2f8;
+  border-bottom: 1px solid #e5e3ee;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 9px;
+  direction: ltr;
+}
+
+.chrome .dot {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+}
+
+.chrome .url {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 520px;
+  height: 28px;
+  border-radius: 8px;
+  background: #fff;
+  border: 1px solid #e5e3ee;
+  color: #6b6790;
+  font: 500 15px / 28px var(--sans);
+  text-align: center;
+}
+
+.window .vp {
+  position: absolute;
+  left: 0;
+  top: 44px;
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+}
+
+.vp canvas,
+.vp img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1440px;
+  height: 900px;
+}
+
+.cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 34px;
+  height: 34px;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+}
+
+.ripple {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  margin: -28px 0 0 -28px;
+  border-radius: 50%;
+  border: 4px solid rgba(124, 108, 248, 0.95);
+  background: rgba(124, 108, 248, 0.18);
+}
+
+/* Tiles: a cropped window (no chrome) with a label. */
+.tile {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 22px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 40px 90px rgba(4, 2, 20, 0.55);
+}
+
+.tile .vp {
+  top: 0;
+  transform-origin: 0 0;
+}
+
+.tile-label {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px 12px 16px;
+  border-radius: 999px;
+  background: rgba(16, 12, 40, 0.86);
+  color: #fff;
+  font-size: 30px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ar .tile-label {
+  padding: 12px 16px 12px 22px;
+}
+
+.tile-label .num {
+  font: 600 20px var(--mono);
+  color: var(--violet);
+}
+
+/* ---------- Showcase pieces ---------- */
+.card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 40px 90px rgba(4, 2, 20, 0.55);
+  background: #fff;
+}
+
+.card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.phone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 360px;
+  height: 740px;
+  border-radius: 56px;
+  background: #0d0b17;
+  padding: 16px;
+  box-shadow:
+    0 0 0 2px #2a2640,
+    0 50px 100px rgba(4, 2, 20, 0.6);
+}
+
+.phone .screen {
+  width: 100%;
+  height: 100%;
+  border-radius: 42px;
+  overflow: hidden;
+  position: relative;
+}
+
+.phone .screen img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.phone .notch {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 110px;
+  height: 30px;
+  margin-left: -55px;
+  border-radius: 20px;
+  background: #0d0b17;
+}
+
+.monitor {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.monitor .bezel {
+  border-radius: 20px;
+  background: #0d0b17;
+  padding: 14px;
+  box-shadow:
+    0 0 0 2px #2a2640,
+    0 50px 100px rgba(4, 2, 20, 0.6);
+}
+
+.monitor .bezel .screen {
+  position: relative;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.monitor .stand {
+  width: 28%;
+  height: 70px;
+  margin: 0 auto;
+  background: linear-gradient(#2a2640, #1a1730);
+  clip-path: polygon(22% 0, 78% 0, 100% 100%, 0 100%);
+}
+
+.monitor .foot {
+  width: 42%;
+  height: 12px;
+  margin: 0 auto;
+  border-radius: 8px;
+  background: #2a2640;
+}
+
+.laptop {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.laptop .lid {
+  border-radius: 22px 22px 6px 6px;
+  background: #0d0b17;
+  padding: 16px 16px 22px;
+  box-shadow: 0 0 0 2px #2a2640;
+}
+
+.laptop .lid .screen {
+  position: relative;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.laptop .base {
+  height: 26px;
+  margin: 0 -60px;
+  border-radius: 0 0 22px 22px;
+  background: linear-gradient(#c9c6dc, #8d89a8);
+  box-shadow: 0 40px 80px rgba(4, 2, 20, 0.6);
+}
+
+.laptop .base::after {
+  content: "";
+  display: block;
+  width: 180px;
+  height: 10px;
+  margin: 0 auto;
+  border-radius: 0 0 10px 10px;
+  background: #77738f;
+}
+
+.label {
+  position: absolute;
+  font-size: 36px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.label small {
+  display: block;
+  font-size: 22px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 6px;
+  font-family: var(--mono);
+}
+
+.ar .label small {
+  font-family: var(--arabic);
+}
+
+.swatch {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 150px;
+  height: 150px;
+  border-radius: 34px;
+  box-shadow:
+    0 0 0 4px rgba(255, 255, 255, 0.9),
+    0 30px 60px rgba(4, 2, 20, 0.5);
+}
+
+.swatch span {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -46px;
+  text-align: center;
+  font: 600 22px var(--mono);
+  color: var(--muted);
+  direction: ltr;
+}
+
+.specimen {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 470px;
+  padding: 34px 40px;
+  border-radius: 30px;
+  background: #fff;
+  color: #1b1640;
+  box-shadow: 0 40px 90px rgba(4, 2, 20, 0.55);
+}
+
+.specimen .big {
+  font-size: 150px;
+  line-height: 1.05;
+}
+
+.specimen .name {
+  font: 600 24px var(--mono);
+  color: #6b6790;
+  direction: ltr;
+}
+
+.counter {
+  font-family: var(--display);
+  font-weight: 800;
+  font-size: 300px;
+  letter-spacing: -0.05em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+
+.fmt {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.55);
+  background: linear-gradient(160deg, rgba(143, 124, 255, 0.26), rgba(217, 70, 239, 0.12));
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+
+.fmt b {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.fmt i {
+  font: normal 500 17px var(--mono);
+  color: rgba(255, 255, 255, 0.7);
+  direction: ltr;
+  text-align: start;
+}
+
+.ar .fmt i {
+  text-align: end;
+}
+
+.iconwall {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform-style: preserve-3d;
+}
+
+.iconwall svg {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+}
+
+.addr {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1240px;
+  height: 120px;
+  border-radius: 60px;
+  background: #fff;
+  color: #1b1640;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 0 44px;
+  font-size: 50px;
+  font-weight: 600;
+  direction: ltr;
+  box-shadow:
+    0 0 0 8px rgba(143, 124, 255, 0.25),
+    0 50px 100px rgba(4, 2, 20, 0.55);
+}
+
+.addr .lock {
+  width: 44px;
+  height: 44px;
+  color: #10b981;
+}
+
+.addr .host {
+  color: #8a86a8;
+  font-weight: 500;
+}
+
+.qr {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 300px;
+  padding: 26px;
+  border-radius: 34px;
+  background: #fff;
+  box-shadow: 0 40px 90px rgba(4, 2, 20, 0.55);
+  color: #1b1640;
+  text-align: center;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.qr img {
+  display: block;
+  width: 248px;
+  height: 248px;
+  margin-bottom: 14px;
+}
+
+.logo {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 260px;
+  height: 260px;
+}
+
+.logo .sq {
+  position: absolute;
+  inset: 0;
+  border-radius: 66px;
+  background: linear-gradient(135deg, #8f7cff, #4b37d1);
+  box-shadow:
+    0 40px 100px rgba(109, 92, 246, 0.55),
+    inset 0 2px 0 rgba(255, 255, 255, 0.25);
+}
+
+.logo .ci {
+  position: absolute;
+  left: 56px;
+  top: 64px;
+  width: 90px;
+  height: 90px;
+  border-radius: 50%;
+  background: #fff;
+}
+
+.logo .ye {
+  position: absolute;
+  left: 126px;
+  top: 126px;
+  width: 82px;
+  height: 82px;
+  border-radius: 21px;
+  background: #ffde59;
+}
+
+.wordmark {
+  font-family: "Inter", sans-serif;
+  font-weight: 800;
+  font-size: 150px;
+  letter-spacing: -0.05em;
+  direction: ltr;
+}
+
+.ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(182, 168, 255, 0.8);
+}
+
+.spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+}
+
+.path-svg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  overflow: visible;
+}
+
+.packet {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 70px;
+  height: 70px;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  border: 3px solid #fff;
+}
+
+.packet img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.big-ico {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+}
+
+.tag {
+  position: absolute;
+  padding: 12px 30px;
+  border-radius: 18px;
+  background: #fff;
+  color: #1b1640;
+  font: 800 46px var(--mono);
+  box-shadow: 0 24px 50px rgba(4, 2, 20, 0.5);
+}
+
+.statement {
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 34px;
+  white-space: nowrap;
+}
+
+.statement .ico {
+  width: 120px;
+  height: 120px;
+  border-radius: 34px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #8f7cff, #d946ef);
+  box-shadow: 0 30px 70px rgba(217, 70, 239, 0.35);
+}
+
+.statement .ico svg {
+  width: 66px;
+  height: 66px;
+}
+
+.marquee {
+  position: absolute;
+  left: 0;
+  top: 0;
+  white-space: nowrap;
+  font-size: 64px;
+  color: rgba(255, 255, 255, 0.28);
+}
+
+.marquee span {
+  display: inline-block;
+  margin: 0 34px;
+}
+
+.typebox {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 24px 40px 24px 30px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.86);
+  font-size: 46px;
+  min-width: 760px;
+}
+
+.ar .typebox {
+  padding: 24px 30px 24px 40px;
+}
+
+.typeicon {
+  display: grid;
+  place-items: center;
+}
