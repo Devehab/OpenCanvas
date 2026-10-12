@@ -10,7 +10,8 @@ are rebuilt with these scripts.
 | 2 | `render.mjs` | Renders the motion-graphics composition (`composition/`) frame by frame and encodes it with ffmpeg. Scenes follow the narration; each one lists the sound effects it needs. |
 | 3 | `sound.py` | Synthesizes an original music bed and the sound effects in Python (numpy, scipy), ducks the music under the voice and balances the loudness. |
 | 4 | `make.sh` | Runs steps 1–3 for one language and writes the final files: a master, a smaller web version and a poster. |
-| — | `site-media.mjs` | Turns the recorded sequences into the landing page clips (MP4) and screenshots (WebP). |
+| — | `site-media.mjs` | Turns the recorded sequences into the landing page clips (MP4), screenshots and video posters (WebP, in the sizes the page asks for). |
+| — | `thumbnail.mjs` | Renders the video thumbnails (1920×1080, for LinkedIn or YouTube) and the landing page's link previews (`site/assets/img/og-<lang>.jpg`, 1200×630) from `thumbnail/`. |
 
 ```bash
 pnpm build && pnpm start -- --port 3200          # the app, for the footage
@@ -19,7 +20,11 @@ BASE_URL=http://localhost:3200 node scripts/promo-video/footage.mjs
 scripts/promo-video/make.sh en                   # → .work/en/opencanvas-en.mp4
 scripts/promo-video/make.sh ar                   # → .work/ar/opencanvas-ar.mp4
 node scripts/promo-video/site-media.mjs          # → site/assets/media/
+node scripts/promo-video/thumbnail.mjs           # → .work/thumbnail-<lang>.png, site/assets/img/og-<lang>.jpg
 ```
+
+The landing page itself is built from `site/` by `scripts/site/build.mjs` (see
+`site/README.md`).
 
 Useful while editing the composition:
 

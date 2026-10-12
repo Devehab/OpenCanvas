@@ -6,7 +6,9 @@
  *   node scripts/promo-video/footage.mjs           # record first (app running)
  *   node scripts/promo-video/site-media.mjs
  *
- * Output: site/assets/media/<clip>-<lang>.mp4 (+ .webp poster) and screenshots.
+ * Output: site/assets/media/<clip>-<lang>.mp4 (+ .webp poster), screenshots
+ * (full size and 1440 px wide for phones) and the video posters (from
+ * make.sh, in 1920, 1280 and 960 px).
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
@@ -34,7 +36,7 @@ const CLIPS = [
   { name: 'arabic', seq: 'arabic', crop: [288, 0, 1152, 900], langs: ['ar'] },
 ];
 
-/** Screenshots for the hero fallback and the gallery. */
+/** Screenshots for the gallery. */
 const STILLS = [
   ['editor', 'editor.jpg'],
   ['dashboard', 'dashboard.jpg'],
@@ -44,6 +46,25 @@ const STILLS = [
 
 mkdirSync(OUT, { recursive: true });
 const kb = (file) => `${(statSync(file).size / 1024).toFixed(0)} KB`;
+
+/** An image as WebP, optionally scaled down to `width`. */
+function webp(src, out, { width, quality = 82 } = {}) {
+  const scale = width ? ['-vf', `scale=${width}:-1:flags=lanczos`] : [];
+  execFileSync('ffmpeg', [
+    '-v',
+    'error',
+    '-y',
+    '-i',
+    src,
+    ...scale,
+    '-c:v',
+    'libwebp',
+    '-quality',
+    String(quality),
+    out,
+  ]);
+  console.log(`  ${out.split('/').pop()}  ${kb(out)}`);
+}
 
 function clip(lang, c) {
   const dir = join(FOOTAGE, lang);
@@ -120,8 +141,14 @@ for (const lang of ['en', 'ar']) {
   for (const [name, file] of STILLS) {
     const src = join(FOOTAGE, lang, file);
     if (!existsSync(src)) continue;
-    const out = join(OUT, `${name}-${lang}.webp`);
-    execFileSync('ffmpeg', ['-v', 'error', '-y', '-i', src, '-c:v', 'libwebp', '-quality', '82', out]);
-    console.log(`  ${name}-${lang}.webp  ${kb(out)}`);
+    webp(src, join(OUT, `${name}-${lang}.webp`));
+    webp(src, join(OUT, `${name}-${lang}-1440.webp`), { width: 1440, quality: 80 });
+  }
+  // The video's poster (written by make.sh), in three sizes for srcset.
+  const poster = new URL(`./.work/${lang}/poster-${lang}.jpg`, import.meta.url).pathname;
+  if (existsSync(poster)) {
+    webp(poster, join(OUT, `promo-${lang}.webp`), { quality: 80 });
+    webp(poster, join(OUT, `promo-${lang}-1280.webp`), { width: 1280, quality: 78 });
+    webp(poster, join(OUT, `promo-${lang}-960.webp`), { width: 960, quality: 78 });
   }
 }

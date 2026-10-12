@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<title>OpenCanvas thumbnail (Arabic)</title>
+<style>
+  /*FONTS*/
+
+  :root {
+    --ink: #0b0a1a;
+    --grad: linear-gradient(260deg, #b6a8ff 0%, #8f7cff 22%, #d946ef 60%, #ffb86b 100%);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--ink); }
+  body { font-family: "Readex", sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+
+  .stage { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: radial-gradient(120% 100% at 70% 110%, #1d1640 0%, var(--ink) 60%); }
+  .blob { position: absolute; border-radius: 50%; filter: blur(140px); opacity: .55; }
+  .b1 { width: 900px; height: 900px; right: 980px; top: -260px; background: #6d4dff; }
+  .b2 { width: 760px; height: 760px; right: 1320px; top: 520px; background: #d946ef; opacity: .42; }
+  .b3 { width: 700px; height: 700px; right: -260px; top: 560px; background: #4b37d1; opacity: .45; }
+  .grid { position: absolute; inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(90% 80% at 70% 45%, #000 20%, transparent 75%); }
+
+  /* Copy (right) */
+  .copy { position: absolute; right: 112px; top: 150px; width: 900px; }
+  .brand { display: flex; align-items: center; gap: 22px; }
+  .brand img { width: 84px; height: 84px; filter: drop-shadow(0 10px 30px rgba(143,124,255,.55)); }
+  .brand span { font-family: "Inter", sans-serif; font-size: 54px; font-weight: 800; letter-spacing: -.02em; direction: ltr; }
+  .eyebrow { margin-top: 60px; display: inline-flex; gap: 14px; align-items: center;
+    font-size: 32px; font-weight: 600; color: #cfc6ff; }
+  .eyebrow i { width: 12px; height: 12px; border-radius: 50%; background: #34d399; box-shadow: 0 0 18px #34d399; }
+  h1 { margin-top: 18px; font-size: 104px; line-height: 1.3; font-weight: 700; white-space: nowrap; }
+  h1 .g { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent;
+    padding: .2em .04em .34em; margin: -.2em -.04em -.34em; }
+  .chips { margin-top: 48px; display: flex; gap: 16px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; padding: 14px 28px 18px; border-radius: 999px;
+    font-size: 32px; font-weight: 500; background: rgba(255,255,255,.08); border: 1.5px solid rgba(255,255,255,.16); }
+  .tour { position: absolute; right: 112px; bottom: 104px; display: flex; align-items: center; gap: 24px; }
+  .play { width: 96px; height: 96px; border-radius: 50%; display: grid; place-items: center;
+    background: #fff; box-shadow: 0 0 0 14px rgba(255,255,255,.12), 0 18px 50px rgba(217,70,239,.55); }
+  .play svg { width: 40px; height: 40px; margin-left: 6px; color: #4b37d1; }
+  .tour b { font-size: 38px; font-weight: 600; }
+  .tour small { display: block; font-size: 26px; font-weight: 500; color: rgba(255,255,255,.66); margin-top: 2px; }
+
+  /* Visual (left, mirrored) */
+  .scene { position: absolute; right: 1030px; top: 150px; width: 1150px; height: 820px; perspective: 2400px; }
+  .window { position: absolute; right: 0; top: 40px; width: 1120px; border-radius: 22px; overflow: hidden;
+    transform: rotateY(16deg) rotateX(5deg) rotateZ(-1deg); transform-origin: 100% 50%;
+    box-shadow: 0 60px 120px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.18), 0 0 120px rgba(143,124,255,.35);
+    background: #fff; }
+  .window .bar { height: 44px; background: #f1effa; display: flex; align-items: center; gap: 10px; padding: 0 18px; direction: ltr; }
+  .window .bar i { width: 14px; height: 14px; border-radius: 50%; background: #ff5f57; }
+  .window .bar i:nth-child(2) { background: #febc2e; } .window .bar i:nth-child(3) { background: #28c840; }
+  .window img { display: block; width: 100%; }
+
+  .card { position: absolute; border-radius: 18px; overflow: hidden;
+    box-shadow: 0 40px 80px rgba(0,0,0,.55), 0 0 0 2px rgba(255,255,255,.22); }
+  .card img { display: block; width: 100%; }
+  .c1 { width: 330px; right: -110px; top: 520px; transform: rotate(7deg); }
+  .c2 { width: 380px; right: 470px; top: -50px; transform: rotate(-6deg); }
+
+  .badge { position: absolute; right: 400px; top: 700px; display: flex; align-items: center; gap: 16px;
+    padding: 14px 30px 20px; border-radius: 20px; background: rgba(20,17,43,.88); border: 1.5px solid rgba(255,255,255,.2);
+    box-shadow: 0 30px 60px rgba(0,0,0,.5); transform: rotate(3deg); }
+  .badge span { font-size: 38px; font-weight: 700; }
+  .badge .dot { width: 10px; height: 10px; border-radius: 50%; background: #ffde59; margin-top: 6px; }
+</style>
+</head>
+<body>
+<div class="stage">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+  <div class="grid"></div>
+
+  <div class="scene">
+    <div class="window">
+      <div class="bar"><i></i><i></i><i></i></div>
+      <img src="{{FOOTAGE}}/editor.jpg" alt="" />
+    </div>
+    <div class="card c2"><img src="{{FOOTAGE}}/starter-video-thumbnail.png" alt="" /></div>
+    <div class="card c1"><img src="{{FOOTAGE}}/starter-summer-sale.png" alt="" /></div>
+    <div class="badge"><i class="dot"></i><span>واجهة عربية كاملة</span></div>
+  </div>
+
+  <div class="copy">
+    <div class="brand"><img src="{{SITE}}/assets/img/logo.svg" alt="" /><span>OpenCanvas</span></div>
+    <div class="eyebrow"><i></i>محرّر تصميم مجاني ومفتوح المصدر</div>
+    <h1>تصاميم احترافية.<br /><span class="g">بلا أي تكلفة.</span></h1>
+    <div class="chips">
+      <span class="chip">بلا اشتراك</span>
+      <span class="chip">بلا علامة مائية</span>
+      <span class="chip">بلا حساب</span>
+    </div>
+  </div>
+
+  <div class="tour">
+    <div class="play"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></svg></div>
+    <div><b>شاهد الجولة في دقيقة</b><small>لقطات من البرنامج نفسه</small></div>
+  </div>
+</div>
+</body>
+</html>
