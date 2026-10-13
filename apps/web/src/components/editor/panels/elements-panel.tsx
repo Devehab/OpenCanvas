@@ -4,7 +4,8 @@ import type { AnyNodeProps } from '@opencanvas/core';
 import { ArrowLeft, Search, X } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CustomIconPreview } from '@/components/ui/custom-icon';
-import { Segmented } from '@/components/ui/fields';
+import { Segmented, SelectField } from '@/components/ui/fields';
+import { useToast } from '@/components/ui/toast';
 import { useEditorContext } from '@/hooks/use-editor';
 import { useIconPacks } from '@/hooks/use-icon-packs';
 import { useI18n } from '@/i18n';
@@ -23,15 +24,23 @@ import {
 } from '@/lib/element-library';
 import {
   customIconProps,
+  flagSource,
   ICON_CATEGORIES,
+  ICON_LIBRARIES,
+  ICON_TOTAL,
   type IconCategory,
   iconProps,
+  iconSet,
+  isImageIcon,
   type LibraryIcon,
-  loadIconLibrary,
+  LOADABLE_SETS,
+  loadIconSet,
   POPULAR_ICONS,
+  STARTER_SETS,
   searchCustomIcons,
   searchIcons,
 } from '@/lib/icon-library';
+import { insertLibraryImage, LIBRARY_IMAGE_DRAG_TYPE } from '@/lib/library-image';
 import { type RecentElement, useRecentElements } from '@/lib/recent-elements';
 import type { CustomIcon } from '@/lib/storage/db';
 import { cn } from '@/lib/utils';
@@ -51,21 +60,52 @@ function useLabel() {
   return (label: Label) => (locale === 'ar' ? label.ar : label.en);
 }
 
-/** Loads the icon library on first render of an icon view. */
-function useIconLibrary() {
-  const [icons, setIcons] = useState<LibraryIcon[] | null>(null);
-  const [failed, setFailed] = useState(false);
+/**
+ * Loads icon sets (each once, all fetched at the same time) and lists their
+ * icons in set order as they arrive, so the first ones show before the rest
+ * of a large library has loaded.
+ */
+function useIcons(sets: readonly string[]) {
+  const key = sets.join(',');
+  const [state, setState] = useState<{
+    key: string;
+    icons: LibraryIcon[] | null;
+    done: boolean;
+    failed: boolean;
+  }>({
+    key,
+    icons: null,
+    done: false,
+    failed: false,
+  });
   useEffect(() => {
     let alive = true;
-    loadIconLibrary().then(
-      (list) => alive && setIcons(list),
-      () => alive && setFailed(true),
-    );
+    const ids = key.split(',').filter(Boolean);
+    const pending = ids.map((id) => loadIconSet(id));
+    setState({ key, icons: null, done: false, failed: false });
+    (async () => {
+      const icons: LibraryIcon[] = [];
+      for (const promise of pending) {
+        try {
+          icons.push(...(await promise));
+        } catch {
+          if (alive) setState((s) => ({ ...s, failed: !s.icons, done: true }));
+          return;
+        }
+        if (alive) setState({ key, icons: [...icons], done: false, failed: false });
+      }
+      if (alive) setState({ key, icons, done: true, failed: false });
+    })();
     return () => {
       alive = false;
     };
-  }, []);
-  return { icons, failed };
+  }, [key]);
+  const current = state.key === key;
+  return {
+    icons: current ? state.icons : null,
+    loading: !current || !state.done,
+    failed: current && state.failed,
+  };
 }
 
 /** Tile that inserts on click and can be dragged onto the canvas. */
@@ -312,23 +352,32 @@ function BackHeader({ title, onBack }: { title: string; onBack: () => void }) {
 }
 
 function IconTile({ icon, onRemember }: { icon: LibraryIcon; onRemember: (r: RecentElement) => void }) {
+  if (isImageIcon(icon)) return <FlagTile icon={icon} />;
+  return <PathIconTile icon={icon} onRemember={onRemember} />;
+}
+
+function PathIconTile({ icon, onRemember }: { icon: LibraryIcon; onRemember: (r: RecentElement) => void }) {
   const props = useMemo(() => iconProps(icon), [icon]);
+  const set = iconSet(icon);
   const name = icon.name.replace(/-/g, ' ');
+  const stroked = set?.mode === 'stroke';
+  const size = set?.viewBox || 24;
   return (
     <Tile
       props={props}
-      label={name}
+      label={`${name} · ${set?.library ?? ''}`}
       testId={`icon-${icon.id.replace('/', '-')}`}
       onInsert={() =>
         onRemember({ id: `icon:${icon.id}`, label: { en: name, ar: name }, props, kind: 'icon' })
       }
     >
       <svg
-        viewBox="0 0 24 24"
+        viewBox={`0 0 ${size} ${size}`}
         className="size-6"
-        fill={icon.style === 'filled' ? 'currentColor' : 'none'}
-        stroke={icon.style === 'filled' ? 'none' : 'currentColor'}
-        strokeWidth="2"
+        fill={stroked ? 'none' : 'currentColor'}
+        fillRule={icon.evenodd ? 'evenodd' : 'nonzero'}
+        stroke={stroked ? 'currentColor' : 'none'}
+        strokeWidth={stroked ? (set?.strokeWidth ?? 2) : undefined}
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden
@@ -336,6 +385,41 @@ function IconTile({ icon, onRemember }: { icon: LibraryIcon; onRemember: (r: Rec
         <path d={icon.path} />
       </svg>
     </Tile>
+  );
+}
+
+/** A flag: a full-colour picture, added to the design as an image. */
+function FlagTile({ icon }: { icon: LibraryIcon }) {
+  const { editor } = useEditorContext();
+  const { t } = useI18n();
+  const toast = useToast();
+  const src = flagSource(icon);
+  const name = icon.name.replace(/-/g, ' ');
+  return (
+    <button
+      type="button"
+      draggable
+      title={name}
+      aria-label={name}
+      data-testid={`icon-${icon.id.replace('/', '-')}`}
+      onDragStart={(e) => {
+        e.dataTransfer.setData(LIBRARY_IMAGE_DRAG_TYPE, JSON.stringify({ src, name }));
+        e.dataTransfer.effectAllowed = 'copy';
+      }}
+      onClick={() => {
+        insertLibraryImage(editor, src, name).catch(() => toast(t('editor.elements.flagFailed'), 'error'));
+      }}
+      className="flex aspect-square items-center justify-center rounded-lg bg-slate-50 p-1.5 transition hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-brand-400"
+    >
+      {/* biome-ignore lint/performance/noImgElement: a small static SVG; Next's image optimizer does not take SVG */}
+      <img
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        className="w-full rounded-[3px] shadow-[0_0_0_1px_rgb(15_23_42/0.08)]"
+      />
+    </button>
   );
 }
 
@@ -433,7 +517,7 @@ function IconsPreview({
   onRemember: (r: RecentElement) => void;
 }) {
   const { t } = useI18n();
-  const { icons, failed } = useIconLibrary();
+  const { icons, failed } = useIcons(STARTER_SETS);
   const popular = useMemo(() => {
     if (!icons) return [];
     const byId = new Map(icons.map((i) => [i.id, i]));
@@ -457,18 +541,22 @@ function IconsPreview({
 function IconGrid({
   icons,
   failed,
+  loading = false,
   onRemember,
   limit,
 }: {
   icons: LibraryIcon[] | null;
   failed: boolean;
+  /** More sets are still loading: the list will grow. */
+  loading?: boolean;
   onRemember: (r: RecentElement) => void;
   limit?: number;
 }) {
   const { t } = useI18n();
   const [shown, setShown] = useState(limit ?? 150);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new list starts from the first page again
-  useEffect(() => setShown(limit ?? 150), [icons, limit]);
+  const first = icons?.[0]?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new list (not one that grows as sets load) starts from the first page again
+  useEffect(() => setShown(limit ?? 150), [first, limit]);
   // Renders more icons as the end of the grid scrolls into view.
   const observer = useRef<IntersectionObserver | null>(null);
   const sentinel = useCallback((el: HTMLDivElement | null) => {
@@ -492,7 +580,13 @@ function IconGrid({
       </div>
     );
   if (!icons.length)
-    return <p className="py-4 text-center text-sm text-slate-500">{t('editor.elements.noIcons')}</p>;
+    return loading ? (
+      <p className="py-4 text-center text-sm text-slate-500" aria-busy="true">
+        {t('editor.elements.loadingIcons')}
+      </p>
+    ) : (
+      <p className="py-4 text-center text-sm text-slate-500">{t('editor.elements.noIcons')}</p>
+    );
   return (
     <>
       <div className="grid grid-cols-5 gap-1.5 px-4" data-testid="icon-grid">
@@ -501,6 +595,11 @@ function IconGrid({
         ))}
       </div>
       {!limit && shown < icons.length ? <div ref={sentinel} className="h-8" /> : null}
+      {!limit && loading ? (
+        <p className="px-4 pt-3 text-center text-xs text-slate-500" aria-busy="true">
+          {t('editor.elements.loadingIcons')}
+        </p>
+      ) : null}
     </>
   );
 }
@@ -519,41 +618,77 @@ function IconBrowser({
   query: string;
 }) {
   const { t, formatNumber } = useI18n();
-  const { icons, failed } = useIconLibrary();
+  const [library, setLibrary] = useState<string>('all');
+  // Flags are one library: choosing their category opens it.
+  const sets =
+    category === 'flags'
+      ? ['flags']
+      : library === 'all'
+        ? LOADABLE_SETS
+        : (ICON_LIBRARIES.find((l) => l.id === library)?.sets ?? LOADABLE_SETS);
+  const { icons, failed, loading } = useIcons(sets);
+  const flagsOnly = sets.length === 1 && sets[0] === 'flags';
   const [style, setStyle] = useState<'all' | 'outline' | 'filled'>('all');
   const results = useMemo(() => {
     if (!icons) return null;
-    const found = searchIcons(icons, query, { category, style: style === 'all' ? null : style });
+    const found = searchIcons(icons, query, {
+      category,
+      style: style === 'all' || flagsOnly ? null : style,
+      library: library === 'all' ? null : library,
+    });
     if (query.trim()) return found;
-    // Browsing: the most useful icons first, then everything alphabetically.
+    // Browsing: the most useful icons first, then every set in order.
     const popular = new Map(POPULAR_ICONS.map((id, i) => [id, i]));
     return [...found].sort((a, b) => (popular.get(a.id) ?? 1e6) - (popular.get(b.id) ?? 1e6));
-  }, [icons, query, category, style]);
+  }, [icons, query, category, style, library, flagsOnly]);
   return (
     <>
       <BackHeader title={t('editor.elements.icons')} onBack={onBack} />
       <CategoryChips value={category} onChange={onCategory} />
-      <div className="flex items-center justify-between gap-2 px-4 pb-2">
-        <Segmented
-          showLabels
-          label={t('editor.elements.iconStyle')}
-          value={style}
-          onChange={setStyle}
+      <div className="px-4 pb-2">
+        <SelectField
+          label={t('editor.elements.iconLibrary')}
+          hideLabel
+          testId="icon-library"
+          value={library}
+          onChange={setLibrary}
           options={[
-            { value: 'all', label: t('editor.uploads.all') },
-            { value: 'outline', label: t('editor.elements.outline') },
-            { value: 'filled', label: t('editor.elements.filled') },
+            {
+              value: 'all',
+              label: t('editor.elements.allLibraries', { count: formatNumber(ICON_TOTAL) }),
+            },
+            ...ICON_LIBRARIES.map((l) => ({ value: l.id, label: `${l.name} (${formatNumber(l.count)})` })),
           ]}
         />
+      </div>
+      <div className="flex min-h-8 items-center justify-between gap-2 px-4 pb-2">
+        {/* Flags have no outline and filled versions. */}
+        {flagsOnly ? (
+          <span />
+        ) : (
+          <Segmented
+            showLabels
+            label={t('editor.elements.iconStyle')}
+            value={style}
+            onChange={setStyle}
+            options={[
+              { value: 'all', label: t('editor.uploads.all') },
+              { value: 'outline', label: t('editor.elements.outline') },
+              { value: 'filled', label: t('editor.elements.filled') },
+            ]}
+          />
+        )}
         {results ? (
           <span className="text-xs text-slate-500">
             {t('editor.elements.iconCount', { count: formatNumber(results.length) })}
           </span>
         ) : null}
       </div>
-      <IconGrid icons={results} failed={failed} onRemember={onRemember} />
+      <IconGrid icons={results} failed={failed} loading={loading} onRemember={onRemember} />
       <p className="px-4 pt-4 text-[11px] leading-relaxed text-slate-500">
-        {t('editor.elements.iconCredits')}
+        {t('editor.elements.iconCredits', {
+          libraries: ICON_LIBRARIES.map((l) => `${l.name} (${l.license})`).join(', '),
+        })}
       </p>
     </>
   );
@@ -562,7 +697,7 @@ function IconBrowser({
 function SearchResults({ query, onRemember }: { query: string; onRemember: (r: RecentElement) => void }) {
   const { t, formatNumber } = useI18n();
   const label = useLabel();
-  const { icons, failed } = useIconLibrary();
+  const { icons, failed, loading } = useIcons(LOADABLE_SETS);
   const elements = useMemo(() => ALL_ELEMENTS.filter((e) => elementMatches(e, query)), [query]);
   const iconHits = useMemo(() => (icons ? searchIcons(icons, query) : null), [icons, query]);
   const shapes = elements.filter((e) => !e.id.startsWith('frame:'));
@@ -578,7 +713,7 @@ function SearchResults({ query, onRemember }: { query: string; onRemember: (r: R
       <ElementPreview props={e.props} className="size-full" />
     </Tile>
   );
-  const nothing = !elements.length && iconHits !== null && !iconHits.length;
+  const nothing = !elements.length && !loading && iconHits !== null && !iconHits.length;
   return (
     <div data-testid="elements-results">
       {nothing ? (
@@ -599,7 +734,7 @@ function SearchResults({ query, onRemember }: { query: string; onRemember: (r: R
         </>
       ) : null}
       <CustomIcons query={query} onRemember={onRemember} />
-      {iconHits === null || iconHits.length ? (
+      {iconHits === null || iconHits.length || loading ? (
         <>
           <div className="mb-2 mt-5 flex items-center justify-between px-4">
             <h3 className="text-sm font-semibold text-slate-800">{t('editor.elements.icons')}</h3>
@@ -609,7 +744,7 @@ function SearchResults({ query, onRemember }: { query: string; onRemember: (r: R
               </span>
             ) : null}
           </div>
-          <IconGrid icons={iconHits} failed={failed} onRemember={onRemember} />
+          <IconGrid icons={iconHits} failed={failed} loading={loading} onRemember={onRemember} />
         </>
       ) : null}
     </div>

@@ -14,7 +14,9 @@
       "!**/coverage",
       "!**/playwright-report",
       "!**/test-results",
-      "!**/*.png"
+      "!**/*.png",
+      "!apps/web/src/lib/icon-library/sets",
+      "!apps/web/public/icon-library"
     ]
   },
   "formatter": {

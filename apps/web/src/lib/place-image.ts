@@ -82,8 +82,16 @@ export function imageDropTarget(
   return { kind: 'page' };
 }
 
-/** Places an image and selects it. Returns the ids of the affected image elements. */
-export function placeImage(editor: Editor, image: LibraryImage, at?: Vec): Id[] {
+/**
+ * Places an image and selects it. Returns the ids of the affected image
+ * elements. Added to the page, it fits 60% of the page, or `maxSize`.
+ */
+export function placeImage(
+  editor: Editor,
+  image: LibraryImage,
+  at?: Vec,
+  options: { maxSize?: number } = {},
+): Id[] {
   const target = imageDropTarget(editor, at);
   editor.history.beginBatch(target.kind === 'page' ? 'Add image' : 'Place image');
   try {
@@ -97,7 +105,13 @@ export function placeImage(editor: Editor, image: LibraryImage, at?: Vec): Id[] 
       return [target.id];
     }
     const page = editor.store.getPage(editor.pageId)!;
-    const size = fitSize(asset.width, asset.height, page.width * 0.6, page.height * 0.6);
+    const max = options.maxSize ?? Number.POSITIVE_INFINITY;
+    const size = fitSize(
+      asset.width,
+      asset.height,
+      Math.min(page.width * 0.6, max),
+      Math.min(page.height * 0.6, max),
+    );
     const props = { type: 'image', assetId: asset.id, ...size, name: asset.name } as Partial<ImageNode>;
     return editor.insertNodes([props as never], at ? { at } : {});
   } finally {

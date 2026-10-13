@@ -31,6 +31,7 @@ import { useEditorContext, useEditorValue } from '@/hooks/use-editor';
 import { useI18n } from '@/i18n';
 import { recallClipboard, rememberClipboard } from '@/lib/clipboard';
 import { FONT_FALLBACKS } from '@/lib/fonts';
+import { insertLibraryImage, LIBRARY_IMAGE_DRAG_TYPE, parseLibraryImageDrag } from '@/lib/library-image';
 import { ASSET_DRAG_TYPE, parseAssetDrag, placeImage } from '@/lib/place-image';
 import { cn } from '@/lib/utils';
 import { PageGrid } from './page-grid';
@@ -187,7 +188,10 @@ export function CanvasArea() {
         style={{ touchAction: 'none' }}
         onDragOver={(e) => {
           const types = e.dataTransfer.types;
-          const image = types.includes('Files') || types.includes(ASSET_DRAG_TYPE);
+          const image =
+            types.includes('Files') ||
+            types.includes(ASSET_DRAG_TYPE) ||
+            types.includes(LIBRARY_IMAGE_DRAG_TYPE);
           if (!image && !types.includes(ELEMENT_DRAG_TYPE)) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
@@ -223,6 +227,16 @@ export function CanvasArea() {
           if (asset) {
             placeImage(editor, asset, at);
             container.current?.focus({ preventScroll: true });
+            return;
+          }
+          const picture = parseLibraryImageDrag(e.dataTransfer.getData(LIBRARY_IMAGE_DRAG_TYPE));
+          if (picture) {
+            insertLibraryImage(editor, picture.src, picture.name, at).then(
+              () => container.current?.focus({ preventScroll: true }),
+              () => {
+                // The panel reports failures when clicked; a failed drop changes nothing.
+              },
+            );
             return;
           }
           const files = [...e.dataTransfer.files].filter(

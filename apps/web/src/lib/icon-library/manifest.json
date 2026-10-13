@@ -1,0 +1,161 @@
+[
+  {
+    "id": "lucide",
+    "name": "Lucide",
+    "library": "Lucide",
+    "url": "https://lucide.dev",
+    "license": "ISC",
+    "version": "1.49.0",
+    "mode": "stroke",
+    "viewBox": 24,
+    "strokeWidth": 2,
+    "count": 1856
+  },
+  {
+    "id": "tabler",
+    "name": "Tabler Icons (filled)",
+    "library": "Tabler Icons",
+    "url": "https://tabler.io/icons",
+    "license": "MIT",
+    "version": "3.49.0",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 1048
+  },
+  {
+    "id": "tabler-outline",
+    "name": "Tabler Icons",
+    "library": "Tabler Icons",
+    "url": "https://tabler.io/icons",
+    "license": "MIT",
+    "version": "3.49.0",
+    "mode": "stroke",
+    "viewBox": 24,
+    "strokeWidth": 2,
+    "count": 5125
+  },
+  {
+    "id": "bootstrap",
+    "name": "Bootstrap Icons",
+    "library": "Bootstrap Icons",
+    "url": "https://icons.getbootstrap.com",
+    "license": "MIT",
+    "version": "1.13.2",
+    "mode": "fill",
+    "viewBox": 16,
+    "count": 2073
+  },
+  {
+    "id": "heroicons",
+    "name": "Heroicons",
+    "library": "Heroicons",
+    "url": "https://heroicons.com",
+    "license": "MIT",
+    "version": "2.2.0",
+    "mode": "stroke",
+    "viewBox": 24,
+    "strokeWidth": 1.5,
+    "count": 322
+  },
+  {
+    "id": "heroicons-solid",
+    "name": "Heroicons (solid)",
+    "library": "Heroicons",
+    "url": "https://heroicons.com",
+    "license": "MIT",
+    "version": "2.2.0",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 322
+  },
+  {
+    "id": "hugeicons",
+    "name": "Hugeicons",
+    "library": "Hugeicons",
+    "url": "https://hugeicons.com",
+    "license": "MIT",
+    "version": "4.3.5",
+    "mode": "stroke",
+    "viewBox": 24,
+    "strokeWidth": 1.5,
+    "count": 5840
+  },
+  {
+    "id": "material",
+    "name": "Material Icons",
+    "library": "Material Icons",
+    "url": "https://fonts.google.com/icons",
+    "license": "Apache-2.0",
+    "version": "0.14.15",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 2016
+  },
+  {
+    "id": "material-outlined",
+    "name": "Material Icons (outlined)",
+    "library": "Material Icons",
+    "url": "https://fonts.google.com/icons",
+    "license": "Apache-2.0",
+    "version": "0.14.15",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 2042
+  },
+  {
+    "id": "material-round",
+    "name": "Material Icons (round)",
+    "library": "Material Icons",
+    "url": "https://fonts.google.com/icons",
+    "license": "Apache-2.0",
+    "version": "0.14.15",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 2038
+  },
+  {
+    "id": "material-sharp",
+    "name": "Material Icons (sharp)",
+    "library": "Material Icons",
+    "url": "https://fonts.google.com/icons",
+    "license": "Apache-2.0",
+    "version": "0.14.15",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 2029
+  },
+  {
+    "id": "radix",
+    "name": "Radix Icons",
+    "library": "Radix Icons",
+    "url": "https://www.radix-ui.com/icons",
+    "license": "MIT",
+    "version": "1.3.2",
+    "mode": "fill",
+    "viewBox": 15,
+    "count": 307
+  },
+  {
+    "id": "remix",
+    "name": "Remix Icon",
+    "library": "Remix Icon",
+    "url": "https://remixicon.com",
+    "license": "Apache-2.0",
+    "version": "4.6.0",
+    "mode": "fill",
+    "viewBox": 24,
+    "count": 3053
+  },
+  {
+    "id": "flags",
+    "name": "Flag Icons",
+    "library": "Flag Icons",
+    "url": "https://flagicons.lipis.dev",
+    "license": "MIT",
+    "version": "7.5.0",
+    "mode": "image",
+    "viewBox": 0,
+    "aspect": 1.3333333333333333,
+    "count": 271
+  }
+]

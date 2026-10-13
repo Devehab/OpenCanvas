@@ -53,6 +53,11 @@ export interface AssetBlobRecord {
    * image still need them (they are content-addressed and shared).
    */
   removedAt?: number | null;
+  /**
+   * "library": a picture inserted from the editor's libraries (a flag), kept
+   * for the designs that use it but not listed among the uploads.
+   */
+  source?: 'library' | null;
 }
 
 export interface FolderRecord {

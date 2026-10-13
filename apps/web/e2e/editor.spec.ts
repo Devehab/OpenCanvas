@@ -1,7 +1,9 @@
 import { expect, type Page, test } from './fixtures';
 import {
   createDesign,
+  decodePng,
   dragMouse,
+  exportDesign,
   getNodes,
   getRecords,
   getSelection,
@@ -54,6 +56,60 @@ test.describe('editor', () => {
     expect((await getSelection(page)).map((n) => n.type)).toEqual(['text']);
     await showInspector(page);
     await expect(page.getByTestId('inspector').getByRole('heading', { level: 2 })).toHaveText('Text');
+  });
+
+  test('icon libraries: one library at a time, icons from several sets, and flags as pictures', async ({
+    page,
+  }) => {
+    await openPanel(page, 'elements');
+    // Each set inserts as it draws: its own view box, stroke or fill, fill rule.
+    await page.getByTestId('elements-search').fill('house');
+    await page.getByTestId('icon-bootstrap-house-fill').click();
+    await page.getByTestId('elements-search').fill('home 01');
+    await page.getByTestId('icon-hugeicons-home-01').click();
+    const [bootstrap, huge] = await getNodes(page);
+    expect(bootstrap).toMatchObject({ type: 'path', viewBox: { width: 16 }, stroke: null });
+    expect(huge).toMatchObject({ type: 'path', viewBox: { width: 24 }, fill: null, stroke: { width: 1.5 } });
+
+    // A flag, found by its Arabic name, is added as a picture of a moderate size…
+    await page.getByTestId('elements-search').fill('علم مصر');
+    await page.getByTestId('icon-flags-egypt').click();
+    await expect.poll(async () => (await getNodes(page)).length).toBe(3);
+    const flag = (await getNodes(page))[2]!;
+    expect(flag).toMatchObject({ type: 'image', width: 320, height: 240 });
+    await waitForCanvasIdle(page);
+    // …drawn whole (red, white and black bands; not a corner of it)…
+    await page.evaluate(
+      (ids) => window.__opencanvas!.editor.execute('node.delete', { ids }),
+      [bootstrap!.id, huge!.id],
+    );
+    const png = decodePng((await exportDesign(page, 'png')).bytes);
+    const pixel = (x: number, y: number) => [
+      ...png.data.subarray((y * png.width + x) * 4, (y * png.width + x) * 4 + 3),
+    ];
+    const left = Math.round(flag.x + 20);
+    expect(pixel(left, Math.round(flag.y + 40))).toEqual([206, 17, 38]);
+    expect(pixel(left, Math.round(flag.y + 120))).toEqual([255, 255, 255]);
+    expect(pixel(left, Math.round(flag.y + 200))).toEqual([0, 0, 1]);
+    // …and kept out of the user's uploads.
+    await openPanel(page, 'uploads');
+    await expect(page.getByTestId('upload-dropzone')).toBeVisible();
+    await expect(page.getByTestId('upload-item')).toHaveCount(0);
+
+    // Browsing one library.
+    await openPanel(page, 'elements');
+    await page.getByTestId('elements-search').fill('');
+    await page.getByRole('button', { name: 'See all · Icons' }).click();
+    await page.getByTestId('icon-library').selectOption('radix');
+    await expect(page.getByTestId('icon-grid').locator('[data-testid^="icon-"]').first()).toHaveAttribute(
+      'data-testid',
+      /^icon-radix-/,
+    );
+    const tiles = await page
+      .getByTestId('icon-grid')
+      .locator('[data-testid^="icon-"]')
+      .evaluateAll((els) => els.map((el) => el.getAttribute('data-testid')));
+    expect(tiles.every((id) => id!.startsWith('icon-radix-'))).toBe(true);
   });
 
   test('moves a shape by dragging; undo and redo restore exact states', async ({ page }) => {

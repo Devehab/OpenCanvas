@@ -3,13 +3,18 @@ import { type AssetBlobRecord, getDB, updateRecordWithFiles, withDB } from './db
 
 const newId = createRandomIdGenerator();
 
-export async function putAssetBlob(input: {
+export async function putAssetBlob({
+  library = false,
+  ...input
+}: {
   hash: string;
   blob: Blob;
   mimeType: string;
   width: number;
   height: number;
   name: string;
+  /** From the editor's libraries (a flag), not uploaded: kept out of the uploads list. */
+  library?: boolean;
 }): Promise<void> {
   return withDB(async (db) => {
     const tx = db.transaction('assets', 'readwrite');
@@ -21,8 +26,12 @@ export async function putAssetBlob(input: {
         createdAt: Date.now(),
         folderId: null,
         removedAt: null,
+        source: library ? 'library' : null,
       });
-    } else if (existing.removedAt) {
+    } else if (!library && existing.source === 'library') {
+      // The same picture uploaded by hand: now it is an upload too.
+      await tx.store.put({ ...existing, source: null, removedAt: null, createdAt: Date.now() });
+    } else if (!library && existing.removedAt) {
       // Content-addressed: identical bytes are stored once. Uploading a removed
       // image again brings it back to the top of the library.
       // The new upload's bytes (identical), not the stored file read back.
@@ -44,7 +53,7 @@ export async function listUploads(options: { folderId?: string | null } = {}): P
   const all = await db.getAllFromIndex('assets', 'createdAt');
   return all
     .reverse()
-    .filter((a) => !a.removedAt)
+    .filter((a) => !a.removedAt && a.source !== 'library')
     .filter((a) => options.folderId === undefined || (a.folderId ?? null) === options.folderId)
     .map(({ blob, ...rest }) => ({ ...rest, size: rest.size ?? blob.size }));
 }
