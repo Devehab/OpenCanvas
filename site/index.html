@@ -136,12 +136,12 @@
               <span data-l="ar">صمّم ما تريد.<br /><span class="gradient-text"><span class="nowrap">بلا اشتراك،</span> <span class="nowrap">وتصاميمك ملكك.</span></span></span>
             </h1>
             <p class="lead" data-l="en">
-              OpenCanvas is a free, open-source design editor you run yourself: photo frames, crop, about 2,900 icons,
+              OpenCanvas is a free, open-source design editor you run yourself: photo frames, crop, {{icons:total}} icons,
               brand kits, multi-page designs and professional exports. No subscriptions, no premium tier, no account. Your
               designs never leave your device.
             </p>
             <p class="lead" data-l="ar">
-              OpenCanvas محرّر تصاميم مجاني ومفتوح المصدر تشغّله بنفسك: إطارات للصور، وقصّ، ونحو 2900 أيقونة، وحزم هوية،
+              OpenCanvas محرّر تصاميم مجاني ومفتوح المصدر تشغّله بنفسك: إطارات للصور، وقصّ، و{{icons:total}} أيقونة، وحزم هوية،
               وتصاميم متعددة الصفحات، وتصدير احترافي. لا اشتراكات ولا باقات مميّزة ولا حسابات، ولا تغادر تصاميمك جهازك أبدًا.
             </p>
             <div class="hero-cta">
@@ -242,7 +242,7 @@
               <span data-l="en">ready-made design sizes</span><span data-l="ar">مقاسًا جاهزًا للتصميم</span>
             </li>
             <li>
-              <strong>~2,900</strong>
+              <strong>{{icons:total}}</strong>
               <span data-l="en">open-source icons</span><span data-l="ar">أيقونة مفتوحة المصدر</span>
             </li>
             <li>
@@ -576,14 +576,14 @@
               </div>
             </figure>
             <div class="feature-text">
-              <h3><span data-l="en">Shapes, lines and ~2,900 icons</span><span data-l="ar">أشكال وخطوط ونحو 2900 أيقونة</span></h3>
+              <h3><span data-l="en">Shapes, lines and {{icons:total}} icons</span><span data-l="ar">أشكال وخطوط و{{icons:total}} أيقونة</span></h3>
               <p data-l="en">
-                Pick from 33 shapes, stars and badges, 12 line styles and the complete Lucide and Tabler icon sets. Search in
-                English or Arabic: “rocket” and “<span lang="ar">صاروخ</span>” both work.
+                Pick from 33 shapes, stars and badges, 12 line styles and <a href="#icons">nine open-source icon libraries</a>,
+                flags included. Search in English or Arabic: “rocket” and “<span lang="ar">صاروخ</span>” both work.
               </p>
               <p data-l="ar">
-                اختر من بين 33 شكلًا ونجومًا وشارات و12 نمطًا للخطوط، ومكتبتَي Lucide وTabler كاملتين. وابحث بالعربية أو
-                الإنجليزية: «صاروخ» و«rocket» كلاهما يعمل.
+                اختر من بين 33 شكلًا ونجومًا وشارات و12 نمطًا للخطوط، و<a href="#icons">تسع مكتبات أيقونات مفتوحة المصدر</a>
+                فيها أعلام الدول. وابحث بالعربية أو الإنجليزية: «صاروخ» و«rocket» كلاهما يعمل.
               </p>
               <ul class="checks">
                 <li>
@@ -991,6 +991,92 @@
       </section>
 
       <!-- ============ Gallery ============ -->
+      <!-- ============ Icon libraries ============ -->
+      <section class="section" id="icons" aria-labelledby="icons-title">
+        <div class="container">
+          <div class="section-head reveal">
+            <span class="eyebrow"><span data-l="en">Icon library</span><span data-l="ar">مكتبة الأيقونات</span></span>
+            <h2 id="icons-title">
+              <span data-l="en">{{icons:total}} icons from nine open-source libraries</span>
+              <span data-l="ar">{{icons:total}} أيقونة من تسع مكتبات مفتوحة المصدر</span>
+            </h2>
+            <p data-l="en">
+              All free for commercial use. Every icon is a vector you can recolor and resize, searchable in English and Arabic;
+              flags keep their colors and are found by their Arabic names too.
+            </p>
+            <p data-l="ar">
+              كلها مجانية للاستخدام التجاري. كل أيقونة رسم متجهي تغيّر لونه وحجمه، ويمكن البحث فيها بالعربية والإنجليزية،
+              وتحتفظ الأعلام بألوانها، وتجدها بأسماء الدول بالعربية أيضًا.
+            </p>
+          </div>
+          <ul class="icon-libs">
+            <li class="reveal">
+              <a href="https://fonts.google.com/icons">
+                <span class="lib-name">Material Icons</span>
+                <strong>{{icons:material}}</strong>
+                <span class="lib-meta"><span data-l="en">Filled, outlined, round and sharp</span><span data-l="ar">مصمتة ومخطّطة ومستديرة وحادّة</span> · Apache 2.0</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://tabler.io/icons">
+                <span class="lib-name">Tabler Icons</span>
+                <strong>{{icons:tabler}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline and filled</span><span data-l="ar">مخطّطة ومصمتة</span> · MIT</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://hugeicons.com">
+                <span class="lib-name">Hugeicons</span>
+                <strong>{{icons:hugeicons}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline (the free set)</span><span data-l="ar">مخطّطة (المجموعة المجانية)</span> · MIT</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://remixicon.com">
+                <span class="lib-name">Remix Icon</span>
+                <strong>{{icons:remix}}</strong>
+                <span class="lib-meta"><span data-l="en">Line and fill</span><span data-l="ar">خطية ومصمتة</span> · Apache 2.0</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://icons.getbootstrap.com">
+                <span class="lib-name">Bootstrap Icons</span>
+                <strong>{{icons:bootstrap}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline and filled</span><span data-l="ar">مخطّطة ومصمتة</span> · MIT</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://lucide.dev">
+                <span class="lib-name">Lucide</span>
+                <strong>{{icons:lucide}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline</span><span data-l="ar">مخطّطة</span> · ISC</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://heroicons.com">
+                <span class="lib-name">Heroicons</span>
+                <strong>{{icons:heroicons}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline and solid</span><span data-l="ar">مخطّطة ومصمتة</span> · MIT</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://www.radix-ui.com/icons">
+                <span class="lib-name">Radix Icons</span>
+                <strong>{{icons:radix}}</strong>
+                <span class="lib-meta"><span data-l="en">Outline, for interfaces</span><span data-l="ar">مخطّطة، للواجهات</span> · MIT</span>
+              </a>
+            </li>
+            <li class="reveal">
+              <a href="https://flagicons.lipis.dev">
+                <span class="lib-name">Flag Icons</span>
+                <strong>{{icons:flags}}</strong>
+                <span class="lib-meta"><span data-l="en">Country flags, in color</span><span data-l="ar">أعلام الدول بألوانها</span> · MIT</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section class="section" aria-labelledby="gallery-title">
         <div class="container">
           <div class="section-head reveal">
@@ -1794,12 +1880,12 @@ pnpm dev</code></pre></div>
               </summary>
               <div>
                 <p data-l="en">
-                  Yes. Your designs are yours. The bundled icons are ISC and MIT licensed and the bundled fonts use open
-                  licenses (SIL OFL or Apache) that allow commercial use.
+                  Yes. Your designs are yours. The bundled icons use the MIT, ISC and Apache 2.0 licenses and the bundled
+                  fonts use open licenses (SIL OFL or Apache), all of which allow commercial use.
                 </p>
                 <p data-l="ar">
-                  نعم، تصاميمك ملكك. الأيقونات المرفقة مرخّصة بـ ISC وMIT، والخطوط المرفقة برخص مفتوحة (SIL OFL أو Apache)
-                  تسمح بالاستخدام التجاري.
+                  نعم، تصاميمك ملكك. الأيقونات المرفقة مرخّصة بـ MIT وISC وApache 2.0، والخطوط المرفقة برخص مفتوحة
+                  (SIL OFL أو Apache)، وكلها تسمح بالاستخدام التجاري.
                 </p>
               </div>
             </details>
@@ -1928,14 +2014,14 @@ pnpm dev</code></pre></div>
           </div>
         </div>
         <p class="fine" data-l="en">
-          MIT License. Icons from <a href="https://lucide.dev">Lucide</a> (ISC) and
-          <a href="https://tabler.io/icons">Tabler Icons</a> (MIT). Fonts: Inter and IBM Plex Sans Arabic (SIL OFL 1.1). This
+          MIT License. Icons from <a href="#icons">nine open-source libraries</a> (MIT, ISC and Apache 2.0). Fonts: Inter and
+          IBM Plex Sans Arabic (SIL OFL 1.1). This
           page sets no cookies and makes no third-party requests: no analytics, no trackers. Its language comes from your device
           settings and time zone, and your choice is remembered in this browser only.
         </p>
         <p class="fine" data-l="ar">
-          رخصة MIT. الأيقونات من <a href="https://lucide.dev">Lucide</a> ‏(ISC) و<a href="https://tabler.io/icons">Tabler Icons</a>
-          ‏(MIT). الخطوط: Inter وIBM Plex Sans Arabic ‏(SIL OFL 1.1). لا تضع هذه الصفحة ملفات تعريف ارتباط ولا ترسل أي طلبات
+          رخصة MIT. الأيقونات من <a href="#icons">تسع مكتبات مفتوحة المصدر</a> (MIT وISC وApache 2.0). الخطوط: Inter
+          وIBM Plex Sans Arabic ‏(SIL OFL 1.1). لا تضع هذه الصفحة ملفات تعريف ارتباط ولا ترسل أي طلبات
           لأطراف خارجية: لا أدوات تحليل ولا تتبّع. وتُختار لغتها بناءً على إعدادات جهازك ومنطقته الزمنية، ويُحفَظ اختيارك في هذا
           المتصفح فقط.
         </p>

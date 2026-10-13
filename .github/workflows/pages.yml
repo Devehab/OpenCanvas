@@ -9,6 +9,8 @@ on:
     paths:
       - 'site/**'
       - 'scripts/site/**'
+      # The page shows the icon library's counts.
+      - 'apps/web/src/lib/icon-library/manifest.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 

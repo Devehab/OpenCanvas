@@ -47,7 +47,7 @@ These editor capabilities from the spec are scheduled into later phases:
 - Transform and layout aids: skew, margins, safe areas (Phase 2). Rulers, guides and column/grid guide presets are done.
 - Text: font upload (Phase 2), text on a path (Phase 2).
 - Image tools: sharpness, duotone and filter presets (Phase 2); background removal/replacement, erase, magic expand, upscaling (Phase 5).
-- Done since Phase 1: palette-PNG compression and size-limited downloads, page views (single, thumbnails, scroll, grid), crop mode, photo frames with drag and drop, a 2,900-icon open-source library.
+- Done since Phase 1: palette-PNG compression and size-limited downloads, page views (single, thumbnails, scroll, grid), crop mode, photo frames with drag and drop, an open-source icon library (28,342 icons from nine libraries, country flags included).
 
 ## Phase 2 — Design platform
 
