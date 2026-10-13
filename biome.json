@@ -16,7 +16,8 @@
       "!**/test-results",
       "!**/*.png",
       "!apps/web/src/lib/icon-library/sets",
-      "!apps/web/public/icon-library"
+      "!apps/web/public/icon-library",
+      "!apps/web/src/lib/element-catalog/letters.json"
     ]
   },
   "formatter": {

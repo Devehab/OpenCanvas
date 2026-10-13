@@ -33,20 +33,22 @@ export function getPathNodeCommands(
 }
 
 export function getShapeNodePath(
-  node: Pick<ShapeNode, 'shape' | 'width' | 'height' | 'cornerRadius' | 'sides' | 'innerRatio'>,
+  node: Pick<ShapeNode, 'shape' | 'width' | 'height' | 'cornerRadius' | 'sides' | 'innerRatio' | 'path'>,
 ) {
   return getShapePath(node.shape, node.width, node.height, {
     cornerRadius: node.cornerRadius,
     sides: node.sides,
     innerRatio: node.innerRatio,
+    path: node.path,
   });
 }
 
 export function getFrameClipPath(
-  node: Pick<FrameNode, 'shape' | 'width' | 'height' | 'cornerRadius'>,
+  node: Pick<FrameNode, 'shape' | 'width' | 'height' | 'cornerRadius' | 'path'>,
 ): PathCommand[] {
   return getShapePath(node.shape, node.width, node.height, {
     cornerRadius: node.cornerRadius,
+    path: node.path,
     // Frames have no shape parameters of their own: classic star, 12-bump badge.
     sides: node.shape === 'scallop' ? 12 : 5,
     innerRatio: 0.5,

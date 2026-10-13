@@ -9,7 +9,9 @@ import {
   pathToSvg,
   pointInPath,
   SHAPE_KINDS,
+  ShapeNodeSchema,
   snapMovingBox,
+  supportsCornerRadius,
 } from '../src';
 import { createTestDoc } from './helpers';
 
@@ -55,6 +57,56 @@ describe('shapes', () => {
       expect(b.y + b.height, kind).toBeLessThanOrEqual(100.5);
       expect(b.width, kind).toBeGreaterThan(150);
     }
+  });
+
+  it('a custom outline is stretched to fill the box, curves included', () => {
+    const d = 'M10 50A40 40 0 1 1 90 50A40 40 0 1 1 10 50Z';
+    const commands = getShapePath('custom', 300, 120, { path: d });
+    const b = pathBounds(commands, 0.01);
+    expect(b.x).toBeCloseTo(0, 1);
+    expect(b.y).toBeCloseTo(0, 1);
+    expect(b.width).toBeCloseTo(300, 1);
+    expect(b.height).toBeCloseTo(120, 1);
+    expect(pointInPath(commands, { x: 150, y: 60 })).toBe(true);
+    expect(pointInPath(commands, { x: 5, y: 5 })).toBe(false);
+  });
+
+  it('a custom outline keeps its holes (reversed subpaths)', () => {
+    const frame = 'M0 0H100V100H0Z M25 25V75H75V25Z';
+    const commands = getShapePath('custom', 200, 200, { path: frame });
+    expect(pointInPath(commands, { x: 100, y: 100 })).toBe(false);
+    expect(pointInPath(commands, { x: 20, y: 100 })).toBe(true);
+  });
+
+  it('rounds the corners of straight-edged custom outlines only', () => {
+    const triangle = 'M50 0L100 100H0Z';
+    expect(supportsCornerRadius('custom', triangle)).toBe(true);
+    const sharp = pathToSvg(getShapePath('custom', 100, 100, { path: triangle }));
+    const round = getShapePath('custom', 100, 100, { path: triangle, cornerRadius: 12 });
+    expect(round.some((c) => c[0] === 'Q')).toBe(true);
+    expect(pathToSvg(round)).not.toBe(sharp);
+    const curved = 'M0 50Q50 0 100 50T0 50Z';
+    expect(supportsCornerRadius('custom', curved)).toBe(false);
+    expect(pathToSvg(getShapePath('custom', 100, 100, { path: curved, cornerRadius: 12 }))).toBe(
+      pathToSvg(getShapePath('custom', 100, 100, { path: curved })),
+    );
+    expect(supportsCornerRadius('rect')).toBe(true);
+    expect(supportsCornerRadius('ellipse')).toBe(false);
+    expect(supportsCornerRadius('heart')).toBe(false);
+  });
+
+  it('invalid or empty custom outlines fall back to a rectangle', () => {
+    for (const path of ['', 'M 10', 'M0 0L0 0Z', undefined]) {
+      const b = pathBounds(getShapePath('custom', 80, 40, { path }));
+      expect(b).toEqual({ x: 0, y: 0, width: 80, height: 40 });
+    }
+  });
+
+  it('validates the outline of custom shapes and keeps older shapes as they are', () => {
+    const base = { typeName: 'node', id: 'node_a', parentId: 'page_a', index: 'a0', type: 'shape' };
+    expect(ShapeNodeSchema.parse({ ...base, shape: 'custom', path: 'M0 0H1V1Z' }).path).toBe('M0 0H1V1Z');
+    expect('path' in ShapeNodeSchema.parse({ ...base, shape: 'rect' })).toBe(false);
+    expect(() => ShapeNodeSchema.parse({ ...base, shape: 'custom', path: 'x'.repeat(100_001) })).toThrow();
   });
 
   it('point-in-path respects holes with evenodd', () => {

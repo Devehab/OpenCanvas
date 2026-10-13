@@ -13,6 +13,7 @@ import {
   type ShapeKind,
   type Stroke,
 } from '@opencanvas/core';
+import { linearGradientLine, radialGradientRadius } from '@opencanvas/renderer';
 import { type ReactNode, useId } from 'react';
 
 type Props = Record<string, unknown> & { type: string; children?: Props[] };
@@ -24,6 +25,47 @@ function fillColor(fill: Fill | null | undefined): string {
   if (fill.type === 'solid') return fill.color;
   if ('stops' in fill && fill.stops.length) return fill.stops[0]!.color;
   return '#cbd5e1';
+}
+
+/** SVG paint for a fill over a `w` × `h` box: a color, or a gradient drawn like the canvas does. */
+function paint(
+  fill: Fill | null | undefined,
+  w: number,
+  h: number,
+  id: string,
+): { fill: string; def: ReactNode } {
+  if (!fill || fill.type === 'solid' || !fill.stops.length) return { fill: fillColor(fill), def: null };
+  const stops = fill.stops.map((s, i) => (
+    // biome-ignore lint/suspicious/noArrayIndexKey: stops never reorder
+    <stop key={i} offset={s.offset} stopColor={s.color} />
+  ));
+  if (fill.type === 'linear-gradient') {
+    const g = linearGradientLine(fill.angle, w, h);
+    return {
+      fill: `url(#${id})`,
+      def: (
+        <linearGradient id={id} gradientUnits="userSpaceOnUse" x1={g.x0} y1={g.y0} x2={g.x1} y2={g.y1}>
+          {stops}
+        </linearGradient>
+      ),
+    };
+  }
+  const cx = fill.cx * w;
+  const cy = fill.cy * h;
+  return {
+    fill: `url(#${id})`,
+    def: (
+      <radialGradient
+        id={id}
+        gradientUnits="userSpaceOnUse"
+        cx={cx}
+        cy={cy}
+        r={radialGradientRadius(cx, cy, w, h)}
+      >
+        {stops}
+      </radialGradient>
+    ),
+  };
 }
 
 function strokeAttrs(stroke: Partial<Stroke> | null | undefined, scale = 1) {
@@ -112,16 +154,15 @@ function NodePreview({ node, uid, root }: { node: Props; uid: string; root?: boo
           cornerRadius: num(node.cornerRadius),
           sides: num(node.sides, 5),
           innerRatio: num(node.innerRatio, 0.5),
+          path: typeof node.path === 'string' ? node.path : undefined,
         }),
       );
+      const { fill, def } = paint(node.fill as Fill | null, w, h, `${uid}-fill`);
       return (
-        <path
-          transform={transform}
-          d={d}
-          fill={fillColor(node.fill as Fill | null)}
-          style={shadow}
-          {...strokeAttrs(node.stroke as Stroke | null)}
-        />
+        <g transform={transform} opacity={num(node.opacity, 1)}>
+          {def ? <defs>{def}</defs> : null}
+          <path d={d} fill={fill} style={shadow} {...strokeAttrs(node.stroke as Stroke | null)} />
+        </g>
       );
     }
     case 'frame': {
@@ -131,6 +172,7 @@ function NodePreview({ node, uid, root }: { node: Props; uid: string; root?: boo
           cornerRadius: num(node.cornerRadius),
           sides: kind === 'scallop' ? 12 : 5,
           innerRatio: 0.5,
+          path: typeof node.path === 'string' ? node.path : undefined,
         }),
       );
       const clip = `${uid}-clip`;
@@ -142,8 +184,8 @@ function NodePreview({ node, uid, root }: { node: Props; uid: string; root?: boo
               <path d={d} />
             </clipPath>
             <linearGradient id={sky} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#c9e6fb" />
-              <stop offset="1" stopColor="#eef8ff" />
+              <stop offset="0" stopColor="#a9d6f5" />
+              <stop offset="1" stopColor="#dff0fc" />
             </linearGradient>
           </defs>
           <g clipPath={`url(#${clip})`}>

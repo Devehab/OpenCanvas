@@ -274,6 +274,8 @@ export const en = {
       iconCount: '{count} icons',
       iconsFailed: 'The icon library could not be loaded.',
       loadingIcons: 'Loading more icons…',
+      loadingElements: 'Loading more elements…',
+      elementsFailed: 'More elements could not be loaded. Check your connection and try again.',
       iconLibrary: 'Icon library',
       allLibraries: 'All libraries ({count})',
       flagFailed: 'The flag could not be added.',

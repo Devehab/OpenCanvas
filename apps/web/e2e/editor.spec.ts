@@ -58,6 +58,54 @@ test.describe('editor', () => {
     await expect(page.getByTestId('inspector').getByRole('heading', { level: 2 })).toHaveText('Text');
   });
 
+  test('element catalog: "See all" opens hundreds of shapes, frames and mockups, loaded on demand', async ({
+    page,
+  }) => {
+    await openPanel(page, 'elements');
+    // The first page shows a few of each group…
+    for (const group of ['lines', 'shapes', 'frames', 'photo-frames', 'grids', 'mockups'])
+      await expect(page.getByTestId(`element-group-${group}`)).toBeVisible();
+
+    // …and "See all" lists every section of a group, each with its own "See all".
+    await page.getByRole('button', { name: 'See all · Shapes' }).click();
+    await page.getByRole('button', { name: 'See all · Flowchart' }).click();
+    await page.getByTestId('element-shape-flow-database').click();
+    await page.getByTestId('elements-back').click();
+    await page.getByTestId('element-shape-multiply').click();
+    await page.getByTestId('elements-back').click();
+
+    // Letter frames, Latin and Arabic.
+    await page.getByRole('button', { name: 'See all · Frames' }).click();
+    await page.getByRole('button', { name: 'See all · Arabic letters' }).click();
+    await page.getByRole('button', { name: 'Arabic letter Ba', exact: true }).click();
+    await page.getByTestId('elements-back').click();
+    await page.getByTestId('elements-back').click();
+
+    // A device mockup: a group around its screen, a photo slot.
+    await page.getByRole('button', { name: 'See all · Mockups' }).click();
+    await page.getByTestId('element-frame-tablet').click();
+
+    // Search ranks a single letter's frame first.
+    await page.getByTestId('elements-search').fill('B');
+    await expect(page.getByTestId('elements-results').getByRole('button').first()).toHaveAttribute(
+      'data-testid',
+      'element-frame-letter-b',
+    );
+
+    // The elements added to the page (a mockup's pieces are inside its group).
+    const all = await getNodes(page);
+    const nodes = all.filter((n) => n.parentId === all[0]!.parentId);
+    expect(nodes.map((n) => [n.type, 'shape' in n ? n.shape : null])).toEqual([
+      ['shape', 'custom'],
+      ['shape', 'custom'],
+      ['frame', 'custom'],
+      ['group', null],
+    ]);
+    // Each letter keeps its own proportions: ب is wide.
+    expect(nodes[2]!.width).toBeGreaterThan(nodes[2]!.height);
+    await waitForCanvasIdle(page);
+  });
+
   test('icon libraries: one library at a time, icons from several sets, and flags as pictures', async ({
     page,
   }) => {

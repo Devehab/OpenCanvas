@@ -10,17 +10,16 @@ import { useEditorContext } from '@/hooks/use-editor';
 import { useIconPacks } from '@/hooks/use-icon-packs';
 import { useI18n } from '@/i18n';
 import {
-  ALL_ELEMENTS,
-  BASIC_FRAMES,
-  DEVICE_FRAMES,
+  ELEMENT_GROUPS,
+  type ElementCatalog,
+  type ElementGroup,
+  type ElementGroupId,
   type ElementItem,
   type ElementSection,
-  elementMatches,
-  FRAME_SECTIONS,
-  GRID_FRAMES,
+  isFrameElement,
   type Label,
-  PHOTO_FRAMES,
-  SHAPE_SECTIONS,
+  loadElementCatalog,
+  searchElements,
 } from '@/lib/element-library';
 import {
   customIconProps,
@@ -49,9 +48,12 @@ import { ElementPreview } from './element-preview';
 
 type View =
   | { kind: 'home' }
-  | { kind: 'section'; section: ElementSection }
-  | { kind: 'frames' }
+  | { kind: 'group'; group: ElementGroupId }
+  | { kind: 'section'; group: ElementGroupId; section: string }
   | { kind: 'icons'; category: IconCategory | null };
+
+/** Groups whose elements are photo slots: their views explain how to fill them. */
+const FRAME_GROUPS: ReadonlySet<ElementGroupId> = new Set(['frames', 'photo-frames', 'grids', 'mockups']);
 
 const testIdOf = (id: string) => `element-${id.replace(/[:/]/g, '-')}`;
 
@@ -106,6 +108,42 @@ function useIcons(sets: readonly string[]) {
     loading: !current || !state.done,
     failed: current && state.failed,
   };
+}
+
+/**
+ * The whole element catalog: loaded at once when `needed` (a "See all" or a
+ * search), otherwise ahead of time when the browser is idle, so it is usually
+ * there by the time it is wanted without slowing the panel's first paint.
+ */
+function useElementCatalog(needed: boolean) {
+  const [state, setState] = useState<{ catalog: ElementCatalog | null; failed: boolean }>({
+    catalog: null,
+    failed: false,
+  });
+  const loaded = state.catalog !== null;
+  useEffect(() => {
+    if (loaded) return;
+    let alive = true;
+    const load = () =>
+      loadElementCatalog().then(
+        (catalog) => alive && setState({ catalog, failed: false }),
+        () => alive && setState({ catalog: null, failed: true }),
+      );
+    if (needed) {
+      load();
+      return () => {
+        alive = false;
+      };
+    }
+    const idle = typeof window.requestIdleCallback === 'function';
+    const handle = idle ? window.requestIdleCallback(load, { timeout: 4000 }) : window.setTimeout(load, 1500);
+    return () => {
+      alive = false;
+      if (idle) window.cancelIdleCallback(handle);
+      else window.clearTimeout(handle);
+    };
+  }, [needed, loaded]);
+  return state;
 }
 
 /** Tile that inserts on click and can be dragged onto the canvas. */
@@ -194,54 +232,66 @@ export function ElementsPanel() {
   const [view, setView] = useState<View>({ kind: 'home' });
   const { recent, remember } = useRecentElements();
   const scroller = useRef<HTMLDivElement>(null);
+  const searching = query.trim() !== '';
+  const { catalog, failed } = useElementCatalog(
+    searching || view.kind === 'group' || view.kind === 'section',
+  );
 
   const open = (next: View) => {
     setView(next);
     scroller.current?.parentElement?.scrollTo({ top: 0 });
   };
 
-  const elementTile = (element: ElementItem, wide = false) => (
-    <Tile
-      key={element.id}
-      props={element.props}
-      label={label(element.label)}
-      testId={testIdOf(element.id)}
-      wide={wide}
-      onInsert={() =>
-        remember({ id: element.id, label: element.label, props: element.props, kind: 'element' })
-      }
-    >
-      <ElementPreview props={element.props} className="size-full" />
-    </Tile>
-  );
-
-  const grid = (items: ElementItem[], columns: 2 | 3 | 4) => (
-    <div className={cn('grid gap-2 px-4', GRID[columns])}>
-      {items.map((e) => elementTile(e, columns === 2))}
-    </div>
-  );
+  const groupOf = (id: ElementGroupId) => ELEMENT_GROUPS.find((g) => g.id === id)!;
+  const sectionsOf = (id: ElementGroupId): ElementSection[] | null => catalog?.sections[id] ?? null;
+  const hint = <p className="px-4 pb-2 text-xs text-slate-500">{t('editor.elements.framesHint')}</p>;
 
   let body: ReactNode;
-  if (query.trim()) {
-    body = <SearchResults query={query} onRemember={remember} />;
-  } else if (view.kind === 'section') {
+  if (searching) {
+    body = <SearchResults query={query} catalog={catalog} onRemember={remember} />;
+  } else if (view.kind === 'group' || view.kind === 'section') {
+    const group = groupOf(view.group);
+    const sections = sectionsOf(view.group);
+    const section = view.kind === 'section' ? sections?.find((s) => s.id === view.section) : null;
+    const single = sections?.length === 1 ? sections[0]! : null;
+    const back = () =>
+      open(view.kind === 'section' && !single ? { kind: 'group', group: view.group } : { kind: 'home' });
     body = (
       <>
-        <BackHeader title={label(view.section.title)} onBack={() => open({ kind: 'home' })} />
-        {grid(view.section.items, view.section.columns)}
-      </>
-    );
-  } else if (view.kind === 'frames') {
-    body = (
-      <>
-        <BackHeader title={t('editor.elements.frames')} onBack={() => open({ kind: 'home' })} />
-        <p className="px-4 pb-1 text-xs text-slate-500">{t('editor.elements.framesHint')}</p>
-        {FRAME_SECTIONS.map((section) => (
-          <div key={section.id}>
-            <SectionHeader title={label(section.title)} />
-            {grid(section.items, section.columns)}
-          </div>
-        ))}
+        <BackHeader title={label(section?.title ?? group.title)} onBack={back} />
+        {FRAME_GROUPS.has(group.id) ? hint : null}
+        {!sections ? (
+          // Until the catalog arrives: what the first page showed, and a note.
+          <>
+            <ElementGrid items={group.featured} columns={group.columns} onRemember={remember} />
+            <CatalogStatus failed={failed} />
+          </>
+        ) : section || single ? (
+          <ElementGrid
+            items={(section ?? single)!.items}
+            columns={(section ?? single)!.columns}
+            onRemember={remember}
+          />
+        ) : (
+          sections.map((s) => (
+            <div key={s.id}>
+              <SectionHeader
+                title={label(s.title)}
+                onSeeAll={
+                  s.items.length > s.columns * 2
+                    ? () => open({ kind: 'section', group: view.group, section: s.id })
+                    : undefined
+                }
+                seeAllLabel={`${t('home.seeAll')} · ${label(s.title)}`}
+              />
+              <ElementGrid
+                items={s.items.slice(0, s.columns * 2)}
+                columns={s.columns}
+                onRemember={remember}
+              />
+            </div>
+          ))
+        )}
       </>
     );
   } else if (view.kind === 'icons') {
@@ -275,24 +325,17 @@ export function ElementsPanel() {
             </div>
           </>
         ) : null}
-        {SHAPE_SECTIONS.map((section) => (
-          <div key={section.id}>
+        {ELEMENT_GROUPS.map((group: ElementGroup) => (
+          <div key={group.id} data-testid={`element-group-${group.id}`}>
             <SectionHeader
-              title={label(section.title)}
-              onSeeAll={() => open({ kind: 'section', section })}
-              seeAllLabel={`${t('home.seeAll')} · ${label(section.title)}`}
+              title={label(group.title)}
+              onSeeAll={() => open({ kind: 'group', group: group.id })}
+              seeAllLabel={`${t('home.seeAll')} · ${label(group.title)}`}
             />
-            {grid(section.items.slice(0, section.columns === 2 ? 4 : 8), section.columns)}
+            {group.id === 'frames' ? hint : null}
+            <ElementGrid items={group.featured} columns={group.columns} onRemember={remember} />
           </div>
         ))}
-        <SectionHeader
-          title={t('editor.elements.frames')}
-          onSeeAll={() => open({ kind: 'frames' })}
-          seeAllLabel={`${t('home.seeAll')} · ${t('editor.elements.frames')}`}
-        />
-        <p className="px-4 pb-2 text-xs text-slate-500">{t('editor.elements.framesHint')}</p>
-        {grid(BASIC_FRAMES.slice(0, 8), 4)}
-        <div className="mt-2">{grid([PHOTO_FRAMES[0]!, GRID_FRAMES[2]!, DEVICE_FRAMES[0]!], 3)}</div>
         <CustomIcons onRemember={remember} limit={10} />
         <IconsPreview onSeeAll={(category) => open({ kind: 'icons', category })} onRemember={remember} />
       </>
@@ -330,6 +373,78 @@ export function ElementsPanel() {
       </div>
       {body}
     </div>
+  );
+}
+
+/** Loading (or failed) note for the parts of the catalog that are not here yet. */
+function CatalogStatus({ failed }: { failed: boolean }) {
+  const { t } = useI18n();
+  return failed ? (
+    <p className="px-4 py-3 text-center text-sm text-red-600" role="alert">
+      {t('editor.elements.elementsFailed')}
+    </p>
+  ) : (
+    <p className="px-4 pt-3 text-center text-xs text-slate-500" aria-busy="true">
+      {t('editor.elements.loadingElements')}
+    </p>
+  );
+}
+
+/**
+ * A grid of element tiles. Long lists render in pages as they scroll into
+ * view, so opening a section with dozens of previews stays quick.
+ */
+function ElementGrid({
+  items,
+  columns,
+  onRemember,
+}: {
+  items: ElementItem[];
+  columns: 2 | 3 | 4;
+  onRemember: (r: RecentElement) => void;
+}) {
+  const label = useLabel();
+  const page = columns * 8;
+  const [shown, setShown] = useState(page);
+  const first = items[0]?.id;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new list starts from its first page again
+  useEffect(() => setShown(page), [first, page]);
+  const observer = useRef<IntersectionObserver | null>(null);
+  const sentinel = useCallback(
+    (el: HTMLDivElement | null) => {
+      observer.current?.disconnect();
+      observer.current = null;
+      if (!el || typeof IntersectionObserver === 'undefined') return;
+      observer.current = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((e) => e.isIntersecting)) setShown((n) => n + page);
+        },
+        { rootMargin: '400px 0px' },
+      );
+      observer.current.observe(el);
+    },
+    [page],
+  );
+  return (
+    <>
+      <div className={cn('grid gap-2 px-4', GRID[columns])}>
+        {items.slice(0, shown).map((element) => (
+          <Tile
+            key={element.id}
+            props={element.props}
+            label={label(element.label)}
+            testId={testIdOf(element.id)}
+            wide={columns === 2}
+            onInsert={() =>
+              onRemember({ id: element.id, label: element.label, props: element.props, kind: 'element' })
+            }
+          >
+            <ElementPreview props={element.props} className="size-full" />
+          </Tile>
+        ))}
+      </div>
+      {shown < items.length ? <div ref={sentinel} className="h-8" /> : null}
+    </>
   );
 }
 
@@ -694,26 +809,38 @@ function IconBrowser({
   );
 }
 
-function SearchResults({ query, onRemember }: { query: string; onRemember: (r: RecentElement) => void }) {
+function SearchResults({
+  query,
+  catalog,
+  onRemember,
+}: {
+  query: string;
+  catalog: ElementCatalog | null;
+  onRemember: (r: RecentElement) => void;
+}) {
   const { t, formatNumber } = useI18n();
-  const label = useLabel();
   const { icons, failed, loading } = useIcons(LOADABLE_SETS);
-  const elements = useMemo(() => ALL_ELEMENTS.filter((e) => elementMatches(e, query)), [query]);
+  // Until the whole catalog is here, the elements of the first page.
+  const all = useMemo(() => catalog?.all ?? ELEMENT_GROUPS.flatMap((g) => g.featured), [catalog]);
+  const elements = useMemo(() => searchElements(all, query), [all, query]);
   const iconHits = useMemo(() => (icons ? searchIcons(icons, query) : null), [icons, query]);
-  const shapes = elements.filter((e) => !e.id.startsWith('frame:'));
-  const frames = elements.filter((e) => e.id.startsWith('frame:'));
-  const tile = (e: ElementItem) => (
-    <Tile
-      key={e.id}
-      props={e.props}
-      label={label(e.label)}
-      testId={testIdOf(e.id)}
-      onInsert={() => onRemember({ id: e.id, label: e.label, props: e.props, kind: 'element' })}
-    >
-      <ElementPreview props={e.props} className="size-full" />
-    </Tile>
-  );
-  const nothing = !elements.length && !loading && iconHits !== null && !iconHits.length;
+  const shapes = elements.filter((e) => !isFrameElement(e));
+  const frames = elements.filter(isFrameElement);
+  // The group with the best match comes first ("B" → the letter B frame).
+  const framesFirst = elements[0] ? isFrameElement(elements[0]) : false;
+  const nothing = catalog && !elements.length && !loading && iconHits !== null && !iconHits.length;
+  const shapeResults = shapes.length ? (
+    <>
+      <SectionHeader title={t('editor.elements.shapes')} />
+      <ElementGrid items={shapes} columns={4} onRemember={onRemember} />
+    </>
+  ) : null;
+  const frameResults = frames.length ? (
+    <>
+      <SectionHeader title={t('editor.elements.frames')} />
+      <ElementGrid items={frames} columns={4} onRemember={onRemember} />
+    </>
+  ) : null;
   return (
     <div data-testid="elements-results">
       {nothing ? (
@@ -721,18 +848,9 @@ function SearchResults({ query, onRemember }: { query: string; onRemember: (r: R
           {t('editor.elements.noResults', { query })}
         </p>
       ) : null}
-      {shapes.length ? (
-        <>
-          <SectionHeader title={t('editor.elements.shapes')} />
-          <div className="grid grid-cols-4 gap-2 px-4">{shapes.map(tile)}</div>
-        </>
-      ) : null}
-      {frames.length ? (
-        <>
-          <SectionHeader title={t('editor.elements.frames')} />
-          <div className="grid grid-cols-4 gap-2 px-4">{frames.map(tile)}</div>
-        </>
-      ) : null}
+      {framesFirst ? frameResults : shapeResults}
+      {framesFirst ? shapeResults : frameResults}
+      {catalog ? null : <CatalogStatus failed={false} />}
       <CustomIcons query={query} onRemember={onRemember} />
       {iconHits === null || iconHits.length || loading ? (
         <>

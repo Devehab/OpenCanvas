@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   createDefaultCommandRegistry,
@@ -7,16 +7,26 @@ import {
   DocumentStore,
   executeCommand,
   getFrameAtPoint,
+  getFrameClipPath,
   getPageCorners,
+  getShapePath,
   LIMITS,
   MockTextMeasurer,
   type NodeRecord,
   normalizeGroupsFinalizer,
   parseSvgPath,
   pathBounds,
+  pointInPath,
 } from '@opencanvas/core';
 import { beforeAll, describe, expect, it } from 'vitest';
-import { ALL_ELEMENTS, elementMatches, FRAME_SECTIONS } from '../src/lib/element-library';
+import { CATALOG } from '../src/lib/element-catalog';
+import {
+  ELEMENT_GROUPS,
+  elementMatches,
+  isFrameElement,
+  loadElementCatalog,
+  searchElements,
+} from '../src/lib/element-library';
 import {
   flagSource,
   ICON_LIBRARIES,
@@ -53,10 +63,97 @@ beforeAll(async () => {
 });
 const byId = (id: string) => icons.find((i) => i.id === id)!;
 
+const ALL_ELEMENTS = CATALOG.all;
+const FRAME_ELEMENTS = ALL_ELEMENTS.filter(isFrameElement);
+
+/** Every node of an element's props tree. */
+const propsTree = (p: Record<string, unknown>): Record<string, unknown>[] => [
+  p,
+  ...((p.children as Record<string, unknown>[] | undefined) ?? []).flatMap(propsTree),
+];
+
 describe('element library', () => {
-  it('has unique ids', () => {
+  it('has unique ids and hundreds of elements in every group', () => {
     const ids = ALL_ELEMENTS.map((e) => e.id);
     expect(new Set(ids).size).toBe(ids.length);
+    expect(ALL_ELEMENTS.length).toBeGreaterThan(450);
+    const count = (group: keyof typeof CATALOG.sections) =>
+      CATALOG.sections[group].reduce((n, s) => n + s.items.length, 0);
+    expect(count('shapes')).toBeGreaterThan(200);
+    expect(count('frames')).toBeGreaterThan(150);
+    for (const group of ELEMENT_GROUPS)
+      expect(count(group.id), group.id).toBeGreaterThan(group.featured.length);
+  });
+
+  it('the README and the landing page give the real counts', () => {
+    const count = (...groups: (keyof typeof CATALOG.sections)[]) =>
+      groups.reduce((n, g) => n + CATALOG.sections[g].reduce((m, s) => m + s.items.length, 0), 0);
+    const shapes = count('shapes');
+    const lines = count('lines');
+    const frames = count('frames', 'photo-frames', 'grids', 'mockups');
+    const readme = readFileSync(new URL('../../../README.md', import.meta.url), 'utf8');
+    const site = readFileSync(new URL('../../../site/index.html', import.meta.url), 'utf8');
+    for (const text of [readme, site]) {
+      expect(text).toContain(`${shapes} `);
+      expect(text).toContain(`${lines} `);
+      expect(text).toContain(`${frames} `);
+    }
+    expect(readme).toContain(`${shapes} shapes`);
+    expect(readme).toContain(`${frames} photo frames`);
+    expect(site).toContain(`${shapes} shapes`);
+    expect(site).toContain(`${frames} frames`);
+    // The landing page's round figure.
+    const total = shapes + lines + frames;
+    const shown = Number(
+      /<strong>(\d+)\+<\/strong>\s*<span data-l="en">shapes, lines and photo frames/.exec(site)?.[1],
+    );
+    expect(total).toBeGreaterThanOrEqual(shown);
+    expect(total - shown).toBeLessThan(50);
+  });
+
+  it('shows on its first page only elements of the catalog, in their own group', () => {
+    for (const group of ELEMENT_GROUPS) {
+      const items = CATALOG.sections[group.id].flatMap((s) => s.items);
+      for (const element of group.featured) expect(items, element.id).toContain(element);
+    }
+  });
+
+  it('loads the catalog lazily: the first page does not bundle it', async () => {
+    const source = readFileSync(new URL('../src/lib/element-library.ts', import.meta.url), 'utf8');
+    const imports = [...source.matchAll(/from '(\.[^']+)'/g)].map((m) => m[1]);
+    expect(imports.filter((i) => i?.startsWith('./element-catalog'))).toEqual(['./element-catalog/builders']);
+    expect(source).toContain("import('./element-catalog')");
+    expect(await loadElementCatalog()).toBe(CATALOG);
+  });
+
+  it('every element has a name in both languages and valid outlines', () => {
+    for (const element of ALL_ELEMENTS) {
+      expect(element.label.en.trim(), element.id).not.toBe('');
+      expect(element.label.ar.trim(), element.id).not.toBe('');
+      expect(element.label.ar, element.id).toMatch(/[\u0600-\u06ff]/);
+      for (const node of propsTree(element.props as unknown as Record<string, unknown>)) {
+        if (node.shape !== 'custom') continue;
+        const path = String(node.path ?? '');
+        expect(path.length, element.id).toBeGreaterThan(0);
+        expect(path.length, element.id).toBeLessThanOrEqual(LIMITS.maxCustomPathLength);
+        const b = pathBounds(parseSvgPath(path));
+        expect(b.width * b.height, element.id).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('keeps the holes of outlines with holes', () => {
+    const outline = (id: string) => {
+      const props = ALL_ELEMENTS.find((e) => e.id === id)!.props as unknown as { path: string };
+      return getShapePath('custom', 100, 100, { path: props.path });
+    };
+    expect(pointInPath(outline('shape:square-outline'), { x: 50, y: 50 })).toBe(false);
+    expect(pointInPath(outline('shape:square-outline'), { x: 5, y: 50 })).toBe(true);
+    expect(pointInPath(outline('shape:location-pin'), { x: 50, y: 38 })).toBe(false);
+    expect(pointInPath(outline('shape:gear'), { x: 50, y: 50 })).toBe(false);
+    // Overlapping parts merge instead of cancelling out.
+    expect(pointInPath(outline('shape:flower-5'), { x: 50, y: 50 })).toBe(true);
+    expect(pointInPath(outline('shape:thought-bubble'), { x: 50, y: 45 })).toBe(true);
   });
 
   it.each(ALL_ELEMENTS.map((e) => [e.id, e] as const))('%s is a valid element', (_, element) => {
@@ -67,7 +164,7 @@ describe('element library', () => {
     expect(node.height).toBeGreaterThan(0);
   });
 
-  it.each(FRAME_SECTIONS.flatMap((s) => s.items).map((e) => [e.id, e] as const))(
+  it.each(FRAME_ELEMENTS.map((e) => [e.id, e] as const))(
     'a photo dropped on %s lands in a frame',
     (_, element) => {
       const { store, pageId, run } = doc();
@@ -78,24 +175,33 @@ describe('element library', () => {
       const frames = [root, ...all(root.id)].filter((n) => n.type === 'frame');
       expect(frames.length).toBeGreaterThan(0);
       for (const frame of frames) {
+        if (frame.type !== 'frame') continue;
+        // Outlines with a hollow middle (a ring, the letter O) take drops elsewhere.
+        if (!pointInPath(getFrameClipPath(frame), { x: frame.width / 2, y: frame.height / 2 })) continue;
         const corners = getPageCorners(store, frame);
         const center = {
           x: corners.reduce((s, p) => s + p.x, 0) / 4,
           y: corners.reduce((s, p) => s + p.y, 0) / 4,
         };
-        if (frame.type === 'frame' && (frame.shape === 'ring' || frame.shape === 'crescent')) continue; // hollow middle
         expect(getFrameAtPoint(store, pageId, center)?.id).toBe(frame.id);
       }
     },
   );
 
-  it('searches in English and Arabic', () => {
+  it('searches in English and Arabic, best matches first', () => {
     const heart = ALL_ELEMENTS.find((e) => e.id === 'shape:heart')!;
     expect(elementMatches(heart, 'heart')).toBe(true);
     expect(elementMatches(heart, 'قلب')).toBe(true);
     expect(elementMatches(heart, 'star')).toBe(false);
     const polaroid = ALL_ELEMENTS.find((e) => e.id === 'frame:polaroid')!;
     expect(elementMatches(polaroid, 'صوره فوريه')).toBe(true); // forgiving spelling
+    expect(searchElements(ALL_ELEMENTS, 'heart')[0]!.id).toBe('shape:heart');
+    // A single letter finds its letter frame first, not every name with that letter.
+    expect(searchElements(ALL_ELEMENTS, 'A')[0]!.id).toBe('frame:letter-a');
+    expect(searchElements(ALL_ELEMENTS, '7')[0]!.id).toBe('frame:number-7');
+    expect(searchElements(ALL_ELEMENTS, 'حرف ب')[0]!.label.ar).toBe('حرف ب');
+    expect(searchElements(ALL_ELEMENTS, 'فانوس').map((e) => e.id)).toContain('frame:lantern');
+    expect(searchElements(ALL_ELEMENTS, 'phone').filter(isFrameElement).length).toBeGreaterThan(4);
   });
 });
 

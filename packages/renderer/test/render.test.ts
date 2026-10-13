@@ -66,23 +66,86 @@ describe('renderer goldens', () => {
   it('template, procedural and compound shapes', async () => {
     const { platform, measurer, renderer } = createTestRenderer();
     const { store, pageId, add } = createScene(measurer, 720, 380);
-    SHAPE_KINDS.slice(18).forEach((shape, i) => {
-      add({
-        type: 'shape',
-        shape,
-        x: 20 + (i % 6) * 115,
-        y: 20 + Math.floor(i / 6) * 120,
-        width: 95,
-        height: 95,
-        sides: 12,
-        innerRatio: 0.55,
-        cornerRadius: i % 2 ? 10 : 0,
-        fill: { type: 'solid', color: i % 2 ? '#0ea5e9' : '#6d5dfc' },
-        stroke: i % 3 === 0 ? { color: '#0f172a', width: 3, style: 'solid' } : null,
-      } as never);
-    });
+    // Every built-in kind (custom outlines have their own test).
+    SHAPE_KINDS.slice(18)
+      .filter((kind) => kind !== 'custom')
+      .forEach((shape, i) => {
+        add({
+          type: 'shape',
+          shape,
+          x: 20 + (i % 6) * 115,
+          y: 20 + Math.floor(i / 6) * 120,
+          width: 95,
+          height: 95,
+          sides: 12,
+          innerRatio: 0.55,
+          cornerRadius: i % 2 ? 10 : 0,
+          fill: { type: 'solid', color: i % 2 ? '#0ea5e9' : '#6d5dfc' },
+          stroke: i % 3 === 0 ? { color: '#0f172a', width: 3, style: 'solid' } : null,
+        } as never);
+      });
     const { canvas } = rasterizePage(renderer, platform, store, pageId);
     await expectGolden('shapes-extra', canvas);
+  });
+
+  it('custom outlines: stretched to the box, holes kept, straight corners rounded, frames clip to them', async () => {
+    const { platform, measurer, images, renderer } = createTestRenderer();
+    const { store, pageId, add, run } = createScene(measurer, 480, 160);
+    const fill = (color: string) => ({ type: 'solid', color });
+    // A ring of a square with a square hole (the hole turns the other way).
+    add({
+      type: 'shape',
+      shape: 'custom',
+      path: 'M0 0H100V100H0Z M25 25V75H75V25Z',
+      x: 20,
+      y: 20,
+      width: 120,
+      height: 120,
+      fill: fill('#6d5dfc'),
+    } as never);
+    // A triangle, stretched and with rounded corners.
+    add({
+      type: 'shape',
+      shape: 'custom',
+      path: 'M50 0L100 100H0Z',
+      x: 160,
+      y: 20,
+      width: 140,
+      height: 120,
+      cornerRadius: 16,
+      fill: fill('#0ea5e9'),
+      stroke: { color: '#0f172a', width: 3, style: 'solid' },
+    } as never);
+    // A frame clipping a photo to a curved outline.
+    const frame = add({
+      type: 'frame',
+      shape: 'custom',
+      path: 'M50 0C80 0 100 40 100 65S80 100 50 100 0 90 0 65 20 0 50 0Z',
+      x: 320,
+      y: 20,
+      width: 140,
+      height: 120,
+      fill: fill('#e5e7eb'),
+      clipContent: true,
+    } as never);
+    images.set('asset_photo', createTestPhoto() as never);
+    run('asset.add', {
+      asset: {
+        typeName: 'asset',
+        id: 'asset_photo',
+        kind: 'image',
+        name: 'photo',
+        mimeType: 'image/png',
+        width: 400,
+        height: 300,
+        size: 1,
+        hash: `sha256-${'0'.repeat(64)}`,
+        src: null,
+      },
+    });
+    add({ type: 'image', assetId: 'asset_photo', x: -10, y: -10, width: 160, height: 140 } as never, frame);
+    const { canvas } = rasterizePage(renderer, platform, store, pageId);
+    await expectGolden('shapes-custom', canvas);
   });
 
   it('typography: wrapping, alignment, Arabic RTL, bidi, lists and effects', async () => {

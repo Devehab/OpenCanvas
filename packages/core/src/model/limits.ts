@@ -28,6 +28,7 @@ export const LIMITS = {
   maxCornerRadius: 1_000_000,
   maxGradientStops: 32,
   maxPathDataLength: 2_000_000,
+  maxCustomPathLength: 100_000,
   maxMetaBytes: 64_000,
   maxImagePixels: 100_000_000,
 } as const;

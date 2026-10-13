@@ -172,6 +172,8 @@ const baseNodeShape = {
 };
 
 const cornerRadius = z.number().min(0).max(LIMITS.maxCornerRadius).default(0);
+/** Outline of a `custom` shape or frame (absent for the built-in kinds). */
+const customPath = z.string().max(LIMITS.maxCustomPathLength).optional();
 
 export const ShapeNodeSchema = z.object({
   ...baseNodeShape,
@@ -182,6 +184,7 @@ export const ShapeNodeSchema = z.object({
   cornerRadius,
   sides: z.number().int().min(3).max(64).default(5),
   innerRatio: z.number().min(0.05).max(0.95).default(0.5),
+  path: customPath,
 });
 
 export const LineNodeSchema = z.object({
@@ -339,6 +342,7 @@ export const FrameNodeSchema = z.object({
   stroke: StrokeSchema.nullable().default(null),
   cornerRadius,
   clipContent: z.boolean().default(true),
+  path: customPath,
 });
 
 export const NodeRecordSchema = z.discriminatedUnion('type', [

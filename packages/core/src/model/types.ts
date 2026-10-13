@@ -262,6 +262,8 @@ export const SHAPE_KINDS = [
   'tag',
   'double-arrow',
   'round-bubble',
+  /** Any outline: the node's `path`, stretched to fill its box. */
+  'custom',
 ] as const;
 export type ShapeKind = (typeof SHAPE_KINDS)[number];
 
@@ -274,6 +276,8 @@ export interface ShapeNode extends BaseNode<'shape'> {
   sides: number;
   /** Inner radius ratio for `star` and `ring` (0.1–0.95). */
   innerRatio: number;
+  /** SVG path data of a `custom` shape, stretched to fill the box. */
+  path?: string;
 }
 
 export const ARROW_HEADS = ['none', 'arrow', 'triangle', 'circle', 'square', 'bar'] as const;
@@ -419,6 +423,8 @@ export interface FrameNode extends BaseNode<'frame'> {
   stroke: Stroke | null;
   cornerRadius: number;
   clipContent: boolean;
+  /** SVG path data of a `custom` frame, stretched to fill the box. */
+  path?: string;
 }
 
 export type NodeRecord = ShapeNode | LineNode | PathNode | TextNode | ImageNode | GroupNode | FrameNode;

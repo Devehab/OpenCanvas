@@ -275,6 +275,8 @@ export const ar: Dictionary = {
       iconCount: 'الأيقونات: {count}',
       iconsFailed: 'تعذّر تحميل مكتبة الأيقونات.',
       loadingIcons: 'جارٍ تحميل مزيد من الأيقونات…',
+      loadingElements: 'جارٍ تحميل مزيد من العناصر…',
+      elementsFailed: 'تعذّر تحميل باقي العناصر. تحقّق من اتصالك وحاول مجددًا.',
       iconLibrary: 'مكتبة الأيقونات',
       allLibraries: 'كل المكتبات ({count})',
       flagFailed: 'تعذّرت إضافة العلم.',

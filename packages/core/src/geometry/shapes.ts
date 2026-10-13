@@ -3,6 +3,7 @@
  * [0, width] × [0, height] so shapes scale with their node.
  */
 
+import type { Box } from '../math/box';
 import type { Vec } from '../math/vec';
 import type { ShapeKind } from '../model/types';
 import { type PathCommand, parseSvgPath, pathBounds } from './path';
@@ -11,6 +12,8 @@ export interface ShapeParams {
   cornerRadius: number;
   sides: number;
   innerRatio: number;
+  /** Outline of a `custom` shape: SVG path data, stretched to the box. */
+  path: string;
 }
 
 const KAPPA = 0.5522847498307936;
@@ -127,24 +130,139 @@ export function starPoints(points: number, innerRatio: number, w: number, h: num
   return fitPoints(pts, w, h);
 }
 
-const templates = new Map<
-  string,
-  { commands: PathCommand[]; box: { x: number; y: number; width: number; height: number } }
->();
+interface Template {
+  commands: PathCommand[];
+  box: Box;
+  /** The subpaths' corners when the outline has only straight edges (so corners can be rounded). */
+  polygons: Vec[][] | null;
+}
 
-/** An SVG path (any coordinates) stretched to fill the box exactly. */
-function templatePath(d: string, w: number, h: number): PathCommand[] {
-  let template = templates.get(d);
-  if (!template) {
+const templates = new Map<string, Template | null>();
+
+/** Parses (and caches) an outline; null when the data is invalid or empty. */
+function getTemplate(d: string): Template | null {
+  const cached = templates.get(d);
+  if (cached !== undefined) return cached;
+  let template: Template | null = null;
+  try {
     const commands = parseSvgPath(d);
-    template = { commands, box: pathBounds(commands, 0.001) };
-    templates.set(d, template);
+    const box = curveBounds(commands);
+    if (box.width > 0 && box.height > 0) template = { commands, box, polygons: polygonsOf(commands) };
+  } catch {
+    template = null;
   }
+  // Built-in outlines and those of the designs open: a bound keeps odd input from growing it forever.
+  if (templates.size > 1000) templates.clear();
+  templates.set(d, template);
+  return template;
+}
+
+/** Exact bounds of a path (curve extremes included, control points excluded). */
+export function curveBounds(commands: readonly PathCommand[]): Box {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  const add = (x: number, y: number) => {
+    minX = Math.min(minX, x);
+    minY = Math.min(minY, y);
+    maxX = Math.max(maxX, x);
+    maxY = Math.max(maxY, y);
+  };
+  // Roots in (0, 1) of the derivative of a cubic (or quadratic) Bézier along one axis.
+  const extremes = (p0: number, p1: number, p2: number, p3?: number): number[] => {
+    if (p3 === undefined) {
+      const den = p0 - 2 * p1 + p2;
+      return den === 0 ? [] : [(p0 - p1) / den];
+    }
+    const a = -p0 + 3 * p1 - 3 * p2 + p3;
+    const b = 2 * (p0 - 2 * p1 + p2);
+    const c = p1 - p0;
+    if (Math.abs(a) < 1e-12) return b === 0 ? [] : [-c / b];
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return [];
+    const r = Math.sqrt(disc);
+    return [(-b + r) / (2 * a), (-b - r) / (2 * a)];
+  };
+  const cubic = (p0: number, p1: number, p2: number, p3: number, t: number) => {
+    const u = 1 - t;
+    return u * u * u * p0 + 3 * u * u * t * p1 + 3 * u * t * t * p2 + t * t * t * p3;
+  };
+  const quad = (p0: number, p1: number, p2: number, t: number) => {
+    const u = 1 - t;
+    return u * u * p0 + 2 * u * t * p1 + t * t * p2;
+  };
+  let x = 0;
+  let y = 0;
+  for (const c of commands) {
+    switch (c[0]) {
+      case 'M':
+      case 'L':
+        [, x, y] = c;
+        add(x, y);
+        break;
+      case 'C': {
+        const [, x1, y1, x2, y2, x3, y3] = c;
+        for (const t of [...extremes(x, x1, x2, x3), ...extremes(y, y1, y2, y3)])
+          if (t > 0 && t < 1) add(cubic(x, x1, x2, x3, t), cubic(y, y1, y2, y3, t));
+        x = x3;
+        y = y3;
+        add(x, y);
+        break;
+      }
+      case 'Q': {
+        const [, x1, y1, x2, y2] = c;
+        for (const t of [...extremes(x, x1, x2), ...extremes(y, y1, y2)])
+          if (t > 0 && t < 1) add(quad(x, x1, x2, t), quad(y, y1, y2, t));
+        x = x2;
+        y = y2;
+        add(x, y);
+        break;
+      }
+    }
+  }
+  if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 0, height: 0 };
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** The corners of each subpath, or null if any edge is curved. */
+function polygonsOf(commands: readonly PathCommand[]): Vec[][] | null {
+  const polygons: Vec[][] = [];
+  let current: Vec[] = [];
+  const close = () => {
+    const first = current[0];
+    const last = current[current.length - 1];
+    if (current.length > 1 && first && last && first.x === last.x && first.y === last.y) current.pop();
+    if (current.length >= 3) polygons.push(current);
+    current = [];
+  };
+  for (const c of commands) {
+    if (c[0] === 'C' || c[0] === 'Q') return null;
+    if (c[0] === 'M') {
+      close();
+      current.push({ x: c[1], y: c[2] });
+    } else if (c[0] === 'L') current.push({ x: c[1], y: c[2] });
+    else close();
+  }
+  close();
+  return polygons.length ? polygons : null;
+}
+
+/** An outline stretched to fill the box exactly (corners rounded by `radius` when it has only straight edges). */
+function fitTemplate(template: Template, w: number, h: number, radius = 0): PathCommand[] {
   const { commands, box } = template;
   const sx = w / (box.width || 1);
   const sy = h / (box.height || 1);
   const X = (x: number) => (x - box.x) * sx;
   const Y = (y: number) => (y - box.y) * sy;
+  if (radius > 0 && template.polygons) {
+    return template.polygons.flatMap((points) =>
+      polygonPath(
+        points.map((p) => ({ x: X(p.x), y: Y(p.y) })),
+        radius,
+      ),
+    );
+  }
   return commands.map((c): PathCommand => {
     switch (c[0]) {
       case 'M':
@@ -159,6 +277,21 @@ function templatePath(d: string, w: number, h: number): PathCommand[] {
         return ['Z'];
     }
   });
+}
+
+/** A built-in SVG outline (any coordinates) stretched to fill the box exactly. */
+function templatePath(d: string, w: number, h: number): PathCommand[] {
+  return fitTemplate(getTemplate(d)!, w, h);
+}
+
+/**
+ * The outline of a `custom` shape or frame: its path data stretched to the box.
+ * Invalid or empty data falls back to a rectangle, so the node stays visible
+ * and selectable.
+ */
+function customPath(d: string, w: number, h: number, radius: number): PathCommand[] {
+  const template = d ? getTemplate(d) : null;
+  return template ? fitTemplate(template, w, h, radius) : rectPath(0, 0, w, h, radius);
 }
 
 const TEMPLATES = {
@@ -447,6 +580,8 @@ export function getShapePath(
     }
     case 'speech-bubble':
       return speechBubblePath(w, h, radius);
+    case 'custom':
+      return customPath(params.path ?? '', w, h, radius);
     case 'parallelogram': {
       const d = w * 0.25;
       return polygonPath(
@@ -472,4 +607,28 @@ export function getShapePath(
       );
     }
   }
+}
+
+/** Kinds whose outline is drawn with curves only: a corner radius changes nothing. */
+const ROUND_KINDS: ReadonlySet<ShapeKind> = new Set<ShapeKind>([
+  'ellipse',
+  'heart',
+  'arch',
+  'half-circle',
+  'quarter-circle',
+  'ring',
+  'crescent',
+  'drop',
+  'cloud',
+  'blob',
+  'scallop',
+  'squircle',
+  'shield',
+  'round-bubble',
+]);
+
+/** Whether a corner radius rounds this outline (custom outlines: only those with straight edges). */
+export function supportsCornerRadius(kind: ShapeKind, path?: string): boolean {
+  if (kind === 'custom') return Boolean(path && getTemplate(path)?.polygons);
+  return !ROUND_KINDS.has(kind);
 }

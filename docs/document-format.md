@@ -131,13 +131,13 @@ Colors are normalized to lowercase `#rrggbb` or `#rrggbbaa`.
 
 | Type | Specific fields |
 | --- | --- |
-| `shape` | `shape` (`rect`, `ellipse`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `octagon`, `polygon`, `star`, `arrow-right`, `arrow-left`, `chevron`, `cross`, `heart`, `speech-bubble`, `parallelogram`, `trapezoid`, `arch`, `half-circle`, `quarter-circle`, `ring`, `crescent`, `drop`, `cloud`, `blob`, `scallop`, `squircle`, `shield`, `banner`, `tag`, `double-arrow`, `round-bubble`), `fill`, `stroke`, `cornerRadius`, `sides` (polygon sides / star points / scallop bumps), `innerRatio` (star, ring) |
+| `shape` | `shape` (`rect`, `ellipse`, `triangle`, `right-triangle`, `diamond`, `pentagon`, `hexagon`, `octagon`, `polygon`, `star`, `arrow-right`, `arrow-left`, `chevron`, `cross`, `heart`, `speech-bubble`, `parallelogram`, `trapezoid`, `arch`, `half-circle`, `quarter-circle`, `ring`, `crescent`, `drop`, `cloud`, `blob`, `scallop`, `squircle`, `shield`, `banner`, `tag`, `double-arrow`, `round-bubble`, `custom`), `fill`, `stroke`, `cornerRadius`, `sides` (polygon sides / star points / scallop bumps), `innerRatio` (star, ring), `path` (`custom` only: SVG path data, at most 100,000 characters, stretched to fill the box; the corner radius rounds outlines made only of straight edges) |
 | `line` | `stroke`, `startArrow`, `endArrow` (`none`, `arrow`, `triangle`, `circle`, `square`, `bar`). The line runs from the left-middle to the right-middle of its box; length = `width`, angle = `rotation` |
 | `path` | `path` (SVG path data), `viewBox`, `fill`, `stroke`, `fillRule` — icons and imported vector shapes |
 | `text` | `content.paragraphs[]` (`runs[]` of `{ text, style }` overrides, `list`: `none` / `bullet` / `number`, `indent` 0–4), base `style` (`fontFamily`, `fontSize`, `fontWeight`, `fontStyle`, `color`, `underline`, `strikethrough`, `letterSpacing` in 1/1000 em, `textTransform`), `align` (`left`, `center`, `right`, `justify`), `verticalAlign`, `direction` (`auto`, `ltr`, `rtl`), `lineHeight`, `paragraphSpacing`, `sizing` (`auto-width`, `auto-height`, `fixed`), `autoFit`, `effect` (outline, hollow, background, neon, echo) |
 | `image` | `assetId`, `crop` (visible source region, normalized 0–1), `cornerRadius`, `stroke`, `adjustments` (`brightness`, `contrast`, `saturation`, `hue`, `temperature`, `grayscale`, `sepia`, `vignette`) |
 | `group` | none — bounds follow the children; transforms apply to all of them |
-| `frame` | `shape`, `fill`, `stroke`, `cornerRadius`, `clipContent` — a container that clips its children to its shape (photo frames, masks) |
+| `frame` | `shape`, `fill`, `stroke`, `cornerRadius`, `clipContent`, `path` (`custom` frames, as for shapes) — a container that clips its children to its shape (photo frames, masks) |
 
 `width`/`height` of `auto-width`/`auto-height` text are derived from the content by the layout engine and stored so other tools can read the document without a font engine.
 

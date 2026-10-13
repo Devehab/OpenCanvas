@@ -13,6 +13,7 @@ import {
   type PathNode,
   SEMANTIC_ROLES,
   type ShapeNode,
+  supportsCornerRadius,
   type TextNode,
 } from '@opencanvas/core';
 import {
@@ -349,14 +350,17 @@ function ShapeSection({ nodes }: { nodes: (ShapeNode | FrameNode)[] }) {
           value={node.stroke}
           onChange={(stroke, final) => editor.updateSelected({ stroke }, { coalesce: !final })}
         />
-        <SliderField
-          label={t('editor.inspector.cornerRadius')}
-          value={node.cornerRadius}
-          min={0}
-          max={Math.round(Math.min(node.width, node.height) / 2)}
-          testId="corner-radius"
-          onChange={(cornerRadius) => editor.updateSelected({ cornerRadius }, { coalesce: true })}
-        />
+        {/* Curved outlines have no corners to round. */}
+        {nodes.some((n) => supportsCornerRadius(n.shape, n.path)) ? (
+          <SliderField
+            label={t('editor.inspector.cornerRadius')}
+            value={node.cornerRadius}
+            min={0}
+            max={Math.round(Math.min(node.width, node.height) / 2)}
+            testId="corner-radius"
+            onChange={(cornerRadius) => editor.updateSelected({ cornerRadius }, { coalesce: true })}
+          />
+        ) : null}
         {node.type === 'shape' && (node.shape === 'polygon' || node.shape === 'star') ? (
           <SliderField
             label={node.shape === 'star' ? t('editor.inspector.points') : t('editor.inspector.sides')}
